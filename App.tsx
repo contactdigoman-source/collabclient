@@ -1,28 +1,48 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import * as React from 'react';
+import { View, StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import BootSplash from 'react-native-bootsplash';
+import Config from 'react-native-config';
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
+import AppNavigation from './src/navigation';
+import { Provider } from 'react-redux';
+import { PersistGate } from 'redux-persist/integration/react';
+import { persistor, store } from './src/redux/store';
 
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+export default function App() {
+  React.useEffect(() => {
+    // Mirror chat_messaging config logging for quick environment diagnostics
+    // Values come from .env / react-native-config
+    // eslint-disable-next-line no-console
+    console.log('ENVIRONMENT', Config.ENVIRONMENT);
+    // eslint-disable-next-line no-console
+    console.log('API_URL', Config.API_URL);
+
+    BootSplash.hide();
+  }, []);
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <NewAppScreen templateFileName="App.tsx" />
-    </View>
+    <GestureHandlerRootView style={styles.flex1}>
+      <SafeAreaProvider>
+        <View style={styles.container}>
+          <Provider store={store}>
+            <PersistGate loading={null} persistor={persistor}>
+              <AppNavigation />
+            </PersistGate>
+          </Provider>
+        </View>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  flex1: {
     flex: 1,
   },
+  container: {
+    flex: 1,
+    backgroundColor: 'black',
+  },
 });
-
-export default App;
