@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
 import { useNavigation, useTheme } from '@react-navigation/native';
 import { AppContainer, BackHeader, AppText } from '../../components';
 import { Configs, hp, wp } from '../../constants';
@@ -14,7 +14,7 @@ try {
   console.log('react-native-webview not installed, using fallback');
 }
 
-export default function PrivacyPolicyScreen(): React.JSX.Element {
+export default function TermsAndConditionsScreen(): React.JSX.Element {
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const { t } = useTranslation();
@@ -29,9 +29,11 @@ export default function PrivacyPolicyScreen(): React.JSX.Element {
   };
 
   const handleBackPress = (): void => {
-    // Navigate back to FirstTimeLoginScreen
     navigation.goBack();
   };
+
+  // Summary text for Terms and Conditions
+  const termsSummary = t('terms.summary');
 
   return (
     <AppContainer>
@@ -57,17 +59,23 @@ export default function PrivacyPolicyScreen(): React.JSX.Element {
             />
           </View>
         ) : (
-          <View style={styles.fallbackContainer}>
+          <ScrollView
+            style={styles.fallbackContainer}
+            contentContainerStyle={styles.fallbackContent}
+          >
             <AppText size={hp(2)} style={styles.fallbackText}>
-              {t('privacy.title')}
+              {t('terms.title')}
             </AppText>
-            <AppText size={hp(1.8)} style={styles.fallbackSubtext}>
-              {t('privacy.openedInBrowser')}
+            <AppText size={hp(1.8)} style={styles.summaryText}>
+              {termsSummary}
             </AppText>
             <AppText size={hp(1.6)} style={styles.fallbackSubtext}>
-              {t('privacy.readAndReturn')}
+              {t('terms.openedInBrowser')}
             </AppText>
-          </View>
+            <AppText size={hp(1.6)} style={styles.fallbackSubtext}>
+              {t('terms.readAndReturn')}
+            </AppText>
+          </ScrollView>
         )}
       </View>
     </AppContainer>
@@ -98,13 +106,22 @@ const styles = StyleSheet.create({
   },
   fallbackContainer: {
     flex: 1,
+  },
+  fallbackContent: {
+    padding: hp(4),
     justifyContent: 'center',
     alignItems: 'center',
-    padding: hp(4),
   },
   fallbackText: {
     marginBottom: hp(2),
     textAlign: 'center',
+    fontWeight: 'bold',
+  },
+  summaryText: {
+    marginBottom: hp(2),
+    textAlign: 'left',
+    lineHeight: hp(2.5),
+    paddingHorizontal: wp(5),
   },
   fallbackSubtext: {
     marginBottom: hp(1),
@@ -112,3 +129,4 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
 });
+

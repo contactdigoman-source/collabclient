@@ -9,7 +9,7 @@ import {
   TextInput,
 } from 'react-native';
 import { RouteProp } from '@react-navigation/native';
-
+import { useNavigation } from '@react-navigation/native';
 import {
   AppButton,
   AppContainer,
@@ -20,6 +20,8 @@ import {
 } from '../../components';
 import { FontTypes, hp, Icons, Images, PASSWORD_FORMAT } from '../../constants';
 import { RootStackParamList } from '../../types/navigation';
+import { useTranslation } from '../../hooks/useTranslation';
+import { NavigationProp } from '../../types/navigation';
 
 const IMAGE_SIZE = hp(18.63);
 
@@ -35,7 +37,8 @@ const ChangeForgottenPassword: React.FC<ChangeForgottenPasswordProps> = ({
   route,
 }) => {
   const emailID = route?.params?.emailID || '';
-
+  const { t } = useTranslation();
+  const navigation = useNavigation<NavigationProp>();
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [passError, setPassError] = useState<string | null>(null);
@@ -72,44 +75,42 @@ const ChangeForgottenPassword: React.FC<ChangeForgottenPasswordProps> = ({
   // ✅ Clean validation logic
   const validatePassword = useCallback((): boolean => {
     if (!password.trim()) {
-      setPassError('Password should not be empty');
+      setPassError(t('auth.changePassword.passwordEmpty'));
       return false;
     }
 
     if (!confirmPassword.trim()) {
-      setConfirmPassError('Confirm password should not be empty');
+      setConfirmPassError(t('auth.changePassword.confirmPasswordEmpty'));
       return false;
     }
 
     if (password.length < 14) {
-      setPassError('Minimum 14 characters needed');
+      setPassError(t('auth.changePassword.passwordMinLength'));
       return false;
     }
 
     if (password.length > 28) {
-      setPassError('Maximum 28 characters allowed');
+      setPassError(t('auth.changePassword.passwordMaxLength'));
       return false;
     }
 
     if (password.toLowerCase().trim() === emailID.toLowerCase().trim()) {
-      setPassError('Password cannot be same as user ID');
+      setPassError(t('auth.changePassword.passwordSameAsEmail'));
       return false;
     }
 
     if (!PASSWORD_FORMAT.test(password)) {
-      setPassError(
-        'Use minimum 14 characters with a mix of uppercase, lowercase, numbers & symbols (@$!%*?&)',
-      );
+      setPassError(t('auth.changePassword.passwordFormat'));
       return false;
     }
 
     if (password !== confirmPassword) {
-      setConfirmPassError('Passwords do not match');
+      setConfirmPassError(t('auth.changePassword.passwordsNotMatch'));
       return false;
     }
 
     return true;
-  }, [password, confirmPassword, emailID]);
+  }, [password, confirmPassword, emailID, t]);
 
   const handleDonePress = useCallback((): void => {
     if (!validatePassword()) return;
@@ -118,6 +119,7 @@ const ChangeForgottenPassword: React.FC<ChangeForgottenPasswordProps> = ({
 
     // TODO: Call your updatePassword API
     console.log('Password successfully validated and ready for update');
+    navigation.navigate('LoginScreen');
   }, [validatePassword]);
 
   return (
@@ -140,9 +142,11 @@ const ChangeForgottenPassword: React.FC<ChangeForgottenPasswordProps> = ({
                 style={styles.image}
               />
               <AppText size={hp(2.5)} fontType={FontTypes.medium}>
-                Change Password
+                {t('auth.changePassword.title')}
               </AppText>
-              <AppText style={styles.description}>Enter new password</AppText>
+              <AppText style={styles.description}>
+                {t('auth.changePassword.description')}
+              </AppText>
             </View>
 
             <AppInput
@@ -150,7 +154,7 @@ const ChangeForgottenPassword: React.FC<ChangeForgottenPasswordProps> = ({
               icon={Icons.password}
               isBorderFocused={!!passError}
               value={password}
-              placeholder="New Password"
+              placeholder={t('auth.changePassword.newPassword')}
               onChangeText={handleNewPasswordChange}
               secureTextEntry
               returnKeyType="next"
@@ -163,7 +167,7 @@ const ChangeForgottenPassword: React.FC<ChangeForgottenPasswordProps> = ({
               icon={Icons.password}
               isBorderFocused={!!confirmPassError}
               value={confirmPassword}
-              placeholder="Confirm New Password"
+              placeholder={t('auth.changePassword.confirmPassword')}
               onChangeText={handleConfirmPasswordChange}
               secureTextEntry
               returnKeyType="done"
@@ -172,12 +176,11 @@ const ChangeForgottenPassword: React.FC<ChangeForgottenPasswordProps> = ({
             />
 
             <AppText style={styles.passwordHint}>
-              Use minimum 14 characters with a mix of letters (uppercase,
-              lowercase), numbers & symbols.
+              {t('auth.changePassword.passwordHint')}
             </AppText>
 
             <AppButton
-              title="Done"
+              title={t('auth.changePassword.done')}
               style={styles.doneButton}
               onPress={handleDonePress}
             />

@@ -4,4 +4,5 @@ export * from './auth';
 export * from './location';
 export * from './aadhaar';
 export * from './security-service';
+export * from './login-attempt-service';
 

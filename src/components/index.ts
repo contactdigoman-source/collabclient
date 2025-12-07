@@ -15,6 +15,7 @@ import ChatListItem from './app-list-items/ChatListItem';
 import MyTeamListItem from './app-list-items/MyTeamListItem';
 import AttendanceLogItem from './app-list-items/AttendanceLogItem';
 import AnimatedSwitch from './app-switches/AnimatedSwitch';
+import AccountLockedModal from './app-modals/AccountLockedModal';
 
 export {
   AppInput,
@@ -34,5 +35,6 @@ export {
   MyTeamListItem,
   AttendanceLogItem,
   AnimatedSwitch,
+  AccountLockedModal,
 };
 

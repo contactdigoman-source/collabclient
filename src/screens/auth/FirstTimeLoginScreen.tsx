@@ -18,14 +18,15 @@ import {
   AppText,
   AppInput,
 } from '../../components';
-import { markFirstTimeLoginCompleted } from '../../services';
 import { NavigationProp } from '../../types/navigation';
-import { hp, Icons, Images } from '../../constants';
+import { hp, wp, Icons, Images } from '../../constants';
 import { useAppDispatch, setUserData } from '../../redux';
+import { useTranslation } from '../../hooks/useTranslation';
 
 export default function FirstTimeLoginScreen(): React.JSX.Element {
   const navigation = useNavigation<NavigationProp>();
   const dispatch = useAppDispatch();
+  const { t } = useTranslation();
 
   // Refs for input focus management
   const lastNameRef = useRef<TextInput>(null);
@@ -48,80 +49,80 @@ export default function FirstTimeLoginScreen(): React.JSX.Element {
   // Validation functions
   const validateFirstName = useCallback((): boolean => {
     if (!firstName.trim()) {
-      setFirstNameError('First name is required');
+      setFirstNameError(t('auth.firstTimeLogin.firstNameRequired'));
       return false;
     }
     if (firstName.trim().length < 2) {
-      setFirstNameError('First name must be at least 2 characters');
+      setFirstNameError(t('auth.firstTimeLogin.firstNameMinLength'));
       return false;
     }
     setFirstNameError(null);
     return true;
-  }, [firstName]);
+  }, [firstName, t]);
 
   const validateLastName = useCallback((): boolean => {
     if (!lastName.trim()) {
-      setLastNameError('Last name is required');
+      setLastNameError(t('auth.firstTimeLogin.lastNameRequired'));
       return false;
     }
     if (lastName.trim().length < 2) {
-      setLastNameError('Last name must be at least 2 characters');
+      setLastNameError(t('auth.firstTimeLogin.lastNameMinLength'));
       return false;
     }
     setLastNameError(null);
     return true;
-  }, [lastName]);
+  }, [lastName, t]);
 
   const validateNewPassword = useCallback((): boolean => {
     if (!newPassword.trim()) {
-      setNewPasswordError('Password is required');
+      setNewPasswordError(t('auth.firstTimeLogin.passwordRequired'));
       return false;
     }
     if (newPassword.length < 14) {
-      setNewPasswordError('Password must be at least 14 characters');
+      setNewPasswordError(t('auth.firstTimeLogin.passwordMinLength'));
       return false;
     }
     
     // Check for uppercase letter
     if (!/[A-Z]/.test(newPassword)) {
-      setNewPasswordError('Password must contain at least one uppercase letter');
+      setNewPasswordError(t('auth.firstTimeLogin.passwordUppercase'));
       return false;
     }
     
     // Check for lowercase letter
     if (!/[a-z]/.test(newPassword)) {
-      setNewPasswordError('Password must contain at least one lowercase letter');
+      setNewPasswordError(t('auth.firstTimeLogin.passwordLowercase'));
       return false;
     }
     
     // Check for number
     if (!/[0-9]/.test(newPassword)) {
-      setNewPasswordError('Password must contain at least one number');
+      setNewPasswordError(t('auth.firstTimeLogin.passwordNumber'));
       return false;
     }
     
     // Check for allowed symbols: @$!%*?&
     if (!/[@$!%*?&]/.test(newPassword)) {
-      setNewPasswordError('Password must contain at least one symbol (@$!%*?&)');
+      setNewPasswordError(t('auth.firstTimeLogin.passwordSymbol'));
       return false;
     }
     
     setNewPasswordError(null);
     return true;
-  }, [newPassword]);
+  }, [newPassword, t]);
 
   const validateConfirmPassword = useCallback((): boolean => {
     if (!confirmPassword.trim()) {
-      setConfirmPasswordError('Please confirm your password');
+      setConfirmPasswordError(t('auth.firstTimeLogin.confirmPasswordRequired'));
       return false;
     }
     if (newPassword !== confirmPassword) {
-      setConfirmPasswordError('Passwords do not match');
+      setConfirmPasswordError(t('auth.firstTimeLogin.passwordsNotMatch'));
       return false;
     }
     setConfirmPasswordError(null);
     return true;
-  }, [confirmPassword, newPassword]);
+  }, [confirmPassword, newPassword, t]);
 
   const validateAllFields = useCallback((): boolean => {
     const isFirstNameValid = validateFirstName();
@@ -163,8 +164,8 @@ export default function FirstTimeLoginScreen(): React.JSX.Element {
     // For now, we'll just navigate to privacy policy screen
     console.log('New password set:', { firstName, lastName });
 
-    // Navigate to privacy policy screen first, then permissions
-    navigation.replace('PrivacyPolicyScreen');
+    // Navigate to PermissionsScreen after successful validation
+    navigation.replace('PermissionsScreen');
   }, [
     firstName,
     lastName,
@@ -172,6 +173,14 @@ export default function FirstTimeLoginScreen(): React.JSX.Element {
     dispatch,
     navigation,
   ]);
+
+  const handlePrivacyPolicyPress = useCallback((): void => {
+    navigation.navigate('PrivacyPolicyScreen');
+  }, [navigation]);
+
+  const handleTermsPress = useCallback((): void => {
+    navigation.navigate('TermsAndConditionsScreen');
+  }, [navigation]);
 
   return (
     <AppContainer>
@@ -193,13 +202,13 @@ export default function FirstTimeLoginScreen(): React.JSX.Element {
               />
 
               <AppText size={hp(2)} style={styles.title}>
-                Update your name and password
+                {t('auth.firstTimeLogin.title')}
               </AppText>
 
           
               <AppInput
                 icon={Icons.name}
-                placeholder="First Name"
+                placeholder={t('auth.firstTimeLogin.firstName')}
                 value={firstName}
                 onChangeText={(text: string) => {
                   setFirstName(text);
@@ -214,7 +223,7 @@ export default function FirstTimeLoginScreen(): React.JSX.Element {
               <AppInput
                 refName={lastNameRef}
                 icon={Icons.name}
-                placeholder="Last Name"
+                placeholder={t('auth.firstTimeLogin.lastName')}
                 value={lastName}
                 onChangeText={(text: string) => {
                   setLastName(text);
@@ -229,7 +238,7 @@ export default function FirstTimeLoginScreen(): React.JSX.Element {
               <AppInput
                 refName={newPasswordRef}
                 icon={Icons.password}
-                placeholder="New Password"
+                placeholder={t('auth.firstTimeLogin.newPassword')}
                 value={newPassword}
                 onChangeText={(text: string) => {
                   setNewPassword(text);
@@ -248,7 +257,7 @@ export default function FirstTimeLoginScreen(): React.JSX.Element {
               <AppInput
                 refName={confirmPasswordRef}
                 icon={Icons.password}
-                placeholder="Confirm New Password"
+                placeholder={t('auth.firstTimeLogin.confirmPassword')}
                 value={confirmPassword}
                 onChangeText={(text: string) => {
                   setConfirmPassword(text);
@@ -261,10 +270,33 @@ export default function FirstTimeLoginScreen(): React.JSX.Element {
               />
 
               <AppButton
-                title="Continue"
+                title={t('auth.firstTimeLogin.continue')}
                 style={styles.button}
                 onPress={handleContinue}
               />
+
+              {/* Privacy Policy and Terms Agreement Text */}
+              <View style={styles.agreementContainer}>
+                <AppText size={hp(1.5)} style={styles.agreementText}>
+                  {t('auth.firstTimeLogin.agreementText')}{' '}
+                  <AppText
+                    size={hp(1.5)}
+                    style={styles.linkText}
+                    onPress={handlePrivacyPolicyPress}
+                  >
+                    {t('auth.firstTimeLogin.privacyPolicy')}
+                  </AppText>
+                  {' '}
+                  {t('auth.firstTimeLogin.and')}{' '}
+                  <AppText
+                    size={hp(1.5)}
+                    style={styles.linkText}
+                    onPress={handleTermsPress}
+                  >
+                    {t('auth.firstTimeLogin.termsAndConditions')}
+                  </AppText>
+                </AppText>
+              </View>
             </View>
           </ScrollView>
         </TouchableWithoutFeedback>
@@ -302,5 +334,33 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: hp(2),
+  },
+  agreementContainer: {
+    position: 'absolute',
+    width: wp(86.67), // 325px equivalent
+    height: hp(4), // 32px equivalent
+    left: wp(6.67), // 25px equivalent
+    top: hp(90.75), // 758px equivalent
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  agreementText: {
+    fontFamily: 'Noto Sans',
+    fontStyle: 'normal',
+    fontWeight: '400',
+    fontSize: hp(1.5), // 12px equivalent
+    lineHeight: hp(2), // 16px equivalent
+    textAlign: 'center',
+    color: '#FFFFFF', // White color for main text
+  },
+  linkText: {
+    fontFamily: 'Noto Sans',
+    fontStyle: 'normal',
+    fontWeight: '400',
+    fontSize: hp(1.5), // 12px equivalent
+    lineHeight: hp(2), // 16px equivalent
+    textAlign: 'center',
+    color: '#62C268', // Green color for hyperlinks only
+    textDecorationLine: 'underline',
   },
 });

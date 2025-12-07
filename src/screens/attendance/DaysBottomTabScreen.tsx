@@ -5,9 +5,11 @@ import { useTheme } from '@react-navigation/native';
 import { AppContainer, AppImage, AppText, HomeHeader } from '../../components';
 import { useAppSelector } from '../../redux';
 import { hp, Images } from '../../constants';
+import { useTranslation } from '../../hooks/useTranslation';
 
 export default function DaysBottomTabScreen(): React.JSX.Element {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const userLastAttendance = useAppSelector(
     state => state.userState.userLastAttendance,
   );
@@ -18,7 +20,7 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
       <View style={styles.container}>
         <AppImage size={hp(20)} source={Images.forgot_pass_image} />
         <AppText size={hp(2.2)} style={{ marginTop: hp(2) }}>
-          {'This feature is locked!'}
+          {t('common.featureLocked')}
         </AppText>
       </View>
       <HomeHeader

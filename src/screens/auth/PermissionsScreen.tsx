@@ -15,78 +15,69 @@ import { AppContainer, AppText, AppButton } from '../../components';
 import { NavigationProp } from '../../types/navigation';
 import { hp, wp, FontTypes } from '../../constants';
 import { useTheme } from '@react-navigation/native';
-import { markFirstTimeLoginCompleted } from '../../services';
+import { useTranslation } from '../../hooks/useTranslation';
 
 interface PermissionItem {
   id: string;
-  title: string;
-  description: string;
+  titleKey: string;
+  descriptionKey: string;
   icon?: any;
 }
-
-const PERMISSIONS: PermissionItem[] = [
-  {
-    id: 'location',
-    title: 'location',
-    description:
-      'Location related permissions are required to capture and display your location to provide with accurate data at the time of check in check out.',
-  },
-  {
-    id: 'storage',
-    title: 'storage',
-    description:
-      'Storage permission is required so that any kind of files or any other documents can easily be downloaded, uploaded, shared or saved to your phone, which you need to collaborate with your teammates',
-  },
-  {
-    id: 'camera',
-    title: 'camera',
-    description:
-      'Permission to access camera is required so that you can easily scan or capture any document and send it to anyone within organization directly without any browsing requirement. This will ensure that you are provided with a seamless experience while using our application.',
-  },
-  {
-    id: 'time',
-    title: 'time capture',
-    description:
-      'Permission to access your device clock is required to capture the exact time of your attendance so that we can display the exact time of check in and check out',
-  },
-  {
-    id: 'personal',
-    title: 'Personal information',
-    description:
-      'Personal information related permission will allow us to collect user email & photo to login into the app. This information\'s are required as a part of registration process. Our app also collects mobile number for verification to check the active SIM status of the device.',
-  },
-  {
-    id: 'device',
-    title: 'device id',
-    description:
-      'By giving device id permission nobody can use my credentials to login from other devices',
-  },
-  {
-    id: 'microphone',
-    title: 'Microphone',
-    description:
-      'Colab requires access to your microphone to enable clear audio during voice and video calls.',
-  },
-  {
-    id: 'phone',
-    title: 'Phone call',
-    description:
-      'Colab requires access to your phone to manage call connectivity and enhance communication features',
-  },
-];
 
 export default function PermissionsScreen(): React.JSX.Element {
   const navigation = useNavigation<NavigationProp>();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const [agreed, setAgreed] = useState<boolean>(false);
+
+  const PERMISSIONS: PermissionItem[] = [
+    {
+      id: 'location',
+      titleKey: 'auth.permissions.location.title',
+      descriptionKey: 'auth.permissions.location.description',
+    },
+    {
+      id: 'storage',
+      titleKey: 'auth.permissions.storage.title',
+      descriptionKey: 'auth.permissions.storage.description',
+    },
+    {
+      id: 'camera',
+      titleKey: 'auth.permissions.camera.title',
+      descriptionKey: 'auth.permissions.camera.description',
+    },
+    {
+      id: 'time',
+      titleKey: 'auth.permissions.timeCapture.title',
+      descriptionKey: 'auth.permissions.timeCapture.description',
+    },
+    {
+      id: 'personal',
+      titleKey: 'auth.permissions.personalInformation.title',
+      descriptionKey: 'auth.permissions.personalInformation.description',
+    },
+    {
+      id: 'device',
+      titleKey: 'auth.permissions.deviceId.title',
+      descriptionKey: 'auth.permissions.deviceId.description',
+    },
+    {
+      id: 'microphone',
+      titleKey: 'auth.permissions.microphone.title',
+      descriptionKey: 'auth.permissions.microphone.description',
+    },
+    {
+      id: 'phone',
+      titleKey: 'auth.permissions.phoneCall.title',
+      descriptionKey: 'auth.permissions.phoneCall.description',
+    },
+  ];
 
   const handleAgree = (): void => {
     if (agreed) {
-      // Mark first-time login as completed
-      markFirstTimeLoginCompleted();
-      // Navigate to dashboard after agreeing
-      navigation.replace('DashboardScreen');
+      // Navigate to ProfilePhotoScreen to capture/select profile photo
+      navigation.replace('ProfilePhotoScreen');
     }
   };
 
@@ -191,14 +182,14 @@ export default function PermissionsScreen(): React.JSX.Element {
                         fontType={FontTypes.regular}
                         style={styles.permissionTitle}
                       >
-                        {permission.title}
+                        {t(permission.titleKey)}
                       </AppText>
                       <AppText
                         size={hp(1.6)}
                         fontType={FontTypes.regular}
                         style={styles.permissionDescription}
                       >
-                        {permission.description}
+                        {t(permission.descriptionKey)}
                       </AppText>
                     </View>
                   </View>
@@ -222,14 +213,14 @@ export default function PermissionsScreen(): React.JSX.Element {
                   fontType={FontTypes.regular}
                   style={styles.checkboxLabel}
                 >
-                  You agree to our Privacy Policy and Terms and Conditions
+                  {t('auth.permissions.privacyAgreement')}
                 </AppText>
               </View>
 
               {/* Action Button */}
               <View style={styles.buttonContainer}>
                 <AppButton
-                  title="I agree"
+                  title={t('auth.permissions.agree')}
                   style={styles.agreeButton}
                   titleSize={hp(1.5)}
                   titleColor="#FFFFFF"

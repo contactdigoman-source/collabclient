@@ -5,9 +5,11 @@ import { useTheme } from '@react-navigation/native';
 import { AppButton, AppContainer, AppImage, AppText } from '../../components';
 import { hp, wp, Images } from '../../constants';
 import { checkUsbDebuggingStatus } from '../../services/security-service';
+import { useTranslation } from '../../hooks/useTranslation';
 
 export default function UsbDebuggingBlockScreen(): React.JSX.Element {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const [isChecking, setIsChecking] = useState<boolean>(false);
 
   const handleCheckAgain = useCallback(async (): Promise<void> => {
@@ -34,42 +36,41 @@ export default function UsbDebuggingBlockScreen(): React.JSX.Element {
         />
 
         <AppText size={hp(2.8)} style={styles.title} fontType="medium">
-          USB Debugging Detected
+          {t('security.usbDebuggingDetected')}
         </AppText>
 
         <AppText size={hp(1.8)} style={styles.description} color={colors.white}>
-          For security reasons, the app cannot be used while USB debugging is
-          enabled on your device.
+          {t('security.securityMessage')}
         </AppText>
 
         <AppText size={hp(1.6)} style={styles.instructions} color={colors.white}>
-          To continue using the app:
+          {t('security.toContinue')}
         </AppText>
 
         <View style={styles.stepsContainer}>
           <AppText size={hp(1.5)} style={styles.step} color={colors.white}>
-            1. Open Settings on your device
+            {t('security.step1')}
           </AppText>
           <AppText size={hp(1.5)} style={styles.step} color={colors.white}>
-            2. Navigate to Developer Options
+            {t('security.step2')}
           </AppText>
           <AppText size={hp(1.5)} style={styles.step} color={colors.white}>
-            3. Disable USB Debugging
+            {t('security.step3')}
           </AppText>
           <AppText size={hp(1.5)} style={styles.step} color={colors.white}>
-            4. Return to this app
+            {t('security.step4')}
           </AppText>
         </View>
 
         <View style={styles.buttonContainer}>
           <AppButton
-            title={isChecking ? 'Checking...' : 'Check Again'}
+            title={isChecking ? t('security.checking') : t('security.checkAgain')}
             onPress={handleCheckAgain}
             style={styles.checkButton}
           />
 
           <AppButton
-            title="Open Settings"
+            title={t('security.openSettings')}
             onPress={handleOpenSettings}
             style={[styles.settingsButton, { borderColor: colors.primary }]}
             titleColor={colors.primary}

@@ -14,10 +14,13 @@ export type RootStackParamList = {
     emailID?: string;
     isAadhaarFallback?: boolean;
     aadhaarNumber?: string;
+    isPasswordReset?: boolean;
   };
   ChangeForgottenPassword: { emailID?: string };
   AadhaarInputScreen: undefined;
   PrivacyPolicyScreen: undefined;
+  TermsAndConditionsScreen: undefined;
+  ProfilePhotoScreen: undefined;
   UsbDebuggingBlockScreen: undefined;
 };
 

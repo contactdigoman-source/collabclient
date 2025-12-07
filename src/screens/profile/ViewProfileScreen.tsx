@@ -10,27 +10,29 @@ import {
 } from '../../components';
 import { useAppSelector } from '../../redux';
 import { hp } from '../../constants';
-
-const PROFILE_ITEMS = {
-  firstName: 'First Name',
-  lastName: 'Last Name',
-  email: 'Email',
-  doa: 'Date of activation',
-  dob: 'Date of birth',
-  empId: 'Emp ID',
-  empType: 'Employment type',
-  designation: 'Designation',
-} as const;
+import { useTranslation } from '../../hooks/useTranslation';
 
 const DEFAULT_VALUE = 'None';
 
 export default function ViewProfileScreen(): React.JSX.Element {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { userData } = useAppSelector(state => state.userState);
+
+  const PROFILE_ITEMS = {
+    firstName: t('profile.firstName'),
+    lastName: t('profile.lastName'),
+    email: t('profile.email'),
+    doa: t('profile.dateOfActivation'),
+    dob: t('profile.dateOfBirth'),
+    empId: t('profile.empId'),
+    empType: t('profile.employmentType'),
+    designation: t('profile.designation'),
+  };
 
   return (
     <AppContainer>
-      <BackHeader title={'Profile Details'} isTitleVisible={true} />
+      <BackHeader title={t('profile.profileDetails')} isTitleVisible={true} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.container}

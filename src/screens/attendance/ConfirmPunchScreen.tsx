@@ -31,6 +31,7 @@ import { insertAttendancePunchRecord } from '../../services';
 import moment from 'moment';
 import { PUNCH_DIRECTIONS } from '../../constants/location';
 import { Region } from '../../constants';
+import { useTranslation } from '../../hooks/useTranslation';
 
 interface Coordinates {
   latitude: number;
@@ -45,6 +46,7 @@ export default function ConfirmPunchScreen(): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
   const navigation = useNavigation();
+  const { t } = useTranslation();
 
   const mapRef = useRef<MapView>(null);
 
@@ -239,9 +241,11 @@ export default function ConfirmPunchScreen(): React.JSX.Element {
   return (
     <View style={styles.container}>
       <BackHeader
-        title={`Confirm Check ${
-          isUserCheckedIn ? PUNCH_DIRECTIONS.out : PUNCH_DIRECTIONS.in
-        }`.toLowerCase()}
+        title={
+          isUserCheckedIn
+            ? t('attendance.confirmCheckOut')
+            : t('attendance.confirmCheckIn')
+        }
         isTitleVisible
         titleStyle={{ textTransform: 'capitalize' }}
       />
@@ -265,10 +269,10 @@ export default function ConfirmPunchScreen(): React.JSX.Element {
         <View style={styles.locationInfo}>
           {permissionDenied ? (
             <AppText color={colors.red}>
-              {'Location permission denied. Enable it in settings.'}
+              {t('attendance.locationPermissionDenied')}
             </AppText>
           ) : isFetchingLocation || isDefaultRegion ? (
-            <AppText>{'Fetching your location...'}</AppText>
+            <AppText>{t('attendance.fetchingLocation')}</AppText>
           ) : (
             <>
               {currentAddress ? (
@@ -278,10 +282,14 @@ export default function ConfirmPunchScreen(): React.JSX.Element {
                   4,
                 )}, ${userLocationRegion?.longitude?.toFixed(4)}`}</AppText>
               )}
-              <AppText>{`${userLocationRegion?.accuracy} meters accurate`}</AppText>
+              <AppText>
+                {`${userLocationRegion?.accuracy} ${t('attendance.metersAccurate')}`}
+              </AppText>
               {isLowAccuracy && (
                 <AppText color={(colors as any).yellow || colors.red}>
-                  {`Waiting for accuracy < ${MINIMUM_ACCURACY_REQUIRED}m`}
+                  {t('attendance.waitingForAccuracy', {
+                    accuracy: MINIMUM_ACCURACY_REQUIRED,
+                  })}
                 </AppText>
               )}
             </>
@@ -291,10 +299,10 @@ export default function ConfirmPunchScreen(): React.JSX.Element {
           disabled={isFetchingLocation || permissionDenied}
           title={
             permissionDenied
-              ? 'Location Permission Required'
+              ? t('attendance.locationPermissionRequired')
               : isFetchingLocation
-              ? 'Fetching Location...'
-              : 'Confirm Location'
+              ? t('attendance.fetchingLocation')
+              : t('attendance.confirmLocation')
           }
           titleColor={buttonTextColor}
           style={[

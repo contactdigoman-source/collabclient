@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -16,10 +16,12 @@ import {
   AppInput,
   AppText,
   BackHeader,
+  AccountLockedModal,
 } from '../../components';
 import { Icons, Images, MAIL_FORMAT, hp } from '../../constants';
-import { useAppDispatch } from '../../redux';
 import { NavigationProp, RootStackParamList } from '../../types/navigation';
+import { useTranslation } from '../../hooks/useTranslation';
+import { isAccountLocked } from '../../services';
 
 interface ForgotPasswordScreenProps {
   route: RouteProp<RootStackParamList, 'ForgotPasswordScreen'> & {
@@ -34,29 +36,44 @@ export default function ForgotPasswordScreen({
 }: ForgotPasswordScreenProps): React.JSX.Element {
   const emailID = route?.params?.emailID || '';
   const navigation = useNavigation<NavigationProp>();
-  const dispatch = useAppDispatch();
+  const { t } = useTranslation();
 
   const [email, setEmail] = useState<string>(emailID || '');
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [isAccountLockedModalVisible, setIsAccountLockedModalVisible] =
+    useState<boolean>(false);
+
+  // Check if account is locked on mount
+  useEffect(() => {
+    if (isAccountLocked()) {
+      setIsAccountLockedModalVisible(true);
+    }
+  }, []);
 
   const validateEmail = useCallback((): boolean => {
     if (!email.trim()) {
-      setEmailError('Email required');
+      setEmailError(t('auth.forgotPassword.emailRequired'));
       return false;
     }
     if (!MAIL_FORMAT.test(email.trim())) {
-      setEmailError('Email address not valid');
+      setEmailError(t('auth.forgotPassword.emailInvalid'));
       return false;
     }
     setEmailError(null);
     return true;
-  }, [email]);
+  }, [email, t]);
 
   const onNextPress = useCallback(async (): Promise<void> => {
+    // Check if account is locked
+    if (isAccountLocked()) {
+      setIsAccountLockedModalVisible(true);
+      return;
+    }
+
     if (!validateEmail()) return;
 
     Keyboard.dismiss();
-    navigation.navigate('OtpScreen', { emailID: email });
+    navigation.navigate('OtpScreen', { emailID: email, isPasswordReset: true });
     // Example API call placeholder
     // const response = await dispatch(sendOtpForForgotPassword(email.trim()));
     // if (response.data.success) {
@@ -64,7 +81,11 @@ export default function ForgotPasswordScreen({
     // } else {
     //   setEmailError('Email address not registered with us');
     // }
-  }, [email, validateEmail, dispatch, navigation]);
+  }, [email, validateEmail, navigation]);
+
+  const handleCloseLockedModal = useCallback((): void => {
+    setIsAccountLockedModalVisible(false);
+  }, []);
 
   return (
     <AppContainer>
@@ -81,10 +102,10 @@ export default function ForgotPasswordScreen({
 
             <View style={styles.welcomeContainer}>
               <AppText size={hp('2.48%')} style={styles.welcomeText}>
-                Forgot Password?
+                {t('auth.forgotPassword.title')}
               </AppText>
               <AppText size={hp('1.74%')} style={styles.loginText}>
-                Enter your registered email address
+                {t('auth.forgotPassword.description')}
               </AppText>
             </View>
 
@@ -92,7 +113,7 @@ export default function ForgotPasswordScreen({
               icon={Icons.email}
               isBorderFocused={!!emailError}
               value={email}
-              placeholder="Email Address"
+              placeholder={t('auth.forgotPassword.email')}
               onChangeText={(text: string) => {
                 setEmail(text);
                 if (emailError) setEmailError(null);
@@ -105,14 +126,19 @@ export default function ForgotPasswordScreen({
             />
 
             <AppButton
-              title="Next"
+              title={t('auth.forgotPassword.next')}
               style={styles.button}
               onPress={onNextPress}
-              accessibilityRole="button"
             />
           </View>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
+
+      {/* Account Locked Modal */}
+      <AccountLockedModal
+        visible={isAccountLockedModalVisible}
+        onClose={handleCloseLockedModal}
+      />
     </AppContainer>
   );
 }

@@ -1,0 +1,220 @@
+{
+  "auth": {
+    "login": {
+      "title": "Login",
+      "welcome": "Welcome to NexAEI",
+      "subtitle": "Login to your account",
+      "email": "Email Address",
+      "password": "Password",
+      "forgotPassword": "Forgot Password?",
+      "emailRequired": "Email required",
+      "emailInvalid": "Email address not valid",
+      "passwordRequired": "Password is required"
+    },
+    "accountLocked": {
+      "message": "Your account has been temporarily locked due to multiple failed login attempts. Please contact your administrator to regain access.",
+      "okay": "Okay"
+    },
+    "profilePhoto": {
+      "title": "Add Profile Photo",
+      "subtitle": "Capture or select a photo for your profile",
+      "takePhoto": "Take Photo",
+      "chooseFromGallery": "Choose from Gallery",
+      "continue": "Continue",
+      "skip": "Skip",
+      "save": "Save",
+      "cancel": "Cancel",
+      "cropPhoto": "Crop Photo",
+      "noPhoto": "No photo selected",
+      "noImageSelected": "Please select or capture a photo to continue",
+      "error": "Error",
+      "libraryNotInstalled": "Image picker library is not installed",
+      "cameraError": "Failed to capture photo. Please try again.",
+      "galleryError": "Failed to select photo. Please try again.",
+      "saveError": "Failed to save profile photo. Please try again."
+    },
+    "firstTimeLogin": {
+      "title": "Update your name and password",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm New Password",
+      "continue": "Continue",
+      "firstNameRequired": "First name is required",
+      "firstNameMinLength": "First name must be at least 2 characters",
+      "lastNameRequired": "Last name is required",
+      "lastNameMinLength": "Last name must be at least 2 characters",
+      "passwordRequired": "Password is required",
+      "passwordMinLength": "Password must be at least 14 characters",
+      "passwordUppercase": "Password must contain at least one uppercase letter",
+      "passwordLowercase": "Password must contain at least one lowercase letter",
+      "passwordNumber": "Password must contain at least one number",
+      "passwordSymbol": "Password must contain at least one symbol (@$!%*?&)",
+      "confirmPasswordRequired": "Please confirm your password",
+      "passwordsNotMatch": "Passwords do not match",
+      "agreementText": "By clicking on continue you agree to our",
+      "privacyPolicy": "Privacy Policy",
+      "and": "and",
+      "termsAndConditions": "Terms and Conditions"
+    },
+    "permissions": {
+      "title": "Permission",
+      "location": {
+        "title": "Location",
+        "description": "Location related permissions are required to capture and display your location to provide with accurate data at the time of check in check out."
+      },
+      "storage": {
+        "title": "Storage",
+        "description": "Storage permission is required so that any kind of files or any other documents can easily be downloaded, uploaded, shared or saved to your phone, which you need to collaborate with your teammates"
+      },
+      "camera": {
+        "title": "Camera",
+        "description": "Permission to access camera is required so that you can easily scan or capture any document and send it to anyone within organization directly without any browsing requirement. This will ensure that you are provided with a seamless experience while using our application."
+      },
+      "timeCapture": {
+        "title": "Time Capture",
+        "description": "Permission to access your device clock is required to capture the exact time of your attendance so that we can display the exact time of check in and check out"
+      },
+      "personalInformation": {
+        "title": "Personal Information",
+        "description": "Personal information related permission will allow us to collect user email & photo to login into the app. This information's are required as a part of registration process. Our app also collects mobile number for verification to check the active SIM status of the device."
+      },
+      "deviceId": {
+        "title": "Device ID",
+        "description": "By giving device id permission nobody can use my credentials to login from other devices"
+      },
+      "microphone": {
+        "title": "Microphone",
+        "description": "Colab requires access to your microphone to enable clear audio during voice and video calls."
+      },
+      "phoneCall": {
+        "title": "Phone Call",
+        "description": "Colab requires access to your phone to manage call connectivity and enhance communication features"
+      },
+      "privacyAgreement": "You agree to our Privacy Policy and Terms and Conditions",
+      "agree": "I agree"
+    },
+    "forgotPassword": {
+      "title": "Forgot Password?",
+      "description": "Enter your registered email address",
+      "email": "Email Address",
+      "emailRequired": "Email required",
+      "emailInvalid": "Email address not valid",
+      "next": "Next"
+    },
+    "otp": {
+      "authenticateAccount": "Authenticate Your Account",
+      "verifyEmail": "Verify your Email Address",
+      "verifyAadhaar": "Verify Aadhaar with OTP",
+      "emailMessage": "Please enter the six digit verification code sent to your email {{email}}",
+      "aadhaarMessage": "Face verification failed. Please enter the six digit OTP sent to your email {{email}} to verify your Aadhaar.",
+      "loginDescription": "Please enter the six-digit code sent to your email and mobile. The OTP is valid for 5 minutes.",
+      "didntReceive": "Didn't receive the code?",
+      "resend": "Resend",
+      "confirm": "Confirm",
+      "seconds": "sec"
+    },
+    "changePassword": {
+      "title": "Change Password",
+      "description": "Enter new password",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm New Password",
+      "passwordEmpty": "Password should not be empty",
+      "confirmPasswordEmpty": "Confirm password should not be empty",
+      "passwordMinLength": "Minimum 14 characters needed",
+      "passwordMaxLength": "Maximum 28 characters allowed",
+      "passwordSameAsEmail": "Password cannot be same as user ID",
+      "passwordFormat": "Use minimum 14 characters with a mix of uppercase, lowercase, numbers & symbols (@$!%*?&)",
+      "passwordsNotMatch": "Passwords do not match",
+      "passwordHint": "Use minimum 14 characters with a mix of letters (uppercase, lowercase), numbers & symbols.",
+      "done": "Done"
+    }
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "openedInBrowser": "The privacy policy has been opened in your browser.",
+    "readAndReturn": "Please read it and return to continue."
+  },
+  "terms": {
+    "title": "Terms and Conditions",
+    "summary": "These Terms and Conditions govern your use of the Colab application. By using our services, you agree to comply with all applicable laws and regulations. We reserve the right to modify these terms at any time. Your continued use of the application constitutes acceptance of any changes. The application is provided 'as is' without warranties of any kind. We are not liable for any damages arising from your use of the application. You are responsible for maintaining the confidentiality of your account credentials. Unauthorized access or use of the application is strictly prohibited. We may terminate or suspend your account at any time for violations of these terms.",
+    "openedInBrowser": "The terms and conditions have been opened in your browser.",
+    "readAndReturn": "Please read them and return to continue."
+  },
+  "aadhaar": {
+    "title": "Aadhaar Verification",
+    "enterAadhaar": "Enter Aadhaar Number",
+    "aadhaarLengthError": "Aadhaar Number should be 12 digits",
+    "authorize": "I authorize use of my Aadhaar for attendance verification, and agree to its secure storage under the",
+    "privacyPolicy": "Privacy Policy",
+    "captureFace": "Capture Face",
+    "authenticating": "Authenticating...",
+    "verified": "Aadhaar verified successfully",
+    "continue": "Continue"
+  },
+  "home": {
+    "colleagues": "Colleagues",
+    "teams": "Teams",
+    "myWorkspace": "My Workspace",
+    "myFiles": "My Files",
+    "announcements": "Announcements",
+    "bePatient": "Be Patient",
+    "waitingMessage": "till the time your team and colleague show up"
+  },
+  "attendance": {
+    "confirmCheckIn": "Confirm Check In",
+    "confirmCheckOut": "Confirm Check Out",
+    "fetchingLocation": "Fetching your location...",
+    "locationPermissionDenied": "Location permission denied. Enable it in settings.",
+    "locationPermissionRequired": "Location Permission Required",
+    "confirmLocation": "Confirm Location",
+    "metersAccurate": "meters accurate",
+    "waitingForAccuracy": "Waiting for accuracy < {{accuracy}}m"
+  },
+  "profile": {
+    "member": "Member",
+    "displayBreakStatus": "Display Break Status",
+    "darkMode": "Dark Mode",
+    "attendanceLogs": "Attendance Logs",
+    "viewProfile": "View Profile",
+    "supportAndLearn": "Support & Learn",
+    "logout": "Logout",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "email": "Email",
+    "dateOfActivation": "Date of activation",
+    "dateOfBirth": "Date of birth",
+    "empId": "Emp ID",
+    "employmentType": "Employment type",
+    "designation": "Designation",
+    "profileDetails": "Profile Details"
+  },
+  "security": {
+    "usbDebuggingDetected": "USB Debugging Detected",
+    "securityMessage": "For security reasons, the app cannot be used while USB debugging is enabled on your device.",
+    "toContinue": "To continue using the app:",
+    "step1": "1. Open Settings on your device",
+    "step2": "2. Navigate to Developer Options",
+    "step3": "3. Disable USB Debugging",
+    "step4": "4. Return to this app",
+    "checkAgain": "Check Again",
+    "checking": "Checking...",
+    "openSettings": "Open Settings"
+  },
+  "attendance": {
+    "noDataFound": "No Attendance Data Found!"
+  },
+  "common": {
+    "back": "Back",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "submit": "Submit",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "featureLocked": "This feature is locked!"
+  }
+}
+

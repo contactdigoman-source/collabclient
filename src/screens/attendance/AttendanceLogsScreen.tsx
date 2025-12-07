@@ -7,6 +7,7 @@ import {
   BackHeader,
 } from '../../components';
 import { useAppSelector } from '../../redux';
+import { useTranslation } from '../../hooks/useTranslation';
 
 interface AttendanceItem {
   DateOfPunch: string;
@@ -14,6 +15,7 @@ interface AttendanceItem {
 }
 
 export default function AttendanceLogsScreen(): React.JSX.Element {
+  const { t } = useTranslation();
   const { userAttendanceHistory } = useAppSelector(state => state.userState);
 
   /** Group attendance logs by date — memoized for performance */
@@ -40,7 +42,7 @@ export default function AttendanceLogsScreen(): React.JSX.Element {
 
   return (
     <AppContainer>
-      <BackHeader title={'Attendance Logs'} isTitleVisible={true} />
+      <BackHeader title={t('profile.attendanceLogs')} isTitleVisible={true} />
       <FlatList
         data={groupedData}
         renderItem={renderHistoryItem}
@@ -59,11 +61,14 @@ export default function AttendanceLogsScreen(): React.JSX.Element {
   );
 }
 
-const EmptyList = React.memo((): React.JSX.Element => (
-  <View style={styles.emptyContainer}>
-    <AppText>{'No Attendance Data Found!'}</AppText>
-  </View>
-));
+const EmptyList = React.memo((): React.JSX.Element => {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.emptyContainer}>
+      <AppText>{t('attendance.noDataFound')}</AppText>
+    </View>
+  );
+});
 
 const styles = StyleSheet.create({
   container: {

@@ -18,6 +18,7 @@ export const Icons = {
   display_break_status: require('../assets/icons/display_break_status.png'),
   attendance_logs: require('../assets/icons/attendance_logs.png'),
   profile_circle: require('../assets/icons/profile_circle.png'),
+  edit: require('../assets/icons/edit.png'),
   support_learn: require('../assets/icons/support_learn.png'),
   logout: require('../assets/icons/logout.png'),
   name: require('../assets/icons/name.png'),

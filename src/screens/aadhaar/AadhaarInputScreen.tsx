@@ -22,6 +22,7 @@ import {
   setUserAadhaarFaceValidated,
 } from '../../redux';
 import { NavigationProp } from '../../types/navigation';
+import { useTranslation } from '../../hooks/useTranslation';
 
 const AADHAAR_LENGTH = 12;
 const INPUT_LENGTH = 14;
@@ -30,6 +31,7 @@ export default function AadhaarInputScreen(): React.JSX.Element {
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const dispatch = useAppDispatch();
+  const { t } = useTranslation();
 
   const { isAuthenticatingFace, isAadhaarFaceValidated } = useAppSelector(
     state => ({
@@ -91,7 +93,7 @@ export default function AadhaarInputScreen(): React.JSX.Element {
   const onCaptureFacePress = useCallback((): void => {
     const rawAadhaar = getRawAadhaarNumber(aadhaarInput);
     if (rawAadhaar?.length !== AADHAAR_LENGTH) {
-      setAadhaarNumberErr(`Aadhaar Number should be ${AADHAAR_LENGTH} digits`);
+      setAadhaarNumberErr(t('aadhaar.aadhaarLengthError'));
       return;
     }
 
@@ -103,7 +105,7 @@ export default function AadhaarInputScreen(): React.JSX.Element {
     } else {
       startFaceAuth(rawAadhaar);
     }
-  }, [aadhaarInput, dispatch]);
+  }, [aadhaarInput, dispatch, t]);
 
   /** Continue button handler after verification */
   const onStoreAadhaarData = useCallback((): void => {
@@ -123,7 +125,7 @@ export default function AadhaarInputScreen(): React.JSX.Element {
   // ---------- UI ----------
   return (
     <AppContainer>
-      <BackHeader title="Aadhaar Verification" isBottomBorder />
+      <BackHeader title={t('aadhaar.title')} isBottomBorder />
 
       <View style={styles.container}>
         {isAadhaarFaceValidated ? (
@@ -134,7 +136,7 @@ export default function AadhaarInputScreen(): React.JSX.Element {
               style={styles.logo}
             />
             <AppText size={hp(2.5)} style={styles.centerText}>
-              Aadhaar Verification
+              {t('aadhaar.title')}
             </AppText>
 
             <AppImage
@@ -144,11 +146,11 @@ export default function AadhaarInputScreen(): React.JSX.Element {
             />
 
             <AppText size={hp(2)} style={styles.centerText}>
-              Aadhaar verified successfully
+              {t('aadhaar.verified')}
             </AppText>
 
             <AppButton
-              title="Continue"
+              title={t('aadhaar.continue')}
               style={styles.continueBtn}
               onPress={onStoreAadhaarData}
             />
@@ -163,7 +165,7 @@ export default function AadhaarInputScreen(): React.JSX.Element {
 
             <AppInput
               value={aadhaarInput}
-              placeholder="Enter Aadhaar Number"
+              placeholder={t('aadhaar.enterAadhaar')}
               containerStyle={styles.inputContainer}
               keyboardType="numeric"
               onChangeText={formatAadhaar}
@@ -177,14 +179,13 @@ export default function AadhaarInputScreen(): React.JSX.Element {
                 color={colors.white}
                 style={styles.policyText}
               >
-                I authorize use of my Aadhaar for attendance verification, and
-                agree to its secure storage under the{' '}
+                {t('aadhaar.authorize')}{' '}
                 <AppText
                   size={hp('1.5%')}
                   color={colors.primary}
                   onPress={onPrivacyPolicyPress}
                 >
-                  Privacy Policy
+                  {t('aadhaar.privacyPolicy')}
                 </AppText>
                 .
               </AppText>
@@ -193,7 +194,9 @@ export default function AadhaarInputScreen(): React.JSX.Element {
             <AppButton
               disabled={isButtonDisabled}
               title={
-                isAuthenticatingFace ? 'Authenticating...' : 'Capture Face'
+                isAuthenticatingFace
+                  ? t('aadhaar.authenticating')
+                  : t('aadhaar.captureFace')
               }
               onPress={onCaptureFacePress}
             />

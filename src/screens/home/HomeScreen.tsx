@@ -26,6 +26,7 @@ import {
 } from '../../constants';
 import { useAppSelector } from '../../redux';
 import { APP_THEMES } from '../../themes';
+import { useTranslation } from '../../hooks/useTranslation';
 
 const COLLEAGUE_NUM_COLUMNS = 4;
 const TEAM_NUM_COLUMNS = 2;
@@ -48,6 +49,7 @@ interface GridItem {
 
 export default function HomeScreen(): React.JSX.Element {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const mapRef = useRef<MapView>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -102,17 +104,17 @@ export default function HomeScreen(): React.JSX.Element {
   const sections = useMemo<SectionData[]>(
     () => [
       {
-        title: 'Colleagues',
+        title: t('home.colleagues'),
         data: Array(4).fill({ dummy: true }) as GridItem[],
         layout: SECTION_LIST_LAYOUTS.colleagues,
       },
       {
-        title: 'Teams',
+        title: t('home.teams'),
         data: Array(2).fill({ dummy: true }) as GridItem[],
         layout: SECTION_LIST_LAYOUTS.teams,
       },
     ],
-    [],
+    [t],
   );
 
   const renderGridSection = useCallback(
@@ -220,17 +222,17 @@ export default function HomeScreen(): React.JSX.Element {
           style={styles.map}
         />
         <View style={styles.mySpaceContainer}>
-          <AppIconButton title="My Workspace" source={Icons.my_space} />
+          <AppIconButton title={t('home.myWorkspace')} source={Icons.my_space} />
           <AppIconButton
-            title="My Files"
+            title={t('home.myFiles')}
             style={styles.myFilesBtn}
             source={Icons.my_files}
           />
-          <AppIconButton title="Announcements" source={Icons.announcements} />
+          <AppIconButton title={t('home.announcements')} source={Icons.announcements} />
         </View>
       </View>
     ),
-    [lastAttendanceCoords],
+    [lastAttendanceCoords, t],
   );
 
   const footerComponent = useMemo(
@@ -238,16 +240,16 @@ export default function HomeScreen(): React.JSX.Element {
       <View style={styles.footerContainer}>
         <View style={styles.footerSubContainer}>
           <AppText size={hp(2)} fontType={FontTypes.bold}>
-            {'Be Patient'}
+            {t('home.bePatient')}
           </AppText>
           <AppText style={{ marginTop: hp(1) }}>
-            {'till the time your team and colleague show up'}
+            {t('home.waitingMessage')}
           </AppText>
         </View>
         <AppImage size={hp(15)} source={Images.be_patient} />
       </View>
     ),
-    [],
+    [t],
   );
 
   // 🔹 Animated colors

@@ -10,6 +10,8 @@ import LoginScreen from './auth/LoginScreen';
 import OtpScreen from './auth/OtpScreen';
 import PermissionsScreen from './auth/PermissionsScreen';
 import PrivacyPolicyScreen from './legal/PrivacyPolicyScreen';
+import TermsAndConditionsScreen from './legal/TermsAndConditionsScreen';
+import ProfilePhotoScreen from './auth/ProfilePhotoScreen';
 import ProfileDrawerScreen from './profile/ProfileDrawerScreen';
 import ViewProfileScreen from './profile/ViewProfileScreen';
 import UsbDebuggingBlockScreen from './security/UsbDebuggingBlockScreen';
@@ -29,6 +31,8 @@ export {
   AadhaarInputScreen,
   PermissionsScreen,
   PrivacyPolicyScreen,
+  TermsAndConditionsScreen,
+  ProfilePhotoScreen,
   UsbDebuggingBlockScreen,
 };
 

@@ -1,0 +1,218 @@
+{
+  "auth": {
+    "login": {
+      "title": "Iniciar sesión",
+      "welcome": "Bienvenido a NexAEI",
+      "subtitle": "Inicia sesión en tu cuenta",
+      "email": "Dirección de correo electrónico",
+      "password": "Contraseña",
+      "forgotPassword": "¿Olvidaste tu contraseña?",
+      "emailRequired": "Correo electrónico requerido",
+      "emailInvalid": "Dirección de correo electrónico no válida",
+      "passwordRequired": "Se requiere contraseña"
+    },
+    "accountLocked": {
+      "message": "Su cuenta ha sido bloqueada temporalmente debido a múltiples intentos de inicio de sesión fallidos. Por favor, contacte a su administrador para recuperar el acceso.",
+      "okay": "De acuerdo"
+    },
+    "profilePhoto": {
+      "title": "Agregar foto de perfil",
+      "subtitle": "Captura o selecciona una foto para tu perfil",
+      "takePhoto": "Tomar foto",
+      "chooseFromGallery": "Elegir de la galería",
+      "continue": "Continuar",
+      "skip": "Omitir",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "cropPhoto": "Recortar foto",
+      "noPhoto": "No se seleccionó foto",
+      "noImageSelected": "Por favor selecciona o captura una foto para continuar",
+      "error": "Error",
+      "libraryNotInstalled": "La biblioteca de selección de imágenes no está instalada",
+      "cameraError": "Error al capturar foto. Por favor intenta de nuevo.",
+      "galleryError": "Error al seleccionar foto. Por favor intenta de nuevo.",
+      "saveError": "Error al guardar foto de perfil. Por favor intenta de nuevo."
+    },
+    "firstTimeLogin": {
+      "title": "Actualiza tu nombre y contraseña",
+      "firstName": "Nombre",
+      "lastName": "Apellido",
+      "newPassword": "Nueva contraseña",
+      "confirmPassword": "Confirmar nueva contraseña",
+      "continue": "Continuar",
+      "firstNameRequired": "Se requiere el nombre",
+      "firstNameMinLength": "El nombre debe tener al menos 2 caracteres",
+      "lastNameRequired": "Se requiere el apellido",
+      "lastNameMinLength": "El apellido debe tener al menos 2 caracteres",
+      "passwordRequired": "Se requiere contraseña",
+      "passwordMinLength": "La contraseña debe tener al menos 14 caracteres",
+      "passwordUppercase": "La contraseña debe contener al menos una letra mayúscula",
+      "passwordLowercase": "La contraseña debe contener al menos una letra minúscula",
+      "passwordNumber": "La contraseña debe contener al menos un número",
+      "passwordSymbol": "La contraseña debe contener al menos un símbolo (@$!%*?&)",
+      "confirmPasswordRequired": "Por favor confirma tu contraseña",
+      "passwordsNotMatch": "Las contraseñas no coinciden",
+      "agreementText": "Al hacer clic en continuar, aceptas nuestra",
+      "privacyPolicy": "Política de Privacidad",
+      "and": "y",
+      "termsAndConditions": "Términos y Condiciones"
+    },
+    "permissions": {
+      "title": "Permiso",
+      "location": {
+        "title": "Ubicación",
+        "description": "Los permisos relacionados con la ubicación son necesarios para capturar y mostrar su ubicación para proporcionar datos precisos al momento de entrada y salida."
+      },
+      "storage": {
+        "title": "Almacenamiento",
+        "description": "El permiso de almacenamiento es necesario para que cualquier tipo de archivo o documento pueda descargarse, subirse, compartirse o guardarse fácilmente en su teléfono, lo cual necesita para colaborar con sus compañeros de equipo"
+      },
+      "camera": {
+        "title": "Cámara",
+        "description": "Se requiere permiso para acceder a la cámara para que pueda escanear o capturar fácilmente cualquier documento y enviarlo a cualquiera dentro de la organización directamente sin ningún requisito de navegación. Esto garantizará que tenga una experiencia fluida al usar nuestra aplicación."
+      },
+      "timeCapture": {
+        "title": "Captura de tiempo",
+        "description": "Se requiere permiso para acceder al reloj de su dispositivo para capturar la hora exacta de su asistencia para que podamos mostrar la hora exacta de entrada y salida"
+      },
+      "personalInformation": {
+        "title": "Información personal",
+        "description": "El permiso relacionado con la información personal nos permitirá recopilar el correo electrónico y la foto del usuario para iniciar sesión en la aplicación. Esta información es necesaria como parte del proceso de registro. Nuestra aplicación también recopila el número de móvil para verificación para verificar el estado de la SIM activa del dispositivo."
+      },
+      "deviceId": {
+        "title": "ID del dispositivo",
+        "description": "Al dar permiso de ID de dispositivo, nadie puede usar mis credenciales para iniciar sesión desde otros dispositivos"
+      },
+      "microphone": {
+        "title": "Micrófono",
+        "description": "Colab requiere acceso a su micrófono para habilitar audio claro durante llamadas de voz y video."
+      },
+      "phoneCall": {
+        "title": "Llamada telefónica",
+        "description": "Colab requiere acceso a su teléfono para gestionar la conectividad de llamadas y mejorar las funciones de comunicación"
+      },
+      "privacyAgreement": "Acepta nuestra Política de Privacidad y Términos y Condiciones",
+      "agree": "Acepto"
+    },
+    "forgotPassword": {
+      "title": "¿Olvidaste tu contraseña?",
+      "description": "Ingresa tu dirección de correo electrónico registrada",
+      "email": "Dirección de correo electrónico",
+      "emailRequired": "Correo electrónico requerido",
+      "emailInvalid": "Dirección de correo electrónico no válida",
+      "next": "Siguiente"
+    },
+    "otp": {
+      "authenticateAccount": "Autentica tu cuenta",
+      "verifyEmail": "Verifica tu dirección de correo electrónico",
+      "verifyAadhaar": "Verificar Aadhaar con OTP",
+      "emailMessage": "Por favor ingresa el código de verificación de seis dígitos enviado a tu correo electrónico {{email}}",
+      "aadhaarMessage": "La verificación facial falló. Por favor ingresa el OTP de seis dígitos enviado a tu correo electrónico {{email}} para verificar tu Aadhaar.",
+      "loginDescription": "Por favor ingresa el código de seis dígitos enviado a tu correo electrónico y móvil. El OTP es válido por 5 minutos.",
+      "didntReceive": "¿No recibiste el código?",
+      "resend": "Reenviar",
+      "confirm": "Confirmar",
+      "seconds": "seg"
+    },
+    "changePassword": {
+      "title": "Cambiar contraseña",
+      "description": "Ingresa nueva contraseña",
+      "newPassword": "Nueva contraseña",
+      "confirmPassword": "Confirmar nueva contraseña",
+      "passwordEmpty": "La contraseña no debe estar vacía",
+      "confirmPasswordEmpty": "La confirmación de contraseña no debe estar vacía",
+      "passwordMinLength": "Se necesitan mínimo 14 caracteres",
+      "passwordMaxLength": "Se permiten máximo 28 caracteres",
+      "passwordSameAsEmail": "La contraseña no puede ser igual al ID de usuario",
+      "passwordFormat": "Usa mínimo 14 caracteres con una mezcla de mayúsculas, minúsculas, números y símbolos (@$!%*?&)",
+      "passwordsNotMatch": "Las contraseñas no coinciden",
+      "passwordHint": "Usa mínimo 14 caracteres con una mezcla de letras (mayúsculas, minúsculas), números y símbolos.",
+      "done": "Hecho"
+    }
+  },
+  "privacy": {
+    "title": "Política de Privacidad",
+    "openedInBrowser": "La política de privacidad se ha abierto en tu navegador.",
+    "readAndReturn": "Por favor léela y regresa para continuar."
+  },
+  "terms": {
+    "title": "Términos y Condiciones",
+    "summary": "Estos Términos y Condiciones rigen su uso de la aplicación Colab. Al usar nuestros servicios, acepta cumplir con todas las leyes y regulaciones aplicables. Nos reservamos el derecho de modificar estos términos en cualquier momento. Su uso continuado de la aplicación constituye la aceptación de cualquier cambio. La aplicación se proporciona 'tal cual' sin garantías de ningún tipo. No somos responsables de ningún daño que surja de su uso de la aplicación. Usted es responsable de mantener la confidencialidad de las credenciales de su cuenta. El acceso o uso no autorizado de la aplicación está estrictamente prohibido. Podemos terminar o suspender su cuenta en cualquier momento por violaciones de estos términos.",
+    "openedInBrowser": "Los términos y condiciones se han abierto en su navegador.",
+    "readAndReturn": "Por favor léelos y regresa para continuar."
+  },
+  "aadhaar": {
+    "title": "Verificación de Aadhaar",
+    "enterAadhaar": "Ingresa el número de Aadhaar",
+    "aadhaarLengthError": "El número de Aadhaar debe tener 12 dígitos",
+    "authorize": "Autorizo el uso de mi Aadhaar para la verificación de asistencia y acepto su almacenamiento seguro bajo la",
+    "privacyPolicy": "Política de Privacidad",
+    "captureFace": "Capturar Rostro",
+    "authenticating": "Autenticando...",
+    "verified": "Aadhaar verificado exitosamente",
+    "continue": "Continuar"
+  },
+  "home": {
+    "colleagues": "Colegas",
+    "teams": "Equipos",
+    "myWorkspace": "Mi Espacio de Trabajo",
+    "myFiles": "Mis Archivos",
+    "announcements": "Anuncios",
+    "bePatient": "Sé Paciente",
+    "waitingMessage": "hasta que tu equipo y colegas aparezcan"
+  },
+  "attendance": {
+    "confirmCheckIn": "Confirmar Entrada",
+    "confirmCheckOut": "Confirmar Salida",
+    "fetchingLocation": "Obteniendo tu ubicación...",
+    "locationPermissionDenied": "Permiso de ubicación denegado. Habilítalo en configuración.",
+    "locationPermissionRequired": "Permiso de Ubicación Requerido",
+    "confirmLocation": "Confirmar Ubicación",
+    "metersAccurate": "metros de precisión",
+    "waitingForAccuracy": "Esperando precisión < {{accuracy}}m",
+    "noDataFound": "¡No se encontraron datos de asistencia!"
+  },
+  "profile": {
+    "member": "Miembro",
+    "displayBreakStatus": "Mostrar Estado de Descanso",
+    "darkMode": "Modo Oscuro",
+    "attendanceLogs": "Registros de Asistencia",
+    "viewProfile": "Ver Perfil",
+    "supportAndLearn": "Soporte y Aprendizaje",
+    "logout": "Cerrar Sesión",
+    "firstName": "Nombre",
+    "lastName": "Apellido",
+    "email": "Correo electrónico",
+    "dateOfActivation": "Fecha de activación",
+    "dateOfBirth": "Fecha de nacimiento",
+    "empId": "ID de empleado",
+    "employmentType": "Tipo de empleo",
+    "designation": "Designación",
+    "profileDetails": "Detalles del Perfil"
+  },
+  "security": {
+    "usbDebuggingDetected": "Depuración USB Detectada",
+    "securityMessage": "Por razones de seguridad, la aplicación no puede usarse mientras la depuración USB esté habilitada en tu dispositivo.",
+    "toContinue": "Para continuar usando la aplicación:",
+    "step1": "1. Abre Configuración en tu dispositivo",
+    "step2": "2. Navega a Opciones de Desarrollador",
+    "step3": "3. Deshabilita la Depuración USB",
+    "step4": "4. Regresa a esta aplicación",
+    "checkAgain": "Verificar Nuevamente",
+    "checking": "Verificando...",
+    "openSettings": "Abrir Configuración"
+  },
+  "common": {
+    "back": "Atrás",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "submit": "Enviar",
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "featureLocked": "¡Esta función está bloqueada!"
+  }
+}
+

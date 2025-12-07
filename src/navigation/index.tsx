@@ -14,6 +14,8 @@ import {
   OtpScreen,
   PermissionsScreen,
   PrivacyPolicyScreen,
+  TermsAndConditionsScreen,
+  ProfilePhotoScreen,
   ProfileDrawerScreen,
   UsbDebuggingBlockScreen,
   ViewProfileScreen,
@@ -152,8 +154,16 @@ export default function AppNavigation(): React.JSX.Element {
             component={AadhaarInputScreen}
           />
           <Stack.Screen
+            name="ProfilePhotoScreen"
+            component={ProfilePhotoScreen}
+          />
+          <Stack.Screen
             name="PrivacyPolicyScreen"
             component={PrivacyPolicyScreen}
+          />
+          <Stack.Screen
+            name="TermsAndConditionsScreen"
+            component={TermsAndConditionsScreen}
           />
           <Stack.Screen
             name="UsbDebuggingBlockScreen"
