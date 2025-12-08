@@ -1,10 +1,11 @@
 import React, { useState, memo, ReactNode } from 'react';
-import { ActivityIndicator, View, StyleSheet, ImageStyle, ImageSourcePropType } from 'react-native';
+import { ActivityIndicator, View, StyleSheet, ImageStyle, ImageSourcePropType, Image, Platform } from 'react-native';
 import FastImage, { FastImageProps } from 'react-native-fast-image';
-import { useTheme } from '@react-navigation/native';
 import { hp, Icons } from '../../constants';
 import RippleButton from '../app-buttons/RippleButton';
 import { AppText } from '..';
+import { useAppSelector } from '../../redux';
+import { APP_THEMES, DarkThemeColors, LightThemeColors } from '../../themes';
 
 type ImageStatus = 'idle' | 'loading' | 'error';
 
@@ -48,7 +49,8 @@ function AppImage({
   children,
   ...props
 }: AppImageProps): React.JSX.Element {
-  const { colors } = useTheme();
+  const { appTheme } = useAppSelector(state => state.appState);
+  const colors = appTheme === APP_THEMES.dark ? DarkThemeColors : LightThemeColors;
   const [status, setStatus] = useState<ImageStatus>('idle');
 
   const handleLoadStart = (): void => {
@@ -62,9 +64,47 @@ function AppImage({
   };
 
   const finalBorderRadius = borderRadius ?? (isRounded ? size / 2 : 0);
-  const imageSource = (source as { uri?: string })?.uri
-    ? { uri: (source as { uri: string }).uri, priority: FastImage.priority.high }
-    : (source as ImageSourcePropType);
+  
+  // Handle image source - FastImage needs proper format for local assets on Android
+  const getImageSource = () => {
+    if (!source) return Icons.eye_closed; // Fallback icon
+    
+    // If it's a URI (remote image)
+    if ((source as { uri?: string })?.uri) {
+      return { uri: (source as { uri: string }).uri, priority: FastImage.priority.high };
+    }
+    
+    // Handle require() assets - check for default export first
+    let localSource = source;
+    if ((source as any)?.default) {
+      localSource = (source as any).default;
+    }
+    
+    // For local require() assets on Android, ensure proper format
+    if (typeof localSource === 'number') {
+      // FastImage should handle numbers directly, but on Android we'll use resolveAssetSource
+      // to get a proper URI format if needed
+      if (Platform.OS === 'android') {
+        try {
+          const resolvedSource = Image.resolveAssetSource(localSource);
+          // If resolved to a file:// URI, FastImage might not handle it well
+          // So we'll use the number directly which should work
+          if (resolvedSource && !resolvedSource.uri?.startsWith('file://')) {
+            return { uri: resolvedSource.uri, priority: FastImage.priority.normal };
+          }
+        } catch (e) {
+          // If resolution fails, use the number directly
+        }
+      }
+      // Use the number directly - FastImage should handle this
+      return localSource;
+    }
+    
+    // For other formats, pass as-is
+    return localSource as ImageSourcePropType;
+  };
+  
+  const imageSource = getImageSource();
 
   return (
     <RippleButton
@@ -82,7 +122,7 @@ function AppImage({
         style={[style, { width, height, borderRadius: finalBorderRadius }] as ImageStyle}
         tintColor={(style as ImageStyle)?.tintColor || tintColor}
         resizeMode={resizeMode}
-        source={imageSource}
+        source={imageSource || Icons.eye_closed}
       >
         {isLoadingVisible && (source as { uri?: string })?.uri && (
           <View style={styles.overlay}>

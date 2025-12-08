@@ -1,18 +1,11 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { useNavigation, useTheme } from '@react-navigation/native';
 import { AppContainer, BackHeader, AppText } from '../../components';
 import { Configs, hp, wp } from '../../constants';
 import { NavigationProp } from '../../types/navigation';
 import { useTranslation } from '../../hooks/useTranslation';
-
-// Try to import WebView, fallback to Linking if not available
-let WebView: any = null;
-try {
-  WebView = require('react-native-webview').WebView;
-} catch (e) {
-  console.log('react-native-webview not installed, using fallback');
-}
 
 export default function TermsAndConditionsScreen(): React.JSX.Element {
   const { colors } = useTheme();
@@ -32,8 +25,11 @@ export default function TermsAndConditionsScreen(): React.JSX.Element {
     navigation.goBack();
   };
 
-  // Summary text for Terms and Conditions
-  const termsSummary = t('terms.summary');
+  const handleError = (syntheticEvent: any): void => {
+    const { nativeEvent } = syntheticEvent;
+    console.error('WebView error: ', nativeEvent);
+    setLoading(false);
+  };
 
   return (
     <AppContainer>
@@ -44,7 +40,7 @@ export default function TermsAndConditionsScreen(): React.JSX.Element {
             <View style={{ width: hp('2.48%'), height: hp('2.48%') }} />
           }
         />
-        {WebView && Configs.privacyPolicyUrl ? (
+        {Configs.termsAndConditionsUrl ? (
           <View style={styles.webViewContainer}>
             {loading && (
               <View style={styles.loadingContainer}>
@@ -52,30 +48,38 @@ export default function TermsAndConditionsScreen(): React.JSX.Element {
               </View>
             )}
             <WebView
+              source={{ uri: Configs.termsAndConditionsUrl }}
               onLoadStart={handleLoadStart}
               onLoadEnd={handleLoadEnd}
+              onError={handleError}
+              // onHttpError={(syntheticEvent) => {
+              //   const { nativeEvent } = syntheticEvent;
+              //   console.error('WebView HTTP error: ', nativeEvent);
+              //   setLoading(false);
+              // }}
               style={styles.webView}
-              source={{ uri: Configs.privacyPolicyUrl }}
+              startInLoadingState={true}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              allowsBackForwardNavigationGestures={true}
+              scalesPageToFit={true}
+              mixedContentMode="always"
+              thirdPartyCookiesEnabled={true}
+              sharedCookiesEnabled={true}
+              originWhitelist={['*']}
+              allowsInlineMediaPlayback={true}
+              mediaPlaybackRequiresUserAction={false}
             />
           </View>
         ) : (
-          <ScrollView
-            style={styles.fallbackContainer}
-            contentContainerStyle={styles.fallbackContent}
-          >
+          <View style={styles.fallbackContainer}>
             <AppText size={hp(2)} style={styles.fallbackText}>
               {t('terms.title')}
             </AppText>
-            <AppText size={hp(1.8)} style={styles.summaryText}>
-              {termsSummary}
-            </AppText>
             <AppText size={hp(1.6)} style={styles.fallbackSubtext}>
-              {t('terms.openedInBrowser')}
+              Terms & Conditions URL is not configured
             </AppText>
-            <AppText size={hp(1.6)} style={styles.fallbackSubtext}>
-              {t('terms.readAndReturn')}
-            </AppText>
-          </ScrollView>
+          </View>
         )}
       </View>
     </AppContainer>
@@ -106,22 +110,14 @@ const styles = StyleSheet.create({
   },
   fallbackContainer: {
     flex: 1,
-  },
-  fallbackContent: {
-    padding: hp(4),
     justifyContent: 'center',
     alignItems: 'center',
+    padding: hp(4),
   },
   fallbackText: {
     marginBottom: hp(2),
     textAlign: 'center',
     fontWeight: 'bold',
-  },
-  summaryText: {
-    marginBottom: hp(2),
-    textAlign: 'left',
-    lineHeight: hp(2.5),
-    paddingHorizontal: wp(5),
   },
   fallbackSubtext: {
     marginBottom: hp(1),

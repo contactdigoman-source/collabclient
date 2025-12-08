@@ -1,7 +1,8 @@
 import React, { memo, useMemo, ReactNode } from 'react';
 import { Platform, Text, StyleSheet, TextStyle } from 'react-native';
 import { FontTypes, hp } from '../../constants';
-import { useTheme } from '@react-navigation/native';
+import { useAppSelector } from '../../redux';
+import { APP_THEMES, DarkThemeColors, LightThemeColors } from '../../themes';
 
 interface AppTextProps {
   fontType?: keyof typeof FontTypes;
@@ -22,7 +23,8 @@ function AppText({
   children,
   ...rest
 }: AppTextProps): React.JSX.Element {
-  const { colors } = useTheme();
+  const { appTheme } = useAppSelector(state => state.appState);
+  const colors = appTheme === APP_THEMES.dark ? DarkThemeColors : LightThemeColors;
 
   const FONTWEIGHT = useMemo(() => {
     switch (fontType) {

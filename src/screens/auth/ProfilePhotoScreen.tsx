@@ -13,6 +13,7 @@ import { NavigationProp } from '../../types/navigation';
 import { hp, wp, FontTypes, Images } from '../../constants';
 import { useTranslation } from '../../hooks/useTranslation';
 import { markFirstTimeLoginCompleted } from '../../services';
+import { useAppDispatch, useAppSelector, setUserData } from '../../redux';
 
 // Try to import ImagePicker, fallback if not available
 let ImagePicker: any = null;
@@ -27,14 +28,16 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const dispatch = useAppDispatch();
+  const { userData } = useAppSelector(state => state.userState);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
 
   const handleCapturePhoto = useCallback((): void => {
     if (!ImagePicker) {
       Alert.alert(
-        t('profilePhoto.error'),
-        t('profilePhoto.libraryNotInstalled'),
+        t('auth.profilePhoto.error'),
+        t('auth.profilePhoto.libraryNotInstalled'),
       );
       return;
     }
@@ -43,9 +46,9 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
       mediaType: 'photo',
       cropping: true,
       cropperCircleOverlay: true,
-      cropperChooseText: t('profilePhoto.save'),
-      cropperCancelText: t('profilePhoto.cancel'),
-      cropperToolbarTitle: t('profilePhoto.cropPhoto'),
+      cropperChooseText: t('auth.profilePhoto.save'),
+      cropperCancelText: t('auth.profilePhoto.cancel'),
+      cropperToolbarTitle: t('auth.profilePhoto.cropPhoto'),
       cropperActiveWidgetColor: colors.primary,
       width: 1000,
       height: 1000,
@@ -58,7 +61,7 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
       .catch((error: any) => {
         if (error.code !== 'E_PICKER_CANCELLED') {
           console.error('Camera error:', error);
-          Alert.alert(t('profilePhoto.error'), t('profilePhoto.cameraError'));
+          Alert.alert(t('auth.profilePhoto.error'), t('auth.profilePhoto.cameraError'));
         }
       });
   }, [colors.primary, t]);
@@ -66,8 +69,8 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
   const handleSelectFromGallery = useCallback((): void => {
     if (!ImagePicker) {
       Alert.alert(
-        t('profilePhoto.error'),
-        t('profilePhoto.libraryNotInstalled'),
+        t('auth.profilePhoto.error'),
+        t('auth.profilePhoto.libraryNotInstalled'),
       );
       return;
     }
@@ -76,9 +79,9 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
       mediaType: 'photo',
       cropping: true,
       cropperCircleOverlay: true,
-      cropperChooseText: t('profilePhoto.save'),
-      cropperCancelText: t('profilePhoto.cancel'),
-      cropperToolbarTitle: t('profilePhoto.cropPhoto'),
+      cropperChooseText: t('auth.profilePhoto.save'),
+      cropperCancelText: t('auth.profilePhoto.cancel'),
+      cropperToolbarTitle: t('auth.profilePhoto.cropPhoto'),
       cropperActiveWidgetColor: colors.primary,
       width: 1000,
       height: 1000,
@@ -91,7 +94,7 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
       .catch((error: any) => {
         if (error.code !== 'E_PICKER_CANCELLED') {
           console.error('Gallery error:', error);
-          Alert.alert(t('profilePhoto.error'), t('profilePhoto.galleryError'));
+          Alert.alert(t('auth.profilePhoto.error'), t('auth.profilePhoto.galleryError'));
         }
       });
   }, [colors.primary, t]);
@@ -105,8 +108,8 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
   const handleContinue = useCallback(async (): Promise<void> => {
     if (!profileImage) {
       Alert.alert(
-        t('profilePhoto.error'),
-        t('profilePhoto.noImageSelected'),
+        t('auth.profilePhoto.error'),
+        t('auth.profilePhoto.noImageSelected'),
       );
       return;
     }
@@ -123,8 +126,12 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
       // });
       // await uploadProfilePhoto(formData);
 
-      // For now, just save locally or to Redux
-      // You can store the image path in Redux or MMKV storage
+      // Save profile photo to Redux
+      if (userData) {
+        const updatedUser = { ...userData, profilePhoto: profileImage };
+        dispatch(setUserData(updatedUser));
+      }
+
       console.log('Profile photo saved:', profileImage);
 
       // Mark first-time login as completed
@@ -134,11 +141,11 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
       navigation.replace('DashboardScreen');
     } catch (error) {
       console.error('Error saving profile photo:', error);
-      Alert.alert(t('profilePhoto.error'), t('profilePhoto.saveError'));
+      Alert.alert(t('auth.profilePhoto.error'), t('auth.profilePhoto.saveError'));
     } finally {
       setLoading(false);
     }
-  }, [profileImage, navigation, t]);
+  }, [profileImage, navigation, t, dispatch, userData]);
 
   return (
     <AppContainer>
@@ -157,12 +164,12 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
             fontType={FontTypes.medium}
             style={styles.title}
           >
-            {t('profilePhoto.title')}
+            {t('auth.profilePhoto.title')}
           </AppText>
 
           {/* Subtitle */}
           <AppText size={hp(1.8)} style={styles.subtitle}>
-            {t('profilePhoto.subtitle')}
+            {t('auth.profilePhoto.subtitle')}
           </AppText>
 
           {/* Profile Image Preview */}
@@ -177,7 +184,7 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
                   style={styles.placeholderImage}
                 />
                 <AppText size={hp(1.6)} style={styles.placeholderText}>
-                  {t('profilePhoto.noPhoto')}
+                  {t('auth.profilePhoto.noPhoto')}
                 </AppText>
               </View>
             )}
@@ -186,13 +193,13 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
           {/* Action Buttons */}
           <View style={styles.buttonContainer}>
             <AppButton
-              title={t('profilePhoto.takePhoto')}
+              title={t('auth.profilePhoto.takePhoto')}
               style={styles.actionButton}
               onPress={handleCapturePhoto}
             />
 
             <AppButton
-              title={t('profilePhoto.chooseFromGallery')}
+              title={t('auth.profilePhoto.chooseFromGallery')}
               style={styles.galleryButton}
               onPress={handleSelectFromGallery}
             />
@@ -201,7 +208,7 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
           {/* Continue and Skip Buttons */}
           <View style={styles.footerButtons}>
             <AppButton
-              title={t('profilePhoto.continue')}
+              title={t('auth.profilePhoto.continue')}
               style={styles.continueButton}
               onPress={handleContinue}
               disabled={!profileImage || loading}
@@ -213,7 +220,7 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
               disabled={loading}
             >
               <AppText size={hp(1.8)} style={styles.skipText}>
-                {t('profilePhoto.skip')}
+                {t('auth.profilePhoto.skip')}
               </AppText>
             </TouchableOpacity>
           </View>

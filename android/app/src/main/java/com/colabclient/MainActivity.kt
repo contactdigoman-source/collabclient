@@ -1,5 +1,7 @@
 package com.colabclient
 
+import android.graphics.Color
+import android.os.Bundle
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -19,4 +21,12 @@ class MainActivity : ReactActivity() {
    */
   override fun createReactActivityDelegate(): ReactActivityDelegate =
       DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
+
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    // Ensure window background is pure black (#000000) to match dark theme
+    window?.setBackgroundDrawableResource(android.R.color.black)
+    window?.statusBarColor = Color.BLACK
+    window?.navigationBarColor = Color.BLACK
+  }
 }

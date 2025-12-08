@@ -1,18 +1,11 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { useNavigation, useTheme } from '@react-navigation/native';
 import { AppContainer, BackHeader, AppText } from '../../components';
 import { Configs, hp, wp } from '../../constants';
 import { NavigationProp } from '../../types/navigation';
 import { useTranslation } from '../../hooks/useTranslation';
-
-// Try to import WebView, fallback to Linking if not available
-let WebView: any = null;
-try {
-  WebView = require('react-native-webview').WebView;
-} catch (e) {
-  console.log('react-native-webview not installed, using fallback');
-}
 
 export default function PrivacyPolicyScreen(): React.JSX.Element {
   const { colors } = useTheme();
@@ -33,6 +26,12 @@ export default function PrivacyPolicyScreen(): React.JSX.Element {
     navigation.goBack();
   };
 
+  const handleError = (syntheticEvent: any): void => {
+    const { nativeEvent } = syntheticEvent;
+    console.error('WebView error: ', nativeEvent);
+    setLoading(false);
+  };
+
   return (
     <AppContainer>
       <View style={styles.container}>
@@ -42,7 +41,7 @@ export default function PrivacyPolicyScreen(): React.JSX.Element {
             <View style={{ width: hp('2.48%'), height: hp('2.48%') }} />
           }
         />
-        {WebView && Configs.privacyPolicyUrl ? (
+        {Configs.privacyPolicyUrl ? (
           <View style={styles.webViewContainer}>
             {loading && (
               <View style={styles.loadingContainer}>
@@ -50,10 +49,27 @@ export default function PrivacyPolicyScreen(): React.JSX.Element {
               </View>
             )}
             <WebView
+              source={{ uri: Configs.privacyPolicyUrl }}
               onLoadStart={handleLoadStart}
               onLoadEnd={handleLoadEnd}
+              onError={handleError}
+              // onHttpError={(syntheticEvent) => {
+              //   const { nativeEvent } = syntheticEvent;
+              //   console.error('WebView HTTP error: ', nativeEvent);
+              //   setLoading(false);
+              // }}
               style={styles.webView}
-              source={{ uri: Configs.privacyPolicyUrl }}
+              startInLoadingState={true}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              allowsBackForwardNavigationGestures={true}
+              scalesPageToFit={true}
+              mixedContentMode="always"
+              thirdPartyCookiesEnabled={true}
+              sharedCookiesEnabled={true}
+              originWhitelist={['*']}
+              allowsInlineMediaPlayback={true}
+              mediaPlaybackRequiresUserAction={false}
             />
           </View>
         ) : (
@@ -61,11 +77,8 @@ export default function PrivacyPolicyScreen(): React.JSX.Element {
             <AppText size={hp(2)} style={styles.fallbackText}>
               {t('privacy.title')}
             </AppText>
-            <AppText size={hp(1.8)} style={styles.fallbackSubtext}>
-              {t('privacy.openedInBrowser')}
-            </AppText>
             <AppText size={hp(1.6)} style={styles.fallbackSubtext}>
-              {t('privacy.readAndReturn')}
+              Privacy Policy URL is not configured
             </AppText>
           </View>
         )}

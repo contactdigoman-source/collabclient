@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
-import { useTheme } from '@react-navigation/native';
 import AppImage from './AppImage';
 import {
   FontTypes,
@@ -10,6 +9,8 @@ import {
 } from '../../constants';
 import AppText from '../app-texts/AppText';
 import { ImageSourcePropType } from 'react-native';
+import { useAppSelector } from '../../redux';
+import { APP_THEMES, DarkThemeColors, LightThemeColors } from '../../themes';
 
 interface UserImageProps {
   size?: number;
@@ -25,7 +26,8 @@ interface UserImageProps {
 }
 
 export default function UserImage(props: UserImageProps): React.JSX.Element {
-  const { colors } = useTheme();
+  const { appTheme } = useAppSelector(state => state.appState);
+  const colors = appTheme === APP_THEMES.dark ? DarkThemeColors : LightThemeColors;
   const {
     size = hp('6%'),
     source = null,
@@ -36,16 +38,25 @@ export default function UserImage(props: UserImageProps): React.JSX.Element {
     isDummy = false,
     userName = '',
     charsCount = 2,
-    charsColor = colors.white,
+    charsColor,
   } = props;
+  
+  const finalCharsColor = charsColor || colors.white;
 
   const firstCharsOfString = (stringValue: string = '', charsCount: number = 1): string | null => {
     const stringValue_trimmed = stringValue.trim();
     if (stringValue_trimmed.length > 0) {
-      const matches = stringValue.match(/\b(\w)/g);
-      if (matches) {
-        const acronym = matches.join('');
-        return acronym.substring(0, charsCount);
+      // Split by spaces to get first and last name
+      const parts = stringValue_trimmed.split(/\s+/).filter(part => part.length > 0);
+      if (parts.length >= 2) {
+        // If we have at least first and last name, show lastname first, then firstname
+        const lastName = parts[parts.length - 1]; // Last part is lastname
+        const firstName = parts[0]; // First part is firstname
+        const initials = (lastName.charAt(0) + firstName.charAt(0)).toUpperCase();
+        return initials.substring(0, charsCount);
+      } else if (parts.length === 1) {
+        // If only one name, show first char
+        return parts[0].charAt(0).toUpperCase();
       }
     }
     return null;
@@ -124,7 +135,7 @@ export default function UserImage(props: UserImageProps): React.JSX.Element {
             <View style={styles.charsContainer}>
               <AppText
                 size={size / 2.75}
-                color={charsColor}
+                color={finalCharsColor}
                 fontType={FontTypes.medium}
                 style={styles.charsText}
               >

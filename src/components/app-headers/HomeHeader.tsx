@@ -8,6 +8,7 @@ import { hp, Icons, wp } from '../../constants';
 import { UserImage } from '../../components';
 import { NavigationProp } from '../../types/navigation';
 import { PUNCH_DIRECTIONS } from '../../constants';
+import { useAppSelector } from '../../redux';
 
 interface HomeHeaderProps {
   bgColor?: string | AnimatedValue;
@@ -29,6 +30,7 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp>();
+  const { userData } = useAppSelector(state => state.userState);
 
   const formattedDate = useMemo(
     () =>
@@ -65,12 +67,13 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
     <Animated.View style={styles.container}>
       <Animated.View style={headerContainerStyle}>
         <UserImage
-          source={null}
-          userName={userName}
+          source={userData?.profilePhoto ? { uri: userData.profilePhoto } : null}
+          userName={userData?.profilePhoto ? undefined : userName}
           size={wp('10%')}
           isClickable
           punchDirection={punchDirection}
           onPress={onProfilePress}
+          charsCount={2}
         />
         <Animated.View style={styles.middleSection}>
           <Animated.Text style={{ color: textColor || colors.white }}>
@@ -94,6 +97,9 @@ function areEqual(
   prevProps: HomeHeaderProps,
   nextProps: HomeHeaderProps,
 ): boolean {
+  // Note: This comparison doesn't include userData.profilePhoto changes
+  // because userData comes from Redux, not props. The component will
+  // re-render when Redux state changes anyway.
   return (
     prevProps.userName === nextProps.userName &&
     prevProps.punchTimestamp === nextProps.punchTimestamp &&

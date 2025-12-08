@@ -200,7 +200,8 @@
     "step4": "4. Regresa a esta aplicación",
     "checkAgain": "Verificar Nuevamente",
     "checking": "Verificando...",
-    "openSettings": "Abrir Configuración"
+    "openSettings": "Abrir Configuración",
+    "exit": "Salir"
   },
   "common": {
     "back": "Atrás",

@@ -1,6 +1,15 @@
+import Config from 'react-native-config';
+
+// Log URLs for debugging (remove in production if needed)
+const privacyUrl = Config.PRIVACY_POLICY_URL || 'https://colab.nexaei.com/privacy-andriod';
+const termsUrl = Config.TERM_AND_CONDITIONS_URL || 'https://colab.nexaei.com/terms-andriod';
+
+console.log('Privacy Policy URL:', privacyUrl);
+console.log('Terms & Conditions URL:', termsUrl);
+
 export const Configs = {
-  privacyPolicyUrl: 'https://colab.nexaei.com/terms-andriod',
-  //   termsAndConditionsUrl: Config.TERM_AND_CONDITIONS_URL,
+  privacyPolicyUrl: privacyUrl,
+  termsAndConditionsUrl: termsUrl,
   //   apiBaseUrl: Config.API_URL,
   //   attendanceBaseUrl: Config.ATTENDANCE_BASE_URL,
   //   supportBaseUrl: Config.SUPPORT_BASE_URL,

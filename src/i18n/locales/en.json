@@ -199,7 +199,8 @@
     "step4": "4. Return to this app",
     "checkAgain": "Check Again",
     "checking": "Checking...",
-    "openSettings": "Open Settings"
+    "openSettings": "Open Settings",
+    "exit": "Exit"
   },
   "attendance": {
     "noDataFound": "No Attendance Data Found!"

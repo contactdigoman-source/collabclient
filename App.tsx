@@ -19,8 +19,6 @@ export default function App() {
     console.log('ENVIRONMENT', Config.ENVIRONMENT);
     // eslint-disable-next-line no-console
     console.log('API_URL', Config.API_URL);
-
-    BootSplash.hide();
   }, []);
 
   return (

@@ -1,16 +1,20 @@
 import React, { useCallback, useState } from 'react';
-import { View, StyleSheet, Platform, Linking } from 'react-native';
-import { useTheme } from '@react-navigation/native';
+import { View, StyleSheet, Platform, StatusBar, BackHandler } from 'react-native';
 
 import { AppButton, AppContainer, AppImage, AppText } from '../../components';
 import { hp, wp, Images } from '../../constants';
 import { checkUsbDebuggingStatus } from '../../services/security-service';
 import { useTranslation } from '../../hooks/useTranslation';
+import { useAppSelector } from '../../redux';
+import { APP_THEMES, DarkThemeColors, LightThemeColors } from '../../themes';
 
 export default function UsbDebuggingBlockScreen(): React.JSX.Element {
-  const { colors } = useTheme();
   const { t } = useTranslation();
   const [isChecking, setIsChecking] = useState<boolean>(false);
+  const { appTheme } = useAppSelector(state => state.appState);
+  
+  // Get theme colors based on app theme
+  const themeColors = appTheme === APP_THEMES.dark ? DarkThemeColors : LightThemeColors;
 
   const handleCheckAgain = useCallback(async (): Promise<void> => {
     setIsChecking(true);
@@ -20,14 +24,19 @@ export default function UsbDebuggingBlockScreen(): React.JSX.Element {
     // It checks every 5 seconds automatically
   }, []);
 
-  const handleOpenSettings = useCallback((): void => {
+  const handleExit = useCallback((): void => {
     if (Platform.OS === 'android') {
-      Linking.openSettings();
+      BackHandler.exitApp();
     }
   }, []);
 
   return (
     <AppContainer>
+      <StatusBar
+        barStyle={appTheme === APP_THEMES.dark ? 'light-content' : 'dark-content'}
+        translucent={false}
+        backgroundColor={themeColors.black}
+      />
       <View style={styles.container}>
         <AppImage
           size={hp(15)}
@@ -39,25 +48,25 @@ export default function UsbDebuggingBlockScreen(): React.JSX.Element {
           {t('security.usbDebuggingDetected')}
         </AppText>
 
-        <AppText size={hp(1.8)} style={styles.description} color={colors.white}>
+        <AppText size={hp(1.8)} style={styles.description} color={themeColors.white_common || '#FFFFFF'}>
           {t('security.securityMessage')}
         </AppText>
 
-        <AppText size={hp(1.6)} style={styles.instructions} color={colors.white}>
+        <AppText size={hp(1.6)} style={styles.instructions} color={themeColors.white_common || '#FFFFFF'}>
           {t('security.toContinue')}
         </AppText>
 
         <View style={styles.stepsContainer}>
-          <AppText size={hp(1.5)} style={styles.step} color={colors.white}>
+          <AppText size={hp(1.5)} style={styles.step} color={themeColors.white_common || '#FFFFFF'}>
             {t('security.step1')}
           </AppText>
-          <AppText size={hp(1.5)} style={styles.step} color={colors.white}>
+          <AppText size={hp(1.5)} style={styles.step} color={themeColors.white_common || '#FFFFFF'}>
             {t('security.step2')}
           </AppText>
-          <AppText size={hp(1.5)} style={styles.step} color={colors.white}>
+          <AppText size={hp(1.5)} style={styles.step} color={themeColors.white_common || '#FFFFFF'}>
             {t('security.step3')}
           </AppText>
-          <AppText size={hp(1.5)} style={styles.step} color={colors.white}>
+          <AppText size={hp(1.5)} style={styles.step} color={themeColors.white_common || '#FFFFFF'}>
             {t('security.step4')}
           </AppText>
         </View>
@@ -70,10 +79,10 @@ export default function UsbDebuggingBlockScreen(): React.JSX.Element {
           />
 
           <AppButton
-            title={t('security.openSettings')}
-            onPress={handleOpenSettings}
-            style={[styles.settingsButton, { borderColor: colors.primary }]}
-            titleColor={colors.primary}
+            title={t('security.exit')}
+            onPress={handleExit}
+            style={StyleSheet.flatten([styles.settingsButton, { borderColor: themeColors.primary || '#62C268' }])}
+            titleColor={themeColors.white_common || '#62C268'}
           />
         </View>
       </View>

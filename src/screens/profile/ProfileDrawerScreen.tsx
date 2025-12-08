@@ -127,8 +127,9 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
           <UserImage
             size={hp(15)}
             source={userData?.profilePhoto ? { uri: userData.profilePhoto } : null}
-            userName={`${userData?.firstName || ''} ${userData?.lastName || ''}`}
+            userName={userData?.profilePhoto ? undefined : `${userData?.firstName || ''} ${userData?.lastName || ''}`}
             isAttendanceStatusVisible={false}
+            charsCount={2}
           />
           <TouchableOpacity
             style={[styles.editIconContainer, { backgroundColor: colors.card }]}

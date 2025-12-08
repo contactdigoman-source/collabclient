@@ -2,6 +2,8 @@ import * as React from 'react';
 import { View, StatusBar, StyleSheet, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import Config from 'react-native-config';
+import BootSplash from 'react-native-bootsplash';
 
 import {
   AadhaarInputScreen,
@@ -40,8 +42,18 @@ export default function AppNavigation(): React.JSX.Element {
   const [isUsbDebuggingEnabled, setIsUsbDebuggingEnabled] = React.useState<boolean>(false);
   const [isChecking, setIsChecking] = React.useState<boolean>(true);
 
+  // Check if USB debugging check should be bypassed
+  const bypassUsbCheck = Config.BYPASS_USB_DEBUGGING_CHECK === 'true';
+
   // Check USB debugging status on mount and periodically
   React.useEffect(() => {
+    // Bypass USB debugging check if env variable is set
+    if (bypassUsbCheck) {
+      setIsUsbDebuggingEnabled(false);
+      setIsChecking(false);
+      return;
+    }
+
     const checkStatus = async (): Promise<void> => {
       if (Platform.OS === 'android') {
         const isEnabled = await checkUsbDebuggingStatus();
@@ -54,9 +66,9 @@ export default function AppNavigation(): React.JSX.Element {
 
     checkStatus();
 
-    // Check every 5 seconds if USB debugging is enabled
+    // Check every 5 seconds if USB debugging is enabled (only if not bypassed)
     const interval = setInterval(() => {
-      if (Platform.OS === 'android') {
+      if (Platform.OS === 'android' && !bypassUsbCheck) {
         checkUsbDebuggingStatus().then((isEnabled: boolean) => {
           setIsUsbDebuggingEnabled(isEnabled);
         });
@@ -64,10 +76,17 @@ export default function AppNavigation(): React.JSX.Element {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [bypassUsbCheck]);
 
-  // Show blocking screen if USB debugging is enabled
-  if (Platform.OS === 'android' && (isChecking || isUsbDebuggingEnabled)) {
+  // Show blocking screen if USB debugging is enabled (unless bypassed)
+  if (Platform.OS === 'android' && !bypassUsbCheck && (isChecking || isUsbDebuggingEnabled)) {
+    // Hide splash when USB debugging screen is shown
+    React.useEffect(() => {
+      if (!isChecking) {
+        BootSplash.hide({ fade: true });
+      }
+    }, [isChecking]);
+
     if (isChecking) {
       return (
         <View style={styles.container}>
@@ -103,6 +122,10 @@ export default function AppNavigation(): React.JSX.Element {
       />
       <NavigationContainer
         theme={appTheme === APP_THEMES.dark ? DarkTheme : LightTheme}
+        onReady={() => {
+          // Hide splash screen only when navigation is ready to prevent black screen
+          BootSplash.hide({ fade: true });
+        }}
       >
         <Stack.Navigator
           initialRouteName={

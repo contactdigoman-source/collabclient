@@ -2,7 +2,8 @@ import React, { memo } from 'react';
 import { StyleSheet, ActivityIndicator, ViewStyle } from 'react-native';
 import { FontTypes, hp, wp } from '../../constants';
 import { AppText, RippleButton } from '..';
-import { useTheme } from '@react-navigation/native';
+import { useAppSelector } from '../../redux';
+import { APP_THEMES, DarkThemeColors, LightThemeColors } from '../../themes';
 
 interface AppButtonProps {
   title?: string;
@@ -25,7 +26,8 @@ function AppButton({
   titleColor = 'white',
   borderRadius = wp(100),
 }: AppButtonProps): React.JSX.Element {
-  const { colors } = useTheme();
+  const { appTheme } = useAppSelector(state => state.appState);
+  const colors = appTheme === APP_THEMES.dark ? DarkThemeColors : LightThemeColors;
 
   return (
     <RippleButton
