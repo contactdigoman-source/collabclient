@@ -9,11 +9,13 @@ import {
   AadhaarInputScreen,
   AttendanceLogsScreen,
   ChangeForgottenPassword,
+  CheckInScreen,
   ConfirmPunchScreen,
   FirstTimeLoginScreen,
   ForgotPasswordScreen,
   LoginScreen,
   OtpScreen,
+  PanCardCaptureScreen,
   PermissionsScreen,
   PrivacyPolicyScreen,
   TermsAndConditionsScreen,
@@ -152,6 +154,10 @@ export default function AppNavigation(): React.JSX.Element {
             component={ForgotPasswordScreen}
           />
           <Stack.Screen
+            name="CheckInScreen"
+            component={CheckInScreen}
+          />
+          <Stack.Screen
             name="ConfirmPunchScreen"
             component={ConfirmPunchScreen}
           />
@@ -175,6 +181,10 @@ export default function AppNavigation(): React.JSX.Element {
           <Stack.Screen
             name="AadhaarInputScreen"
             component={AadhaarInputScreen}
+          />
+          <Stack.Screen
+            name="PanCardCaptureScreen"
+            component={PanCardCaptureScreen}
           />
           <Stack.Screen
             name="ProfilePhotoScreen"

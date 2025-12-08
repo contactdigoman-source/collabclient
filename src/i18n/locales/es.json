@@ -170,7 +170,22 @@
     "confirmLocation": "Confirmar Ubicación",
     "metersAccurate": "metros de precisión",
     "waitingForAccuracy": "Esperando precisión < {{accuracy}}m",
-    "noDataFound": "¡No se encontraron datos de asistencia!"
+    "noDataFound": "¡No se encontraron datos de asistencia!",
+    "earlyCheckout": {
+      "title": "Salida Temprana",
+      "message": "Has trabajado durante {{hours}} horas. Se requieren un mínimo de 9 horas de trabajo.",
+      "checkOut": "Salir",
+      "takeLeave": "Tomar Permiso"
+    },
+    "breakStatus": {
+      "updateBreakStatus": "Actualizar estado de descanso",
+      "skip": "Omitir",
+      "atLunch": "En el Almuerzo",
+      "shortBreak": "Descanso Corto",
+      "commuting": "Desplazándose",
+      "personalTimeout": "Tiempo Personal",
+      "outForDinner": "Fuera para Cenar"
+    }
   },
   "profile": {
     "member": "Miembro",

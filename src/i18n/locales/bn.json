@@ -170,7 +170,22 @@
     "confirmLocation": "অবস্থান নিশ্চিত করুন",
     "metersAccurate": "মিটার সঠিক",
     "waitingForAccuracy": "সঠিকতা < {{accuracy}}m এর জন্য অপেক্ষা করছেন",
-    "noDataFound": "কোন উপস্থিতি ডেটা পাওয়া যায়নি!"
+    "noDataFound": "কোন উপস্থিতি ডেটা পাওয়া যায়নি!",
+    "earlyCheckout": {
+      "title": "শীঘ্র চেক আউট",
+      "message": "আপনি {{hours}} ঘন্টা কাজ করেছেন। ন্যূনতম 9 ঘন্টা কাজের প্রয়োজন।",
+      "checkOut": "চেক আউট করুন",
+      "takeLeave": "ছুটি নিন"
+    },
+    "breakStatus": {
+      "updateBreakStatus": "বিরতি অবস্থা আপডেট করুন",
+      "skip": "এড়িয়ে যান",
+      "atLunch": "লাঞ্চে",
+      "shortBreak": "সংক্ষিপ্ত বিরতি",
+      "commuting": "যাতায়াত করছেন",
+      "personalTimeout": "ব্যক্তিগত সময়",
+      "outForDinner": "ডিনারের জন্য বাইরে"
+    }
   },
   "profile": {
     "member": "সদস্য",

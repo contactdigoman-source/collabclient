@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, StyleSheet, DeviceEventEmitter } from 'react-native';
+import { View, StyleSheet, DeviceEventEmitter, Platform, TouchableOpacity } from 'react-native';
 import { useNavigation, useTheme } from '@react-navigation/native';
 import {
   AppButton,
@@ -15,6 +15,8 @@ import {
   getRawAadhaarNumber,
   startFaceAuth,
   storeAadhaarNumber,
+  requestLocationPermission,
+  isLocationEnabled,
 } from '../../services';
 import {
   setIsAadhaarFaceValidated,
@@ -42,6 +44,7 @@ export default function AadhaarInputScreen(): React.JSX.Element {
 
   const [aadhaarInput, setAadhaarInput] = useState<string>('');
   const [aadhaarNumberErr, setAadhaarNumberErr] = useState<string>('');
+  const [aadhaarNotAvailable, setAadhaarNotAvailable] = useState<boolean>(false);
 
   /** Reset face auth flag on unmount */
   useEffect(() => {
@@ -89,7 +92,12 @@ export default function AadhaarInputScreen(): React.JSX.Element {
     setAadhaarInput(formatted);
   }, []);
 
-  /** Capture Face button handler */
+  /** Handle Aadhaar not available - navigate to PAN card screen */
+  const onAadhaarNotAvailablePress = useCallback((): void => {
+    navigation.navigate('PanCardCaptureScreen');
+  }, [navigation]);
+
+  /** Capture Face button handler - Android uses Face RD, iOS uses OTP */
   const onCaptureFacePress = useCallback((): void => {
     const rawAadhaar = getRawAadhaarNumber(aadhaarInput);
     if (rawAadhaar?.length !== AADHAAR_LENGTH) {
@@ -98,20 +106,52 @@ export default function AadhaarInputScreen(): React.JSX.Element {
     }
 
     setAadhaarNumberErr('');
-    dispatch(setIsAuthenticatingFace(true));
-
-    if (__DEV__) {
-      dispatch(setIsAadhaarFaceValidated(true));
+    
+    // On iOS or if face RD fails, use OTP-based authentication
+    if (Platform.OS === 'ios') {
+      // iOS: Navigate directly to OTP screen
+      navigation.navigate('OtpScreen', {
+        emailID: store.getState().userState?.userData?.email || '',
+        isAadhaarFallback: true,
+        aadhaarNumber: rawAadhaar,
+      });
     } else {
-      startFaceAuth(rawAadhaar);
+      // Android: Use Face RD
+      dispatch(setIsAuthenticatingFace(true));
+
+      if (__DEV__) {
+        dispatch(setIsAadhaarFaceValidated(true));
+      } else {
+        startFaceAuth(rawAadhaar);
+      }
     }
-  }, [aadhaarInput, dispatch, t]);
+  }, [aadhaarInput, dispatch, t, navigation]);
 
   /** Continue button handler after verification */
-  const onStoreAadhaarData = useCallback((): void => {
+  const onStoreAadhaarData = useCallback(async (): Promise<void> => {
     dispatch(setUserAadhaarFaceValidated(true));
-    storeAadhaarNumber();
-    navigation.navigate('DashboardScreen');
+    await storeAadhaarNumber();
+    
+    // After Aadhaar authentication, navigate to location capture screen
+    const onCancelPress = (): void => {
+      // If permission denied, go to dashboard
+      navigation.navigate('DashboardScreen');
+    };
+    
+    const granted = await requestLocationPermission(onCancelPress);
+    
+    if (granted) {
+      const isLocationOn = await isLocationEnabled();
+      if (isLocationOn) {
+        navigation.navigate('CheckInScreen');
+      } else {
+        // Location is off, go to dashboard
+        navigation.navigate('DashboardScreen');
+      }
+    } else {
+      // Permission denied, go to dashboard
+      navigation.navigate('DashboardScreen');
+    }
   }, [dispatch, navigation]);
 
   /** Open Privacy Policy screen */
@@ -171,9 +211,54 @@ export default function AadhaarInputScreen(): React.JSX.Element {
               onChangeText={formatAadhaar}
               error={aadhaarNumberErr}
               maxLength={INPUT_LENGTH}
+              editable={!aadhaarNotAvailable}
             />
 
-            <View style={styles.policyContainer}>
+            {/* Aadhaar not available checkbox */}
+            <TouchableOpacity
+              style={styles.checkboxContainer}
+              onPress={() => {
+                setAadhaarNotAvailable(!aadhaarNotAvailable);
+                if (!aadhaarNotAvailable) {
+                  setAadhaarInput(''); // Clear input when checked
+                }
+              }}
+            >
+              <View
+                style={[
+                  styles.checkbox,
+                  {
+                    backgroundColor: aadhaarNotAvailable
+                      ? colors.primary
+                      : 'transparent',
+                    borderColor: colors.primary,
+                  },
+                ]}
+              >
+                {aadhaarNotAvailable && (
+                  <AppText size={hp(1.5)} color={colors.white}>
+                    ✓
+                  </AppText>
+                )}
+              </View>
+              <AppText
+                size={hp('1.5%')}
+                color={colors.white}
+                style={styles.checkboxLabel}
+              >
+                Aadhaar not available
+              </AppText>
+            </TouchableOpacity>
+
+            {aadhaarNotAvailable ? (
+              <AppButton
+                title="Continue with PAN Card"
+                style={styles.continueBtn}
+                onPress={onAadhaarNotAvailablePress}
+              />
+            ) : (
+              <>
+                <View style={styles.policyContainer}>
               <AppText
                 size={hp('1.5%')}
                 color={colors.white}
@@ -191,15 +276,19 @@ export default function AadhaarInputScreen(): React.JSX.Element {
               </AppText>
             </View>
 
-            <AppButton
-              disabled={isButtonDisabled}
-              title={
-                isAuthenticatingFace
-                  ? t('aadhaar.authenticating')
-                  : t('aadhaar.captureFace')
-              }
-              onPress={onCaptureFacePress}
-            />
+                <AppButton
+                  disabled={isButtonDisabled}
+                  title={
+                    isAuthenticatingFace
+                      ? t('aadhaar.authenticating')
+                      : Platform.OS === 'ios'
+                      ? 'Verify with OTP'
+                      : t('aadhaar.captureFace')
+                  }
+                  onPress={onCaptureFacePress}
+                />
+              </>
+            )}
           </>
         )}
       </View>
@@ -237,6 +326,25 @@ const styles = StyleSheet.create({
   },
   continueBtn: {
     marginTop: hp(4),
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: hp(2),
+    marginBottom: hp(2),
+  },
+  checkbox: {
+    width: wp(5.9),
+    height: wp(5.9),
+    borderRadius: wp(1.6),
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: wp(4.5),
+  },
+  checkboxLabel: {
+    flex: 1,
+    lineHeight: hp(2.1),
   },
 });
 

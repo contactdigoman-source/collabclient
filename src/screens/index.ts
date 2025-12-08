@@ -1,6 +1,8 @@
 import AadhaarInputScreen from './aadhaar/AadhaarInputScreen';
+import PanCardCaptureScreen from './aadhaar/PanCardCaptureScreen';
 import AttendanceLogsScreen from './attendance/AttendanceLogsScreen';
 import ChangeForgottenPassword from './auth/ChangeForgottenPassword';
+import CheckInScreen from './attendance/CheckInScreen';
 import ConfirmPunchScreen from './attendance/ConfirmPunchScreen';
 import DaysBottomTabScreen from './attendance/DaysBottomTabScreen';
 import ForgotPasswordScreen from './auth/ForgotPasswordScreen';
@@ -22,6 +24,7 @@ export {
   HomeScreen,
   ForgotPasswordScreen,
   DaysBottomTabScreen,
+  CheckInScreen,
   ConfirmPunchScreen,
   ProfileDrawerScreen,
   AttendanceLogsScreen,
@@ -29,6 +32,7 @@ export {
   OtpScreen,
   ChangeForgottenPassword,
   AadhaarInputScreen,
+  PanCardCaptureScreen,
   PermissionsScreen,
   PrivacyPolicyScreen,
   TermsAndConditionsScreen,

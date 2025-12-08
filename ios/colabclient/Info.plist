@@ -33,14 +33,33 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<!-- Location Permissions -->
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string></string>
+	<string>Location related permissions are required to capture and display your location to provide with accurate data at the time of check in check out.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Location related permissions are required to capture and display your location to provide with accurate data at the time of check in check out.</string>
+	
+	<!-- Camera Permission -->
 	<key>NSCameraUsageDescription</key>
-	<string>This app needs access to your camera to take profile photos.</string>
+	<string>Permission to access camera is required so that you can easily scan or capture any document and send it to anyone within organization directly without any browsing requirement. This will ensure that you are provided with a seamless experience while using our application.</string>
+	
+	<!-- Photo Library Permissions -->
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>This app needs access to your photo library to select profile photos.</string>
+	<string>Storage permission is required so that any kind of files or any other documents can easily be downloaded, uploaded, shared or saved to your phone, which you need to collaborate with your teammates</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>This app needs access to your photo library to save photos.</string>
+	<string>Storage permission is required so that any kind of files or any other documents can easily be downloaded, uploaded, shared or saved to your phone, which you need to collaborate with your teammates</string>
+	
+	<!-- Microphone Permission -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Colab requires access to your microphone to enable clear audio during voice and video calls.</string>
+	
+	<!-- Contacts Permission (for phone state) -->
+	<key>NSContactsUsageDescription</key>
+	<string>Personal information related permission will allow us to collect user email &amp; photo to login into the app. This information's are required as a part of registration process. Our app also collects mobile number for verification to check the active SIM status of the device.</string>
+	
+	<!-- User Tracking Permission (for device ID) -->
+	<key>NSUserTrackingUsageDescription</key>
+	<string>By giving device id permission nobody can use my credentials to login from other devices</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UIAppFonts</key>

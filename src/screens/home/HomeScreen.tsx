@@ -1,6 +1,5 @@
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { View, StyleSheet, StatusBar, FlatList, Animated } from 'react-native';
-import { useTheme } from '@react-navigation/native';
 import MapView from 'react-native-maps';
 import {
   AppContainer,
@@ -19,14 +18,19 @@ import {
   wp,
   Icons,
   ZOOM_IN_DELTA,
-  ZOOM_OUT_DELTA,
   FontTypes,
   Images,
-  Region,
 } from '../../constants';
+import type { Region } from 'react-native-maps';
 import { useAppSelector } from '../../redux';
 import { APP_THEMES } from '../../themes';
 import { useTranslation } from '../../hooks/useTranslation';
+import {
+  isUserOnBreak,
+  scheduleBreakReminderNotifications,
+  cancelBreakReminderNotifications,
+} from '../../services';
+import moment from 'moment';
 
 const COLLEAGUE_NUM_COLUMNS = 4;
 const TEAM_NUM_COLUMNS = 2;
@@ -48,44 +52,78 @@ interface GridItem {
 }
 
 export default function HomeScreen(): React.JSX.Element {
-  const { colors } = useTheme();
   const { t } = useTranslation();
   const mapRef = useRef<MapView>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
 
   const appTheme = useAppSelector(state => state.appState.appTheme);
-  const userLocationRegion = useAppSelector(
-    state => state.userState.userLocationRegion,
-  );
   const userLastAttendance = useAppSelector(
     state => state.userState.userLastAttendance,
   );
   const userData = useAppSelector(state => state.userState.userData);
+
+  // Check if user is on break
+  const isOnBreak = useMemo(() => {
+    return isUserOnBreak(
+      userLastAttendance?.AttendanceStatus,
+      userLastAttendance?.PunchDirection,
+    );
+  }, [userLastAttendance?.AttendanceStatus, userLastAttendance?.PunchDirection]);
+
+  // Get break status label
+  const breakStatusLabel = useMemo(() => {
+    if (!isOnBreak || !userLastAttendance?.AttendanceStatus) {
+      return '';
+    }
+    const status = userLastAttendance.AttendanceStatus.toUpperCase();
+    const statusMap: Record<string, string> = {
+      LUNCH: t('attendance.breakStatus.atLunch', 'At Lunch'),
+      SHORTBREAK: t('attendance.breakStatus.shortBreak', 'Short Break'),
+      COMMUTING: t('attendance.breakStatus.commuting', 'Commuting'),
+      PERSONALTIMEOUT: t('attendance.breakStatus.personalTimeout', 'Personal Timeout'),
+      OUTFORDINNER: t('attendance.breakStatus.outForDinner', 'Out for Dinner'),
+    };
+    return statusMap[status] || userLastAttendance.AttendanceStatus;
+  }, [isOnBreak, userLastAttendance?.AttendanceStatus, t]);
+
+  // Get break start time
+  const breakStartTime = useMemo(() => {
+    if (!isOnBreak || !userLastAttendance?.CreatedOn) {
+      return null;
+    }
+    try {
+      const createdOn =
+        typeof userLastAttendance.CreatedOn === 'string'
+          ? moment(userLastAttendance.CreatedOn)
+          : moment(userLastAttendance.CreatedOn);
+      return createdOn.format('hh:mm A');
+    } catch {
+      return null;
+    }
+  }, [isOnBreak, userLastAttendance?.CreatedOn]);
+
+  // Set up notifications when user goes on break
+  useEffect(() => {
+    if (isOnBreak && userLastAttendance?.AttendanceStatus) {
+      scheduleBreakReminderNotifications(userLastAttendance.AttendanceStatus);
+    } else {
+      cancelBreakReminderNotifications();
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (!isOnBreak) {
+        cancelBreakReminderNotifications();
+      }
+    };
+  }, [isOnBreak, userLastAttendance?.AttendanceStatus]);
 
   const barStyle = useMemo<StatusBar['props']['barStyle']>(
     () => (appTheme === APP_THEMES.dark ? 'light-content' : 'dark-content'),
     [appTheme],
   );
 
-  const onRefreshMap = useCallback((): void => {
-    if (!mapRef.current || !userLocationRegion) return;
-
-    const regionOut: Region = {
-      ...userLocationRegion,
-      latitudeDelta: ZOOM_OUT_DELTA,
-      longitudeDelta: ZOOM_OUT_DELTA,
-    };
-    const regionIn: Region = {
-      ...userLocationRegion,
-      latitudeDelta: ZOOM_IN_DELTA,
-      longitudeDelta: ZOOM_IN_DELTA,
-    };
-
-    mapRef.current.animateToRegion(regionOut, 1000);
-    setTimeout(() => {
-      mapRef.current?.animateToRegion(regionIn, 1000);
-    }, 1000);
-  }, [userLocationRegion]);
+  // Removed onRefreshMap as it's not used in the current implementation
 
   const lastAttendanceCoords = useMemo<Region>(() => {
     const latLon = userLastAttendance?.LatLon;
@@ -162,22 +200,22 @@ export default function HomeScreen(): React.JSX.Element {
   );
 
   const renderItem = useCallback(
-    ({ section, index }: { section: SectionData; index: number }) => {
+    ({ section, index }: { section: SectionData; index: number }): React.ReactElement | null => {
       switch (section.layout) {
         case SECTION_LIST_LAYOUTS.colleagues:
-          return (
-            index === 0 &&
-            renderGridSection(
+          if (index === 0) {
+            return renderGridSection(
               section.data,
               section.layout,
               COLLEAGUE_NUM_COLUMNS,
               styles.colleagueItem,
-            )
-          );
+            );
+          }
+          return null;
 
         case SECTION_LIST_LAYOUTS.teams:
-          return (
-            index === 0 && (
+          if (index === 0) {
+            return (
               <View style={{ marginHorizontal: hp(2) }}>
                 {renderGridSection(
                   section.data,
@@ -185,8 +223,9 @@ export default function HomeScreen(): React.JSX.Element {
                   TEAM_NUM_COLUMNS,
                 )}
               </View>
-            )
-          );
+            );
+          }
+          return null;
 
         case SECTION_LIST_LAYOUTS.recentColab:
           return <ChatListItem />;
@@ -221,6 +260,19 @@ export default function HomeScreen(): React.JSX.Element {
           scrollEnabled={false}
           style={styles.map}
         />
+        {/* Break Status Banner */}
+        {isOnBreak && breakStatusLabel && (
+          <View style={styles.breakBanner}>
+            <AppText
+              size={hp(1.8)}
+              fontType={FontTypes.medium}
+              style={styles.breakText}
+            >
+              {breakStatusLabel}
+              {breakStartTime && ` • Since ${breakStartTime}`}
+            </AppText>
+          </View>
+        )}
         <View style={styles.mySpaceContainer}>
           <AppIconButton title={t('home.myWorkspace')} source={Icons.my_space} />
           <AppIconButton
@@ -232,7 +284,7 @@ export default function HomeScreen(): React.JSX.Element {
         </View>
       </View>
     ),
-    [lastAttendanceCoords, t],
+    [lastAttendanceCoords, t, isOnBreak, breakStatusLabel, breakStartTime],
   );
 
   const footerComponent = useMemo(
@@ -256,7 +308,7 @@ export default function HomeScreen(): React.JSX.Element {
   const headerBgColor = scrollY.interpolate({
     inputRange: [0, hp('20%')],
     outputRange: [
-      'transparent',
+      'rgba(0,0,0,0)',
       appTheme === APP_THEMES.dark ? '#000' : '#fff',
     ],
     extrapolate: 'clamp',
@@ -264,7 +316,7 @@ export default function HomeScreen(): React.JSX.Element {
 
   const headerTextColor = scrollY.interpolate({
     inputRange: [0, hp('20%')],
-    outputRange: [colors.black_common, colors.white],
+    outputRange: [appTheme === APP_THEMES.dark ? '#FFFFFF' : '#000000', '#FFFFFF'],
     extrapolate: 'clamp',
   });
 
@@ -272,7 +324,7 @@ export default function HomeScreen(): React.JSX.Element {
     <AppContainer>
       <StatusBar
         translucent
-        backgroundColor={colors.transparent}
+        backgroundColor="rgba(0,0,0,0)"
         barStyle={barStyle}
       />
 
@@ -310,6 +362,20 @@ export default function HomeScreen(): React.JSX.Element {
 
 const styles = StyleSheet.create({
   map: { height: hp('35%') },
+  breakBanner: {
+    backgroundColor: '#272727',
+    paddingVertical: hp(1.5),
+    paddingHorizontal: wp(5),
+    marginTop: hp(1),
+    marginHorizontal: wp(5),
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  breakText: {
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
   mySpaceContainer: {
     flexDirection: 'row',
     alignItems: 'center',

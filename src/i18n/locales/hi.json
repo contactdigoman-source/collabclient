@@ -170,7 +170,22 @@
     "confirmLocation": "स्थान की पुष्टि करें",
     "metersAccurate": "मीटर सटीक",
     "waitingForAccuracy": "सटीकता < {{accuracy}}m की प्रतीक्षा कर रहे हैं",
-    "noDataFound": "कोई उपस्थिति डेटा नहीं मिला!"
+    "noDataFound": "कोई उपस्थिति डेटा नहीं मिला!",
+    "earlyCheckout": {
+      "title": "जल्दी चेक आउट",
+      "message": "आपने {{hours}} घंटे काम किया है। न्यूनतम 9 घंटे काम की आवश्यकता है।",
+      "checkOut": "चेक आउट करें",
+      "takeLeave": "छुट्टी लें"
+    },
+    "breakStatus": {
+      "updateBreakStatus": "ब्रेक स्थिति अपडेट करें",
+      "skip": "छोड़ें",
+      "atLunch": "लंच पर",
+      "shortBreak": "छोटा ब्रेक",
+      "commuting": "यात्रा कर रहे हैं",
+      "personalTimeout": "व्यक्तिगत समय",
+      "outForDinner": "डिनर के लिए बाहर"
+    }
   },
   "profile": {
     "member": "सदस्य",

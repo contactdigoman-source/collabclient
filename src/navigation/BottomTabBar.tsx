@@ -42,9 +42,11 @@ export default function BottomTabBar(): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
   const { appTheme } = useAppSelector(state => state.appState);
-  const { userLastAttendance, userAadhaarFaceValidated } = useAppSelector(
-    state => state.userState,
-  );
+  const {
+    userLastAttendance,
+    userAadhaarFaceValidated,
+    lastAadhaarVerificationDate,
+  } = useAppSelector(state => state.userState);
 
   useEffect(() => {
     createTableForAttendance();
@@ -54,9 +56,27 @@ export default function BottomTabBar(): React.JSX.Element {
     // on cancel press of location enabler dialog for android
   };
 
-  const onPunchButtonLongPress = useCallback(async (): Promise<void> => {
-    // First checking: Verify Aadhaar is validated before allowing punch
+  // Check if Aadhaar verification is needed (only once per day)
+  const isAadhaarVerificationNeeded = useMemo((): boolean => {
     if (!userAadhaarFaceValidated) {
+      return true; // Not verified at all
+    }
+
+    // Check if verification was done today
+    if (!lastAadhaarVerificationDate) {
+      return true; // No date stored, need verification
+    }
+
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const lastVerificationDate = lastAadhaarVerificationDate;
+
+    // If last verification was not today, need to verify again
+    return lastVerificationDate !== today;
+  }, [userAadhaarFaceValidated, lastAadhaarVerificationDate]);
+
+  const onPunchButtonLongPress = useCallback(async (): Promise<void> => {
+    // First checking: Verify Aadhaar is validated (once per day) before allowing punch
+    if (isAadhaarVerificationNeeded) {
       navigation.navigate('AadhaarInputScreen');
       return;
     }
@@ -68,9 +88,9 @@ export default function BottomTabBar(): React.JSX.Element {
     }
     const isLocationOn = await isLocationEnabled();
     if (isLocationOn) {
-      navigation.navigate('ConfirmPunchScreen');
+      navigation.navigate('CheckInScreen');
     }
-  }, [navigation, userAadhaarFaceValidated]);
+  }, [navigation, isAadhaarVerificationNeeded]);
 
   const isUserCheckedIn = useMemo(() => {
     return userLastAttendance?.PunchDirection === PUNCH_DIRECTIONS.in;

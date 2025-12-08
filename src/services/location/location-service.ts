@@ -107,15 +107,32 @@ export const getLocationFromLatLon = async (
   longitude: number,
 ): Promise<string | null> => {
   try {
+    const apiKey = Configs.googleMapsApiKey;
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`;
+    
+    console.log('Calling Google Geocoding API:', url.replace(apiKey, 'API_KEY_HIDDEN'));
+    
     const { data } = await axios.get<{
       results?: Array<{ formatted_address?: string }>;
-    }>(
-      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${Configs.googleMapsApiKey}`,
-    );
+      status?: string;
+      error_message?: string;
+    }>(url);
 
-    return data?.results?.[0]?.formatted_address || null;
-  } catch (error) {
-    console.log('Error fetching address:', error);
+    console.log('Google Geocoding API response status:', data?.status);
+    
+    if (data?.status === 'OK' && data?.results && data.results.length > 0) {
+      const address = data.results[0]?.formatted_address || null;
+      console.log('Google API returned address:', address);
+      return address;
+    } else {
+      console.log('Google API error:', data?.status, data?.error_message);
+      return null;
+    }
+  } catch (error: any) {
+    console.log('Error fetching address from Google API:', error?.message || error);
+    if (error?.response) {
+      console.log('API Error Response:', error.response.status, error.response.data);
+    }
     return null;
   }
 };

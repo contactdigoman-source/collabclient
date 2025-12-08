@@ -2588,6 +2588,11 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
+  - RNNotifee (9.1.8):
+    - React-Core
+    - RNNotifee/NotifeeCore (= 9.1.8)
+  - RNNotifee/NotifeeCore (9.1.8):
+    - React-Core
   - RNReanimated (4.1.5):
     - boost
     - DoubleConversion
@@ -2985,6 +2990,7 @@ DEPENDENCIES:
   - RNImageCropPicker (from `../node_modules/react-native-image-crop-picker`)
   - RNKeychain (from `../node_modules/react-native-keychain`)
   - RNLocalize (from `../node_modules/react-native-localize`)
+  - "RNNotifee (from `../node_modules/@notifee/react-native`)"
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNSVG (from `../node_modules/react-native-svg`)
@@ -3170,6 +3176,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-keychain"
   RNLocalize:
     :path: "../node_modules/react-native-localize"
+  RNNotifee:
+    :path: "../node_modules/@notifee/react-native"
   RNReanimated:
     :path: "../node_modules/react-native-reanimated"
   RNScreens:
@@ -3267,6 +3275,7 @@ SPEC CHECKSUMS:
   RNImageCropPicker: e487902fc6f37a95fdd05096d799470fe2e524ac
   RNKeychain: 9c0d0b73682506249067e6b0a13ef65635c241fa
   RNLocalize: 777c6683a9f83cf53186f43c2258ba0e8bbae6de
+  RNNotifee: 5e3b271e8ea7456a36eec994085543c9adca9168
   RNReanimated: d9b3c88b7a722ce8129ca8c96abd06d822ed315e
   RNScreens: f35bcc83b6e3a871635b1c28728e63c9560f159a
   RNSVG: 1adedbdb9108898c4d6a9606aac746789ba7330b

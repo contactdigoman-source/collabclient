@@ -28,7 +28,11 @@ import { FontTypes, hp, wp, Images } from '../../constants';
 import { useAppDispatch } from '../../redux';
 import { setUserAadhaarFaceValidated } from '../../redux';
 import { storeAadhaarNumber } from '../../services/aadhaar';
-import { hasCompletedFirstTimeLogin } from '../../services';
+import {
+  hasCompletedFirstTimeLogin,
+  requestLocationPermission,
+  isLocationEnabled,
+} from '../../services';
 import { NavigationProp, RootStackParamList } from '../../types/navigation';
 import { useTranslation } from '../../hooks/useTranslation';
 
@@ -125,11 +129,28 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
     // TODO: API call for OTP verification
     if (otpValue.trim().length === 6) {
       if (isAadhaarFallback) {
-        // Handle Aadhaar fallback: Mark as validated and go to Home
+        // Handle Aadhaar fallback: Mark as validated and navigate to location capture
         // TODO: Verify OTP with backend before marking as validated
         dispatch(setUserAadhaarFaceValidated(true));
         await storeAadhaarNumber();
-        navigation.replace('DashboardScreen');
+        
+        // After Aadhaar authentication via OTP, navigate to location capture screen
+        const onCancelPress = (): void => {
+          navigation.replace('DashboardScreen');
+        };
+        
+        const granted = await requestLocationPermission(onCancelPress);
+        
+        if (granted) {
+          const isLocationOn = await isLocationEnabled();
+          if (isLocationOn) {
+            navigation.replace('CheckInScreen');
+          } else {
+            navigation.replace('DashboardScreen');
+          }
+        } else {
+          navigation.replace('DashboardScreen');
+        }
       } else if (isPasswordReset) {
         // Password reset flow: go to change password screen
         navigation.replace('ChangeForgottenPassword', { emailID });

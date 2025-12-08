@@ -6,6 +6,7 @@ export type RootStackParamList = {
   PermissionsScreen: undefined;
   DashboardScreen: undefined;
   ForgotPasswordScreen: { emailID?: string };
+  CheckInScreen: undefined;
   ConfirmPunchScreen: undefined;
   ProfileDrawerScreen: undefined;
   AttendanceLogsScreen: undefined;
@@ -18,6 +19,7 @@ export type RootStackParamList = {
   };
   ChangeForgottenPassword: { emailID?: string };
   AadhaarInputScreen: undefined;
+  PanCardCaptureScreen: undefined;
   PrivacyPolicyScreen: undefined;
   TermsAndConditionsScreen: undefined;
   ProfilePhotoScreen: undefined;

@@ -50,6 +50,14 @@ i18n
     react: {
       useSuspense: false,
     },
+    returnEmptyString: false,
+    returnNull: false,
+    returnObjects: false,
+    // Return the key if translation is missing (for debugging)
+    // But we'll handle fallbacks in components
+    missingKeyHandler: (lng, ns, key) => {
+      console.warn(`Translation missing for key: ${key} in language: ${lng}`);
+    },
   });
 
 // Save language preference when changed

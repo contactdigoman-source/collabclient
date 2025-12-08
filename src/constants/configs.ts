@@ -15,6 +15,6 @@ export const Configs = {
   //   supportBaseUrl: Config.SUPPORT_BASE_URL,
   //   fileViewerBaseUrl: Config.FILE_VIEWER_BASE_URL,
   //   imageBaseUrl: Config.IMAGE_BASE_URL,
-  googleMapsApiKey: 'AIzaSyDNd3TT1CZZc5AkcRgSoJRleo-m_PLcQE0',
+  googleMapsApiKey: Config.GOOGLE_MAPS_API_KEY || 'AIzaSyDNd3TT1CZZc5AkcRgSoJRleo-m_PLcQE0',
 } as const;
 

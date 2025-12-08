@@ -167,6 +167,21 @@
     "fetchingLocation": "Fetching your location...",
     "locationPermissionDenied": "Location permission denied. Enable it in settings.",
     "locationPermissionRequired": "Location Permission Required",
+    "earlyCheckout": {
+      "title": "Early Checkout",
+      "message": "You have worked for {{hours}} hours. Minimum working hours required is 9 hours.",
+      "checkOut": "Check Out",
+      "takeLeave": "Take Leave"
+    },
+    "breakStatus": {
+      "updateBreakStatus": "Update break status",
+      "skip": "Skip",
+      "atLunch": "At Lunch",
+      "shortBreak": "Short Break",
+      "commuting": "Commuting",
+      "personalTimeout": "Personal Timeout",
+      "outForDinner": "Out for Dinner"
+    },
     "confirmLocation": "Confirm Location",
     "metersAccurate": "meters accurate",
     "waitingForAccuracy": "Waiting for accuracy < {{accuracy}}m"

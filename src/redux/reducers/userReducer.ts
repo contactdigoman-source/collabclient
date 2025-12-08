@@ -13,6 +13,8 @@ const initialState: UserState = {
   userLastAttendance: null,
   userAttendanceHistory: [],
   userAadhaarFaceValidated: false,
+  lastAadhaarVerificationDate: null,
+  isPanCardVerified: false,
 };
 
 const userSlice = createSlice({
@@ -40,6 +42,24 @@ const userSlice = createSlice({
     setUserAadhaarFaceValidated(state, action: PayloadAction<boolean>) {
       console.log('setUserAadhaarFaceValidated', action.payload);
       state.userAadhaarFaceValidated = action.payload;
+      if (action.payload) {
+        // Store today's date when Aadhaar is verified
+        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        state.lastAadhaarVerificationDate = today;
+        state.isPanCardVerified = false;
+      }
+    },
+    setLastAadhaarVerificationDate(state, action: PayloadAction<string | null>) {
+      state.lastAadhaarVerificationDate = action.payload;
+    },
+    setIsPanCardVerified(state, action: PayloadAction<boolean>) {
+      state.isPanCardVerified = action.payload;
+      if (action.payload) {
+        // Store today's date when PAN card is verified
+        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        state.lastAadhaarVerificationDate = today;
+        state.userAadhaarFaceValidated = true; // Allow check-in
+      }
     },
   },
 });
@@ -50,5 +70,7 @@ export const {
   setUserLastAttendance,
   setUserAttendanceHistory,
   setUserAadhaarFaceValidated,
+  setLastAadhaarVerificationDate,
+  setIsPanCardVerified,
 } = userSlice.actions;
 export default userSlice.reducer;

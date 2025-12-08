@@ -5,4 +5,5 @@ export * from './location';
 export * from './aadhaar';
 export * from './security-service';
 export * from './login-attempt-service';
+export * from './notifications';
 
