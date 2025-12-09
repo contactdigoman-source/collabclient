@@ -9,7 +9,11 @@
     "start": "react-native start",
     "start:reset": "react-native start --reset-cache",
     "test": "jest",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "build:android:apk": "bash scripts/build-android-apk.sh",
+    "build:android:bundle": "bash scripts/build-android-bundle.sh",
+    "build:android:install": "bash scripts/install-android-apk.sh",
+    "build:ios:ipa": "bash scripts/build-ios-ipa.sh"
   },
   "dependencies": {
     "@notifee/react-native": "^9.1.8",
@@ -26,6 +30,7 @@
     "react": "^19.1.0",
     "react-i18next": "^14.0.1",
     "react-native": "^0.80.1",
+    "react-native-biometrics": "^3.0.1",
     "react-native-bootsplash": "^6.3.11",
     "react-native-config": "^1.6.0",
     "react-native-crypto-js": "^1.0.0",

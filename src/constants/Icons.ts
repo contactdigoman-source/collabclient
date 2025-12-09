@@ -22,5 +22,8 @@ export const Icons = {
   support_learn: require('../assets/icons/support_learn.png'),
   logout: require('../assets/icons/logout.png'),
   name: require('../assets/icons/name.png'),
+  // TODO: Add actual icon files for these
+  geo_locations: require('../assets/icons/geolocations.png'), // Placeholder - replace with actual geo_locations icon
+  security: require('../assets/icons/security.png'), // Placeholder - replace with actual security icon
 };
 

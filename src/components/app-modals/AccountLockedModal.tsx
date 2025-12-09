@@ -45,12 +45,12 @@ export default function AccountLockedModal({
 
           {/* Message */}
           <AppText size={hp(1.9)} style={styles.message}>
-            {t('auth.accountLocked.message')}
+            {t('auth.accountLocked.message', 'Your account has been temporarily locked due to multiple failed login attempts. Please contact your administrator to regain access.')}
           </AppText>
 
           {/* Okay Button */}
           <AppButton
-            title={t('auth.accountLocked.okay')}
+            title={t('auth.accountLocked.okay', 'Okay')}
             style={styles.okayButton}
             onPress={onClose}
             titleColor="#FFFFFF"

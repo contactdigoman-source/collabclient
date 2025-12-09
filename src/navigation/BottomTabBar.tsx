@@ -1,11 +1,11 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 import { useNavigation, useTheme } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CurvedBottomBar } from 'react-native-curved-bottom-bar';
 
 import { hp, Icons, Images } from '../constants';
-import { AppImage, AppText, RippleButton } from '../components';
+import { AppImage, AppText, RippleButton, FaceRDVerificationModal } from '../components';
 import { DaysBottomTabScreen, HomeScreen } from '../screens';
 import { useAppSelector } from '../redux';
 import { createTableForAttendance } from '../services';
@@ -14,6 +14,7 @@ import { APP_THEMES } from '../themes';
 import {
   isLocationEnabled,
   requestLocationPermission,
+  verifyBiometricForPunch,
 } from '../services';
 import { NavigationProp } from '../types/navigation';
 import { ImageSourcePropType } from 'react-native';
@@ -46,7 +47,12 @@ export default function BottomTabBar(): React.JSX.Element {
     userLastAttendance,
     userAadhaarFaceValidated,
     lastAadhaarVerificationDate,
+    userData,
   } = useAppSelector(state => state.userState);
+
+  const [showFaceRDModal, setShowFaceRDModal] = useState<boolean>(false);
+  const [isFaceRDVerifying, setIsFaceRDVerifying] = useState<boolean>(false);
+  const [faceRDError, setFaceRDError] = useState<string | null>(null);
 
   useEffect(() => {
     createTableForAttendance();
@@ -74,8 +80,12 @@ export default function BottomTabBar(): React.JSX.Element {
     return lastVerificationDate !== today;
   }, [userAadhaarFaceValidated, lastAadhaarVerificationDate]);
 
-  const onPunchButtonLongPress = useCallback(async (): Promise<void> => {
-    // First checking: Verify Aadhaar is validated (once per day) before allowing punch
+  const handleBiometricSuccess = useCallback(async (): Promise<void> => {
+    setShowFaceRDModal(false);
+    setIsFaceRDVerifying(false);
+    setFaceRDError(null);
+
+    // After device biometric success, check if Aadhaar validation is needed (once per day)
     if (isAadhaarVerificationNeeded) {
       navigation.navigate('AadhaarInputScreen');
       return;
@@ -91,6 +101,47 @@ export default function BottomTabBar(): React.JSX.Element {
       navigation.navigate('CheckInScreen');
     }
   }, [navigation, isAadhaarVerificationNeeded]);
+
+  const handleBiometricOTPFallback = useCallback((): void => {
+    setShowFaceRDModal(false);
+    setIsFaceRDVerifying(false);
+    setFaceRDError(null);
+
+    // Navigate to OTP screen for punch flow
+    // After OTP success, it will check Aadhaar validation and then proceed to CheckInScreen
+    navigation.navigate('OtpScreen', {
+      emailID: userData?.email || '',
+      isPunchFlow: true,
+    });
+  }, [navigation, userData]);
+
+  const handleBiometricCancel = useCallback((): void => {
+    setShowFaceRDModal(false);
+    setIsFaceRDVerifying(false);
+    setFaceRDError(null);
+  }, []);
+
+  const onPunchButtonLongPress = useCallback(async (): Promise<void> => {
+    // First: Device Face ID/Biometric/OTP verification for punch (every time)
+    // Show biometric verification modal
+    setShowFaceRDModal(true);
+    setIsFaceRDVerifying(true);
+    setFaceRDError(null);
+
+    try {
+      console.log('onPunchButtonLongPress: Starting biometric verification');
+      // Verify device biometric (Face ID/Touch ID/Fingerprint) for punch
+      await verifyBiometricForPunch();
+      console.log('onPunchButtonLongPress: Biometric verification successful');
+      // Success will be handled by the modal's auto-dismiss
+      setIsFaceRDVerifying(false);
+    } catch (error: any) {
+      console.log('onPunchButtonLongPress: Biometric verification failed:', error);
+      setIsFaceRDVerifying(false);
+      // Show generic error (no detailed error message)
+      setFaceRDError('Biometric verification failed');
+    }
+  }, []);
 
   const isUserCheckedIn = useMemo(() => {
     return userLastAttendance?.PunchDirection === PUNCH_DIRECTIONS.in;
@@ -201,6 +252,15 @@ export default function BottomTabBar(): React.JSX.Element {
           position="RIGHT"
         />
       </CurvedBottomBar.Navigator>
+
+      <FaceRDVerificationModal
+        visible={showFaceRDModal}
+        isVerifying={isFaceRDVerifying}
+        error={faceRDError}
+        onSuccess={handleBiometricSuccess}
+        onOTPFallback={handleBiometricOTPFallback}
+        onCancel={handleBiometricCancel}
+      />
     </View>
   );
 }

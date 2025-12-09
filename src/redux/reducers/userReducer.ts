@@ -15,6 +15,7 @@ const initialState: UserState = {
   userAadhaarFaceValidated: false,
   lastAadhaarVerificationDate: null,
   isPanCardVerified: false,
+  storedAadhaarNumber: null,
 };
 
 const userSlice = createSlice({
@@ -61,6 +62,9 @@ const userSlice = createSlice({
         state.userAadhaarFaceValidated = true; // Allow check-in
       }
     },
+    setStoredAadhaarNumber(state, action: PayloadAction<string | null>) {
+      state.storedAadhaarNumber = action.payload;
+    },
   },
 });
 
@@ -72,5 +76,6 @@ export const {
   setUserAadhaarFaceValidated,
   setLastAadhaarVerificationDate,
   setIsPanCardVerified,
+  setStoredAadhaarNumber,
 } = userSlice.actions;
 export default userSlice.reducer;

@@ -18,6 +18,8 @@ import AnimatedSwitch from './app-switches/AnimatedSwitch';
 import AccountLockedModal from './app-modals/AccountLockedModal';
 import EarlyCheckoutModal from './app-modals/EarlyCheckoutModal';
 import AttendanceDetailModal from './app-modals/AttendanceDetailModal';
+import PasswordExpiryModal from './app-modals/PasswordExpiryModal';
+import FaceRDVerificationModal from './app-modals/FaceRDVerificationModal';
 
 export {
   AppInput,
@@ -40,5 +42,7 @@ export {
   AccountLockedModal,
   EarlyCheckoutModal,
   AttendanceDetailModal,
+  PasswordExpiryModal,
+  FaceRDVerificationModal,
 };
 

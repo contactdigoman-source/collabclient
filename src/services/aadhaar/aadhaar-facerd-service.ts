@@ -1,6 +1,7 @@
-import { NativeModules } from 'react-native';
+import { NativeModules, DeviceEventEmitter } from 'react-native';
 import * as Keychain from 'react-native-keychain';
 import CryptoJS from 'react-native-crypto-js';
+import Config from 'react-native-config';
 
 import { store, setIsAuthenticatingFace } from '../../redux';
 
@@ -56,12 +57,53 @@ const { FaceAuth } = NativeModules as {
 };
 
 export function startFaceAuth(aadhaarNo: string): void {
-  if (aadhaarNo && FaceAuth) {
+  // TODO: Replace this hardcoded license key with your actual license key from UIDAI or provider
+  // For production, use: const licenseKey = Config.AADHAAR_LICENSE_KEY || '';
+  // This is a placeholder/test key - REPLACE WITH YOUR ACTUAL LICENSE KEY
+  const licenseKey = Config.AADHAAR_LICENSE_KEY || 'MDczRjUyNDJDQUFGRjBBOUMzMUZGQUVEOTA4QkYzOEU2RENBNEQ4OTIwMzRGQzY1NDA0QzIyMjk3RkJENkNDMghtG==';
+  
+  // Validate Aadhaar number
+  if (!aadhaarNo || aadhaarNo.length !== 12) {
+    console.error('Invalid Aadhaar number provided to startFaceAuth');
+    DeviceEventEmitter.emit('FaceAuthFailure', {
+      message: 'Invalid Aadhaar number',
+      code: 'INVALID_AADHAAR',
+    });
+    return;
+  }
+  
+  // Check if license key is configured
+  if (!licenseKey) {
+    console.error('Aadhaar license key not configured');
+    DeviceEventEmitter.emit('FaceAuthFailure', {
+      message: 'License key not configured',
+      code: 'LICENSE_MISSING',
+    });
+    return;
+  }
+  
+  // Check if Face RD module is available
+  if (!FaceAuth) {
+    console.error('Face RD module not available');
+    DeviceEventEmitter.emit('FaceAuthFailure', {
+      message: 'Face RD service not available',
+      code: 'SERVICE_NOT_AVAILABLE',
+    });
+    return;
+  }
+  
+  try {
     store.dispatch(setIsAuthenticatingFace(true));
-    FaceAuth.startFaceAuth(
-      aadhaarNo,
-      'MDczRjUyNDJDQUFGRjBBOUMzMUZGQUVEOTA4QkYzOEU2RENBNEQ4OTIwMzRGQzY1NDA0QzIyMjk3RkJENkNDMghtG==',
-    );
+    console.log('Starting Face RD authentication with license key');
+    // Use hardcoded license key (replace with your actual key)
+    FaceAuth.startFaceAuth(aadhaarNo, licenseKey);
+  } catch (error: any) {
+    console.error('Error starting Face RD:', error);
+    store.dispatch(setIsAuthenticatingFace(false));
+    DeviceEventEmitter.emit('FaceAuthFailure', {
+      message: error?.message || 'Failed to start Face RD',
+      code: 'START_FAILED',
+    });
   }
 }
 

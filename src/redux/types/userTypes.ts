@@ -45,5 +45,6 @@ export interface UserState {
   userAadhaarFaceValidated: boolean;
   lastAadhaarVerificationDate: string | null; // Format: YYYY-MM-DD
   isPanCardVerified: boolean; // If user verified using PAN card instead of Aadhaar
+  storedAadhaarNumber: string | null; // Stored Aadhaar number for Face RD verification
 }
 

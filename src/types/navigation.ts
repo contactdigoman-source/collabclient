@@ -16,6 +16,7 @@ export type RootStackParamList = {
     isAadhaarFallback?: boolean;
     aadhaarNumber?: string;
     isPasswordReset?: boolean;
+    isPunchFlow?: boolean;
   };
   ChangeForgottenPassword: { emailID?: string };
   AadhaarInputScreen: undefined;

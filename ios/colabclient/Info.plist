@@ -60,6 +60,10 @@
 	<!-- User Tracking Permission (for device ID) -->
 	<key>NSUserTrackingUsageDescription</key>
 	<string>By giving device id permission nobody can use my credentials to login from other devices</string>
+	
+	<!-- Face ID Permission -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>Face ID is required to authenticate and proceed with check-in/check-out</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UIAppFonts</key>

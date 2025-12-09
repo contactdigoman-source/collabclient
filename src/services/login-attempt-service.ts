@@ -4,6 +4,7 @@ const storage = new MMKV({ id: 'login-attempts' });
 
 const LOGIN_ATTEMPTS_KEY = 'login_attempts_count';
 const ACCOUNT_LOCKED_KEY = 'account_locked';
+const SUCCESSFUL_LOGIN_COUNT_KEY = 'successful_login_count';
 
 /**
  * Get current login attempts count
@@ -35,6 +36,31 @@ export const incrementLoginAttempts = (): number => {
 export const resetLoginAttempts = (): void => {
   storage.delete(LOGIN_ATTEMPTS_KEY);
   setAccountLocked(false);
+};
+
+/**
+ * Increment successful login count
+ * Returns the new count
+ */
+export const incrementSuccessfulLoginCount = (): number => {
+  const currentCount = storage.getNumber(SUCCESSFUL_LOGIN_COUNT_KEY) || 0;
+  const newCount = currentCount + 1;
+  storage.set(SUCCESSFUL_LOGIN_COUNT_KEY, newCount);
+  return newCount;
+};
+
+/**
+ * Get successful login count
+ */
+export const getSuccessfulLoginCount = (): number => {
+  return storage.getNumber(SUCCESSFUL_LOGIN_COUNT_KEY) || 0;
+};
+
+/**
+ * Reset successful login count
+ */
+export const resetSuccessfulLoginCount = (): void => {
+  storage.delete(SUCCESSFUL_LOGIN_COUNT_KEY);
 };
 
 /**

@@ -27,7 +27,7 @@ import {
 import { FontTypes, hp, wp, Images } from '../../constants';
 import { useAppDispatch } from '../../redux';
 import { setUserAadhaarFaceValidated } from '../../redux';
-import { storeAadhaarNumber } from '../../services/aadhaar';
+import { storeAadhaarNumber, requestAadhaarOTP, verifyAadhaarOTP } from '../../services/aadhaar';
 import {
   hasCompletedFirstTimeLogin,
   requestLocationPermission,
@@ -62,6 +62,8 @@ interface OtpScreenProps {
       emailID?: string;
       isAadhaarFallback?: boolean;
       aadhaarNumber?: string;
+      isPasswordReset?: boolean;
+      isPunchFlow?: boolean;
     };
   };
 }
@@ -71,6 +73,7 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
   const isAadhaarFallback = route?.params?.isAadhaarFallback || false;
   const aadhaarNumber = route?.params?.aadhaarNumber || '';
   const isPasswordReset = route?.params?.isPasswordReset || false;
+  const isPunchFlow = route?.params?.isPunchFlow || false;
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const dispatch = useAppDispatch();
@@ -119,22 +122,72 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
     };
   }, [startTimer]);
 
-  const handleResend = useCallback((): void => {
+  // Request OTP when screen loads (for Aadhaar fallback)
+  useEffect(() => {
+    if (isAadhaarFallback && aadhaarNumber && emailID) {
+      // Request OTP when screen loads
+      requestAadhaarOTP({
+        aadhaarNumber: aadhaarNumber,
+        emailID: emailID,
+      }).catch(error => {
+        console.error('Failed to request OTP:', error);
+        setOtpError(error.message || t('auth.otp.requestFailed', 'Failed to request OTP. Please try again.'));
+      });
+    }
+  }, [isAadhaarFallback, aadhaarNumber, emailID, t]);
+
+  const handleResend = useCallback(async (): Promise<void> => {
     if (!resendActive) return;
-    // TODO: Call resend API
-    startTimer();
-  }, [resendActive, startTimer]);
+    
+    try {
+      if (isAadhaarFallback && aadhaarNumber) {
+        // Resend Aadhaar OTP
+        await requestAadhaarOTP({
+          aadhaarNumber: aadhaarNumber,
+          emailID: emailID,
+        });
+      } else {
+        // TODO: Resend regular OTP (for login/password reset)
+        // await resendOTP({ emailID });
+      }
+      startTimer();
+      setOtpError('');
+    } catch (error: any) {
+      console.error('Failed to resend OTP:', error);
+      setOtpError(error.message || t('auth.otp.resendFailed', 'Failed to resend OTP. Please try again.'));
+    }
+  }, [resendActive, isAadhaarFallback, aadhaarNumber, emailID, startTimer, t]);
 
   const onConfirmButtonPress = useCallback(async (): Promise<void> => {
     // TODO: API call for OTP verification
     if (otpValue.trim().length === 6) {
-      if (isAadhaarFallback) {
-        // Handle Aadhaar fallback: Mark as validated and navigate to location capture
-        // TODO: Verify OTP with backend before marking as validated
-        dispatch(setUserAadhaarFaceValidated(true));
-        await storeAadhaarNumber();
+      if (isPunchFlow) {
+        // Handle punch flow OTP: After OTP success, check Aadhaar validation, then proceed to CheckInScreen
+        // TODO: Verify OTP with backend before proceeding
         
-        // After Aadhaar authentication via OTP, navigate to location capture screen
+        // Check if Aadhaar validation is needed (once per day)
+        const { store } = require('../../redux');
+        const { userAadhaarFaceValidated, lastAadhaarVerificationDate } = store.getState().userState;
+        
+        let isAadhaarVerificationNeeded = false;
+        if (!userAadhaarFaceValidated) {
+          isAadhaarVerificationNeeded = true;
+        } else if (lastAadhaarVerificationDate) {
+          const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+          if (lastAadhaarVerificationDate !== today) {
+            isAadhaarVerificationNeeded = true;
+          }
+        } else {
+          isAadhaarVerificationNeeded = true;
+        }
+        
+        if (isAadhaarVerificationNeeded) {
+          // Navigate to Aadhaar input screen
+          navigation.replace('AadhaarInputScreen');
+          return;
+        }
+        
+        // If Aadhaar is validated, proceed with location permission check and CheckInScreen
         const onCancelPress = (): void => {
           navigation.replace('DashboardScreen');
         };
@@ -151,6 +204,59 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
         } else {
           navigation.replace('DashboardScreen');
         }
+      } else if (isAadhaarFallback) {
+        // Handle Aadhaar fallback: Verify OTP and mark as validated
+        try {
+          setIsVerifying(true);
+          setOtpError('');
+          
+          // Verify OTP with backend
+          const isValid = await verifyAadhaarOTP({
+            aadhaarNumber: aadhaarNumber || '',
+            otp: otpValue,
+            emailID: emailID,
+          });
+          
+          if (isValid) {
+            // OTP verified successfully
+            // Store Aadhaar number if provided
+            if (aadhaarNumber) {
+              const { store } = require('../../redux');
+              const { setStoredAadhaarNumber } = require('../../redux');
+              store.dispatch(setStoredAadhaarNumber(aadhaarNumber));
+            }
+            
+            // Mark Aadhaar as validated
+            dispatch(setUserAadhaarFaceValidated(true));
+            await storeAadhaarNumber();
+            
+            // After Aadhaar authentication via OTP, navigate to location capture screen
+            const onCancelPress = (): void => {
+              navigation.replace('DashboardScreen');
+            };
+            
+            const granted = await requestLocationPermission(onCancelPress);
+            
+            if (granted) {
+              const isLocationOn = await isLocationEnabled();
+              if (isLocationOn) {
+                navigation.replace('CheckInScreen');
+              } else {
+                navigation.replace('DashboardScreen');
+              }
+            } else {
+              navigation.replace('DashboardScreen');
+            }
+          } else {
+            // Invalid OTP
+            setOtpError(t('auth.otp.invalidOtp', 'Invalid OTP. Please try again.'));
+          }
+        } catch (error: any) {
+          console.error('OTP verification failed:', error);
+          setOtpError(error.message || t('auth.otp.verificationFailed', 'OTP verification failed. Please try again.'));
+        } finally {
+          setIsVerifying(false);
+        }
       } else if (isPasswordReset) {
         // Password reset flow: go to change password screen
         navigation.replace('ChangeForgottenPassword', { emailID });
@@ -164,7 +270,7 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
         }
       }
     }
-  }, [otpValue, isAadhaarFallback, isPasswordReset, emailID, dispatch, navigation]);
+  }, [otpValue, isPunchFlow, isAadhaarFallback, isPasswordReset, emailID, dispatch, navigation]);
 
   // memoized otp styles and theme to avoid re-render
   const otpTheme = useMemo(
@@ -223,23 +329,38 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
             </View>
 
             <OtpInput
-              disabled={false}
+              disabled={isVerifying}
               type="numeric"
               blurOnFilled
               secureTextEntry={false}
               focusStickBlinkingDuration={500}
               numberOfDigits={6}
-              onTextChange={setOtpValue}
+              onTextChange={(text) => {
+                setOtpValue(text);
+                setOtpError(''); // Clear error when user types
+              }}
               onFilled={setOtpValue}
               textInputProps={{ value: otpValue }}
               textProps={otpTextProps}
               theme={otpTheme}
             />
 
+            {otpError ? (
+              <AppText
+                size={hp(1.6)}
+                color={colors.error || '#FF4444'}
+                style={styles.errorText}
+              >
+                {otpError}
+              </AppText>
+            ) : null}
+
             <AppButton
               title={t('auth.otp.confirm')}
               style={styles.confirmButton}
               onPress={onConfirmButtonPress}
+              disabled={otpValue.trim().length !== 6 || isVerifying}
+              loading={isVerifying}
             />
 
             <View style={styles.resendContainer}>
@@ -311,6 +432,10 @@ const styles = StyleSheet.create({
   },
   confirmButton: {
     marginVertical: hp(3),
+  },
+  errorText: {
+    marginTop: hp(1),
+    textAlign: 'center',
   },
 });
 

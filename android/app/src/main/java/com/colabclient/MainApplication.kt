@@ -20,6 +20,7 @@ class MainApplication : Application(), ReactApplication {
               // add(MyReactNativePackage())
               add(SecurityUtilsPackage())
               add(LocationEnablerPackage())
+              add(FaceAuthPackage())
             }
 
         override fun getJSMainModuleName(): String = "index"

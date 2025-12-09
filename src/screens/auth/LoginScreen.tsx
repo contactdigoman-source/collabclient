@@ -19,6 +19,7 @@ import {
   AppText,
   AccountLockedModal,
 } from '../../components';
+import PasswordExpiryModal from '../../components/app-modals/PasswordExpiryModal';
 import { hp, Icons, Images, MAIL_FORMAT } from '../../constants';
 import { useAppDispatch, setUserData } from '../../redux';
 import { NavigationProp } from '../../types/navigation';
@@ -27,6 +28,7 @@ import {
   isAccountLocked,
   incrementLoginAttempts,
   resetLoginAttempts,
+  incrementSuccessfulLoginCount,
 } from '../../services';
 
 interface EmailName {
@@ -48,6 +50,8 @@ export default function LoginScreen(): React.JSX.Element {
   const [password, setPassword] = useState<string>('');
   const [passError, setPassError] = useState<string | null>(null);
   const [isAccountLockedModalVisible, setIsAccountLockedModalVisible] =
+    useState<boolean>(false);
+  const [isPasswordExpiryModalVisible, setIsPasswordExpiryModalVisible] =
     useState<boolean>(false);
 
   // Check if account is locked on mount
@@ -129,6 +133,19 @@ export default function LoginScreen(): React.JSX.Element {
   const handleCloseLockedModal = useCallback((): void => {
     setIsAccountLockedModalVisible(false);
   }, []);
+
+  const handlePasswordExpiryReset = useCallback((): void => {
+    setIsPasswordExpiryModalVisible(false);
+    // Navigate to change password screen
+    navigation.navigate('ChangeForgottenPassword', { emailID: email });
+  }, [navigation, email]);
+
+  const handlePasswordExpiryDismiss = useCallback((): void => {
+    setIsPasswordExpiryModalVisible(false);
+    // Continue with normal login flow
+    dispatch(setUserData(getNameFromEmail(email)));
+    navigation.replace('OtpScreen', { emailID: email });
+  }, [dispatch, navigation, email]);
 
   const onForgotPasswordPress = useCallback((): void => {
     navigation.navigate('ForgotPasswordScreen', { emailID: email });
@@ -214,6 +231,13 @@ export default function LoginScreen(): React.JSX.Element {
       <AccountLockedModal
         visible={isAccountLockedModalVisible}
         onClose={handleCloseLockedModal}
+      />
+
+      {/* Password Expiry Modal */}
+      <PasswordExpiryModal
+        visible={isPasswordExpiryModalVisible}
+        onReset={handlePasswordExpiryReset}
+        onDismiss={handlePasswordExpiryDismiss}
       />
     </AppContainer>
   );
