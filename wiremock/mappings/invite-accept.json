@@ -1,0 +1,35 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/api/invite/accept",
+    "headers": {
+      "Content-Type": {
+        "equalTo": "application/json"
+      }
+    },
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": "$.token"
+      },
+      {
+        "matchesJsonPath": "$.password"
+      },
+      {
+        "matchesJsonPath": "$.firstName"
+      },
+      {
+        "matchesJsonPath": "$.lastName"
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "message": "Invitation accepted successfully"
+    }
+  }
+}
+

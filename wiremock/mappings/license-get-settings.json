@@ -1,0 +1,23 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "/api/license/settings",
+    "headers": {
+      "Authorization": {
+        "matches": "Bearer .+"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "inviteOnlyMode": "false",
+      "maxUsersPerLicense": "100",
+      "maxRegionsPerLicense": "10"
+    }
+  }
+}
+

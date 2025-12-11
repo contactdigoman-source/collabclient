@@ -10,6 +10,7 @@ import {
   BackHeader,
   ProfileDrawerItem,
   UserImage,
+  LanguagePickerModal,
 } from '../../components';
 import { hp, wp, Icons } from '../../constants';
 import { useAppDispatch, useAppSelector, setUserData } from '../../redux';
@@ -23,12 +24,23 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
   const { colors } = useTheme();
   const dispatch = useAppDispatch();
   const navigation = useNavigation<NavigationProp>();
-  const { t } = useTranslation();
+  const { t, currentLanguage } = useTranslation();
 
   const { appTheme } = useAppSelector(state => state.appState);
   const { userData } = useAppSelector(state => state.userState);
 
   const [isDisplayCheckoutStatus, setIsDisplayCheckoutStatus] = useState<boolean>(false);
+  const [isLanguageModalVisible, setIsLanguageModalVisible] = useState<boolean>(false);
+  
+  const getLanguageDisplayName = (code: string): string => {
+    const languages: Record<string, string> = {
+      en: t('profile.language.english', 'English'),
+      es: t('profile.language.spanish', 'Spanish'),
+      hi: t('profile.language.hindi', 'Hindi'),
+      bn: t('profile.language.bengali', 'Bengali'),
+    };
+    return languages[code] || code;
+  };
 
   const handleEditPhoto = useCallback(() => {
     Alert.alert(
@@ -125,6 +137,10 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
     });
   }, [navigation]);
 
+  const onLanguagePress = useCallback((): void => {
+    setIsLanguageModalVisible(true);
+  }, []);
+
   return (
     <AppContainer>
       <BackHeader />
@@ -189,6 +205,23 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
           }
         />
 
+        {/* Preferred Language */}
+        <ProfileDrawerItem
+          title={t('profile.preferredLanguage', 'Preferred Language')}
+          icon={Icons.name}
+          iconColor={DarkThemeColors.white_common}
+          rightContent={
+            <AppText
+              size={hp(1.8)}
+              style={{ marginEnd: hp(2), opacity: 0.7 }}
+              color={DarkThemeColors.white_common}
+            >
+              {getLanguageDisplayName(currentLanguage)}
+            </AppText>
+          }
+          onPress={onLanguagePress}
+        />
+
         {/* Attendance Logs */}
         <ProfileDrawerItem
           title={t('profile.attendanceLogs')}
@@ -244,6 +277,12 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
           </AppText>
         </View>
       </ScrollView>
+
+      {/* Language Picker Modal */}
+      <LanguagePickerModal
+        visible={isLanguageModalVisible}
+        onClose={() => setIsLanguageModalVisible(false)}
+      />
     </AppContainer>
   );
 }

@@ -1,0 +1,45 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPathPattern": "/api/license/[0-9]+/invitation-codes",
+    "headers": {
+      "Content-Type": {
+        "equalTo": "application/json"
+      },
+      "Authorization": {
+        "matches": "Bearer .+"
+      }
+    },
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": "$.licenseId"
+      },
+      {
+        "matchesJsonPath": "$.email"
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": [
+      {
+        "id": 1,
+        "licenseId": 1,
+        "invitationCode": "INV-CODE-001",
+        "inviteEmail": "user@example.com",
+        "assignedRoleId": 11,
+        "assignedRoleName": "ORGUSER",
+        "isUsed": false,
+        "usedAt": null,
+        "usedByUserId": null,
+        "usedByOrganizationId": null,
+        "createdAt": "2024-01-15T00:00:00Z",
+        "expiresAt": "2024-12-31T23:59:59Z"
+      }
+    ]
+  }
+}
+

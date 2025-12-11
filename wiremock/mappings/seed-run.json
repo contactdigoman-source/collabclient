@@ -1,0 +1,39 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "/api/seed/run",
+    "headers": {}
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "success": true,
+      "message": "Database seeding completed successfully",
+      "before": {
+        "roles": 0,
+        "users": 0,
+        "licenses": 0,
+        "invitationCodes": 0
+      },
+      "after": {
+        "roles": 5,
+        "users": 2,
+        "licenses": 1,
+        "invitationCodes": 10
+      },
+      "licenseAdmin": {
+        "email": "licenseadmin@nexaei.com",
+        "password": "LicenseAdmin@123"
+      },
+      "serviceAccount": {
+        "email": "serviceaccount@nexval.ai",
+        "password": "ServiceAccount@2024!",
+        "role": "SUPERADMIN"
+      }
+    }
+  }
+}
+

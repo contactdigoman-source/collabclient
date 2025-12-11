@@ -1,0 +1,36 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPathPattern": "/api/attendance/punch-out/[0-9]+",
+    "headers": {
+      "Content-Type": {
+        "equalTo": "application/json"
+      },
+      "Authorization": {
+        "matches": "Bearer .+"
+      }
+    },
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": "$.punchOutTime"
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "id": 1,
+      "userId": 1,
+      "punchInTime": "2024-01-15T09:00:00Z",
+      "punchOutTime": "2024-01-15T18:00:00Z",
+      "location": "Office",
+      "latitude": "22.5726",
+      "longitude": "88.3639",
+      "notes": "Punched out from office"
+    }
+  }
+}
+

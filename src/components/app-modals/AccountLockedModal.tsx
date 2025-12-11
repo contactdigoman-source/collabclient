@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
   },
   okayButton: {
     width: wp(41.9), // 157.18px equivalent
-    height: hp(4.8), // 39px equivalent
+    height: hp(6.8), // 39px equivalent
     borderRadius: wp(19.8), // 74.2424px equivalent
     backgroundColor: '#62C268',
     marginTop: hp(1),

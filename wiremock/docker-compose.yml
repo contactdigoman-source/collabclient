@@ -1,0 +1,21 @@
+services:
+  wiremock:
+    image: wiremock/wiremock:latest
+    container_name: colabclient-wiremock
+    ports:
+      - "0.0.0.0:8080:8080"  # Bind to all interfaces for physical device access
+    volumes:
+      - ./mappings:/home/wiremock/mappings
+    command: --global-response-templating --verbose --disable-request-logging=false
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/__admin/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wiremock-network
+
+networks:
+  wiremock-network:
+    driver: bridge
+

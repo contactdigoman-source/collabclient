@@ -1,0 +1,30 @@
+{
+  "request": {
+    "method": "PUT",
+    "urlPathPattern": "/api/members/[0-9]+/role",
+    "headers": {
+      "Content-Type": {
+        "equalTo": "application/json"
+      },
+      "Authorization": {
+        "matches": "Bearer .+"
+      }
+    },
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": "$.roleId"
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "success": true,
+      "message": "Member role updated successfully"
+    }
+  }
+}
+

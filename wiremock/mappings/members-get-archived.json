@@ -1,0 +1,32 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "/api/members/archived",
+    "headers": {
+      "Authorization": {
+        "matches": "Bearer .+"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "success": true,
+      "data": [
+        {
+          "id": "3",
+          "fullname": "Archived User",
+          "email": "archived@example.com",
+          "designation": "",
+          "userpicture": "",
+          "status": "archived",
+          "archivedDate": "2024-01-10"
+        }
+      ]
+    }
+  }
+}
+

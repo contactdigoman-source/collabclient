@@ -1,0 +1,38 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/api/auth/upload-profile-photo",
+    "headers": {
+      "Authorization": {
+        "matches": "Bearer .+"
+      },
+      "Content-Type": {
+        "matches": "multipart/form-data.*"
+      }
+    },
+    "multipartPatterns": [
+      {
+        "matchingType": "ANY",
+        "headers": {
+          "Content-Disposition": {
+            "matches": ".*name=\"profilePhoto\".*"
+          }
+        }
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "success": true,
+      "message": "Profile photo uploaded successfully",
+      "profilePhotoUrl": "https://example.com/profile-photos/user-1.jpg",
+      "thumbnailUrl": "https://example.com/profile-photos/user-1-thumb.jpg"
+    }
+  }
+}
+
+

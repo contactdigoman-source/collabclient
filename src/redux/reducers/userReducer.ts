@@ -5,10 +5,14 @@ import {
   UserData,
   LocationRegion,
   AttendanceRecord,
+  AccountStatus,
+  FirstTimeLoginData,
 } from '../types';
 
 const initialState: UserState = {
   userData: null,
+  jwtToken: null,
+  accountStatus: null,
   userLocationRegion: DEFAULT_REGION,
   userLastAttendance: null,
   userAttendanceHistory: [],
@@ -16,6 +20,7 @@ const initialState: UserState = {
   lastAadhaarVerificationDate: null,
   isPanCardVerified: false,
   storedAadhaarNumber: null,
+  firstTimeLoginData: null,
 };
 
 const userSlice = createSlice({
@@ -24,6 +29,12 @@ const userSlice = createSlice({
   reducers: {
     setUserData(state, action: PayloadAction<UserData | null>) {
       state.userData = action.payload;
+    },
+    setJWTToken(state, action: PayloadAction<string | null>) {
+      state.jwtToken = action.payload;
+    },
+    setAccountStatus(state, action: PayloadAction<AccountStatus | null>) {
+      state.accountStatus = action.payload;
     },
     setUserLocationRegion(state, action: PayloadAction<LocationRegion>) {
       const payload = { ...action.payload };
@@ -65,11 +76,16 @@ const userSlice = createSlice({
     setStoredAadhaarNumber(state, action: PayloadAction<string | null>) {
       state.storedAadhaarNumber = action.payload;
     },
+    setFirstTimeLoginData(state, action: PayloadAction<FirstTimeLoginData | null>) {
+      state.firstTimeLoginData = action.payload;
+    },
   },
 });
 
 export const {
   setUserData,
+  setJWTToken,
+  setAccountStatus,
   setUserLocationRegion,
   setUserLastAttendance,
   setUserAttendanceHistory,
@@ -77,5 +93,6 @@ export const {
   setLastAadhaarVerificationDate,
   setIsPanCardVerified,
   setStoredAadhaarNumber,
+  setFirstTimeLoginData,
 } = userSlice.actions;
 export default userSlice.reducer;

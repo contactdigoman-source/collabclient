@@ -1,9 +1,19 @@
 import { Platform } from 'react-native';
 import { LightThemeColors } from './colors';
+import { Theme } from '@react-navigation/native';
 
-const LightTheme = {
+const LightTheme: Theme = {
   dark: false,
-  colors: LightThemeColors,
+  colors: {
+    primary: LightThemeColors.primary,
+    background: LightThemeColors.background,
+    card: LightThemeColors.background,
+    text: LightThemeColors.black_common,
+    border: LightThemeColors.home_header_border,
+    notification: LightThemeColors.primary,
+    // Include all custom colors for backward compatibility
+    ...LightThemeColors,
+  },
   fonts: Platform.select({
     web: {
       regular: {

@@ -11,7 +11,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableWithoutFeedback,
+  TouchableOpacity,
   Keyboard,
+  Alert,
 } from 'react-native';
 import { useNavigation, useTheme, RouteProp } from '@react-navigation/native';
 import { OtpInput } from 'react-native-otp-entry';
@@ -22,17 +24,20 @@ import {
   AppImage,
   AppText,
   BackHeader,
-  RippleButton,
+  AccountLockedModal,
+  PasswordExpiryModal,
 } from '../../components';
 import { FontTypes, hp, wp, Images } from '../../constants';
-import { useAppDispatch } from '../../redux';
-import { setUserAadhaarFaceValidated } from '../../redux';
-import { storeAadhaarNumber, requestAadhaarOTP, verifyAadhaarOTP } from '../../services/aadhaar';
+import { useAppDispatch, useAppSelector } from '../../redux';
+import { DarkThemeColors, LightThemeColors } from '../../themes';
+// Removed Aadhaar OTP imports - now handled in AadhaarOtpScreen
 import {
-  hasCompletedFirstTimeLogin,
   requestLocationPermission,
   isLocationEnabled,
 } from '../../services';
+import { verifyOTP, resendOTP } from '../../services/auth/otp-service';
+import { storeJWTToken } from '../../services/auth/login-service';
+import { setJWTToken, setUserData, setAccountStatus } from '../../redux';
 import { NavigationProp, RootStackParamList } from '../../types/navigation';
 import { useTranslation } from '../../hooks/useTranslation';
 
@@ -60,8 +65,6 @@ interface OtpScreenProps {
   route: RouteProp<RootStackParamList, 'OtpScreen'> & {
     params?: {
       emailID?: string;
-      isAadhaarFallback?: boolean;
-      aadhaarNumber?: string;
       isPasswordReset?: boolean;
       isPunchFlow?: boolean;
     };
@@ -70,26 +73,33 @@ interface OtpScreenProps {
 
 const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
   const emailID = route?.params?.emailID || '';
-  const isAadhaarFallback = route?.params?.isAadhaarFallback || false;
-  const aadhaarNumber = route?.params?.aadhaarNumber || '';
   const isPasswordReset = route?.params?.isPasswordReset || false;
   const isPunchFlow = route?.params?.isPunchFlow || false;
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const dispatch = useAppDispatch();
   const { t } = useTranslation();
+  const { appTheme } = useAppSelector(state => state.appState);
+  const themeColors = appTheme === 'dark' ? DarkThemeColors : LightThemeColors;
 
   const [otpValue, setOtpValue] = useState<string>('');
   const [timer, setTimer] = useState<number>(RESEND_TIMEOUT);
   const [resendActive, setResendActive] = useState<boolean>(false);
+  const [isVerifying, setIsVerifying] = useState<boolean>(false);
+  const [otpError, setOtpError] = useState<string>('');
+  const [isAccountLockedModalVisible, setIsAccountLockedModalVisible] = useState<boolean>(false);
+  const [isPasswordExpiryModalVisible, setIsPasswordExpiryModalVisible] = useState<boolean>(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const emailMessage = useMemo(() => {
-    if (isAadhaarFallback) {
-      return t('auth.otp.aadhaarMessage', { email: emailID });
+    if (!emailID) return '';
+    try {
+      const message = t('auth.otp.emailMessage');
+      return message && message !== 'auth.otp.emailMessage' ? `${message} ${emailID}` : `Enter the OTP sent to ${emailID}`;
+    } catch (error) {
+      return `Enter the OTP sent to ${emailID}`;
     }
-    return t('auth.otp.emailMessage', { email: emailID });
-  }, [emailID, isAadhaarFallback, t]);
+  }, [emailID, t]);
 
   const startTimer = useCallback((): void => {
     setResendActive(false);
@@ -122,45 +132,119 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
     };
   }, [startTimer]);
 
-  // Request OTP when screen loads (for Aadhaar fallback)
+  // Request OTP when screen loads (for login/password reset flows)
   useEffect(() => {
-    if (isAadhaarFallback && aadhaarNumber && emailID) {
-      // Request OTP when screen loads
-      requestAadhaarOTP({
-        aadhaarNumber: aadhaarNumber,
-        emailID: emailID,
-      }).catch(error => {
-        console.error('Failed to request OTP:', error);
-        setOtpError(error.message || t('auth.otp.requestFailed', 'Failed to request OTP. Please try again.'));
-      });
+    if (emailID && !isPasswordReset && !isPunchFlow) {
+      // For login flow, OTP is typically sent after login attempt
+      // So we don't request it here, it should already be sent
+      // For password reset and punch flow, OTP should be requested from previous screen
     }
-  }, [isAadhaarFallback, aadhaarNumber, emailID, t]);
+  }, [emailID, isPasswordReset, isPunchFlow]);
 
   const handleResend = useCallback(async (): Promise<void> => {
-    if (!resendActive) return;
+    if (!resendActive || !emailID) return;
     
     try {
-      if (isAadhaarFallback && aadhaarNumber) {
-        // Resend Aadhaar OTP
-        await requestAadhaarOTP({
-          aadhaarNumber: aadhaarNumber,
-          emailID: emailID,
-        });
-      } else {
-        // TODO: Resend regular OTP (for login/password reset)
-        // await resendOTP({ emailID });
-      }
+      // Determine flow type for resend
+      const flowType = isPasswordReset ? 'password-reset' : isPunchFlow ? 'punch' : 'login';
+      
+      await resendOTP({
+        email: emailID,
+        flowType: flowType as 'login' | 'password-reset' | 'punch',
+      });
+      
       startTimer();
       setOtpError('');
     } catch (error: any) {
-      console.error('Failed to resend OTP:', error);
+      // Error is already logged in otp-service.ts via logServiceError
       setOtpError(error.message || t('auth.otp.resendFailed', 'Failed to resend OTP. Please try again.'));
     }
-  }, [resendActive, isAadhaarFallback, aadhaarNumber, emailID, startTimer, t]);
+  }, [resendActive, emailID, isPasswordReset, isPunchFlow, startTimer, t]);
 
   const onConfirmButtonPress = useCallback(async (): Promise<void> => {
-    // TODO: API call for OTP verification
-    if (otpValue.trim().length === 6) {
+    if (otpValue.trim().length !== 6) {
+      return;
+    }
+
+    if (!emailID) {
+      setOtpError(t('auth.otp.emailRequired', 'Email is required'));
+      return;
+    }
+
+    setIsVerifying(true);
+    setOtpError('');
+
+    try {
+      // Determine flow type for verification
+      const flowType = isPasswordReset ? 'password-reset' : isPunchFlow ? 'punch' : 'login';
+      
+      // Verify OTP with API
+      const verifyResponse = await verifyOTP({
+        email: emailID,
+        otp: otpValue,
+        flowType: flowType as 'login' | 'password-reset' | 'punch',
+      });
+
+      // Validate response structure
+      if (!verifyResponse) {
+        setOtpError(t('auth.otp.verificationFailed', 'Failed to verify OTP. Please try again.'));
+        setIsVerifying(false);
+        return;
+      }
+
+      if (!verifyResponse.success) {
+        setOtpError(verifyResponse.message || t('auth.otp.invalidOtp', 'Invalid OTP. Please try again.'));
+        setIsVerifying(false);
+        return;
+      }
+
+      // Handle account status from response
+      const accountStatus = verifyResponse.accountStatus;
+      if (accountStatus) {
+        dispatch(setAccountStatus(accountStatus));
+
+        if (accountStatus === 'locked') {
+          setIsAccountLockedModalVisible(true);
+          setIsVerifying(false);
+          return;
+        }
+
+        if (accountStatus === 'password expired') {
+          setIsPasswordExpiryModalVisible(true);
+          setIsVerifying(false);
+          return;
+        }
+
+        if (accountStatus === 'inactive') {
+          setOtpError(t('auth.otp.accountInactive', 'Your account is inactive. Please contact support.'));
+          setIsVerifying(false);
+          return;
+        }
+      }
+
+      // Store user data if returned in response
+      if (verifyResponse.user) {
+        dispatch(setUserData({
+          id: verifyResponse.user.id,
+          firstName: verifyResponse.user.firstName,
+          lastName: verifyResponse.user.lastName,
+          email: verifyResponse.user.email,
+          phoneNumber: verifyResponse.user.phoneNumber,
+          isEmailVerified: verifyResponse.user.isEmailVerified,
+          isPhoneVerified: verifyResponse.user.isPhoneVerified,
+          requiresPasswordChange: verifyResponse.user.requiresPasswordChange,
+          roles: verifyResponse.user.roles,
+          firstTimeLogin: verifyResponse.user.firstTimeLogin,
+        }));
+      }
+
+      // If token is returned (login flow), store it securely
+      if (verifyResponse.token) {
+        await storeJWTToken(verifyResponse.token, emailID);
+        dispatch(setJWTToken(verifyResponse.token));
+      }
+
+      // Handle navigation based on flow type
       if (isPunchFlow) {
         // Handle punch flow OTP: After OTP success, check Aadhaar validation, then proceed to CheckInScreen
         // TODO: Verify OTP with backend before proceeding
@@ -204,73 +288,38 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
         } else {
           navigation.replace('DashboardScreen');
         }
-      } else if (isAadhaarFallback) {
-        // Handle Aadhaar fallback: Verify OTP and mark as validated
-        try {
-          setIsVerifying(true);
-          setOtpError('');
-          
-          // Verify OTP with backend
-          const isValid = await verifyAadhaarOTP({
-            aadhaarNumber: aadhaarNumber || '',
-            otp: otpValue,
-            emailID: emailID,
-          });
-          
-          if (isValid) {
-            // OTP verified successfully
-            // Store Aadhaar number if provided
-            if (aadhaarNumber) {
-              const { store } = require('../../redux');
-              const { setStoredAadhaarNumber } = require('../../redux');
-              store.dispatch(setStoredAadhaarNumber(aadhaarNumber));
-            }
-            
-            // Mark Aadhaar as validated
-            dispatch(setUserAadhaarFaceValidated(true));
-            await storeAadhaarNumber();
-            
-            // After Aadhaar authentication via OTP, navigate to location capture screen
-            const onCancelPress = (): void => {
-              navigation.replace('DashboardScreen');
-            };
-            
-            const granted = await requestLocationPermission(onCancelPress);
-            
-            if (granted) {
-              const isLocationOn = await isLocationEnabled();
-              if (isLocationOn) {
-                navigation.replace('CheckInScreen');
-              } else {
-                navigation.replace('DashboardScreen');
-              }
-            } else {
-              navigation.replace('DashboardScreen');
-            }
-          } else {
-            // Invalid OTP
-            setOtpError(t('auth.otp.invalidOtp', 'Invalid OTP. Please try again.'));
-          }
-        } catch (error: any) {
-          console.error('OTP verification failed:', error);
-          setOtpError(error.message || t('auth.otp.verificationFailed', 'OTP verification failed. Please try again.'));
-        } finally {
-          setIsVerifying(false);
-        }
       } else if (isPasswordReset) {
-        // Password reset flow: go to change password screen
-        navigation.replace('ChangeForgottenPassword', { emailID });
+        // Password reset flow: Show success message and navigate to login
+        Alert.alert(
+          t('auth.otp.success', 'Success'),
+          t('auth.otp.passwordResetSuccess', 'Password reset OTP verified successfully. You can now login with your new password.'),
+          [
+            {
+              text: t('auth.otp.ok', 'OK'),
+              onPress: () => {
+                navigation.replace('LoginScreen');
+              },
+            },
+          ],
+          { cancelable: false }
+        );
       } else if (emailID) {
-        // Login flow: Check if first-time login
-        const isFirstTime = !hasCompletedFirstTimeLogin();
+        // Login flow: Use API response to decide navigation
+        // Priority: 1. Response firstTimeLogin field, 2. User object firstTimeLogin
+        const isFirstTime = verifyResponse.firstTimeLogin ?? verifyResponse.user?.firstTimeLogin ?? false;
+        
         if (isFirstTime) {
           navigation.replace('FirstTimeLoginScreen');
         } else {
           navigation.replace('DashboardScreen');
         }
       }
+    } catch (error: any) {
+      // Error is already logged in otp-service.ts via logServiceError
+      setOtpError(error.message || t('auth.otp.verificationFailed', 'Failed to verify OTP. Please try again.'));
+      setIsVerifying(false);
     }
-  }, [otpValue, isPunchFlow, isAadhaarFallback, isPasswordReset, emailID, dispatch, navigation]);
+  }, [otpValue, isPunchFlow, isPasswordReset, emailID, dispatch, navigation, t]);
 
   // memoized otp styles and theme to avoid re-render
   const otpTheme = useMemo(
@@ -278,21 +327,21 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
       containerStyle: styles.otpMainContainer,
       pinCodeContainerStyle: [
         styles.otpCodeContainer,
-        { backgroundColor: colors.app_input_bg },
+        { backgroundColor: themeColors.app_input_bg },
       ],
       focusedPinCodeContainerStyle: {
         borderWidth: 2,
         borderColor: colors.primary,
       },
-    }),
-    [colors],
+    } as any), // Type assertion needed for OtpInput theme prop
+    [colors, themeColors.app_input_bg],
   );
 
   const otpTextProps = useMemo(
     () => ({
-      style: { color: colors.white, fontSize: hp(2.2) },
+      style: { color: themeColors.white_common, fontSize: hp(2.2) },
     }),
-    [colors],
+    [themeColors],
   );
 
   return (
@@ -311,20 +360,35 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
                 style={styles.image}
               />
               <AppText size={hp(2.5)} fontType={FontTypes.medium}>
-                {isAadhaarFallback
-                  ? t('auth.otp.verifyAadhaar')
-                  : isPasswordReset
-                  ? t('auth.otp.verifyEmail')
-                  : t('auth.otp.authenticateAccount')}
+                {(() => {
+                  try {
+                    if (isPasswordReset) {
+                      const text = t('auth.otp.verifyEmail');
+                      return text && text !== 'auth.otp.verifyEmail' ? text : 'Verify Email';
+                    } else {
+                      const text = t('auth.otp.authenticateAccount');
+                      return text && text !== 'auth.otp.authenticateAccount' ? text : 'Authenticate Account';
+                    }
+                  } catch (error) {
+                    return isPasswordReset ? 'Verify Email' : 'Authenticate Account';
+                  }
+                })()}
               </AppText>
               <AppText style={styles.description}>
-                {isAadhaarFallback
-                  ? emailMessage
-                  : isPasswordReset
-                  ? emailMessage
-                  : emailID
-                  ? t('auth.otp.loginDescription')
-                  : emailMessage}
+                {(() => {
+                  try {
+                    if (isPasswordReset) {
+                      return emailMessage;
+                    } else if (emailID) {
+                      const text = t('auth.otp.loginDescription');
+                      return text && text !== 'auth.otp.loginDescription' ? text : emailMessage;
+                    } else {
+                      return emailMessage;
+                    }
+                  } catch (error) {
+                    return emailMessage || 'Enter the OTP sent to your email';
+                  }
+                })()}
               </AppText>
             </View>
 
@@ -348,7 +412,7 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
             {otpError ? (
               <AppText
                 size={hp(1.6)}
-                color={colors.error || '#FF4444'}
+                color={themeColors.red || '#FF4444'}
                 style={styles.errorText}
               >
                 {otpError}
@@ -365,24 +429,41 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
 
             <View style={styles.resendContainer}>
               <AppText>{t('auth.otp.didntReceive')} </AppText>
-              <RippleButton
-                style={styles.resendButton}
+              <TouchableOpacity
                 onPress={handleResend}
                 disabled={!resendActive}
+                style={styles.resendButton}
+                activeOpacity={0.7}
               >
                 <AppText
-                  color={resendActive ? colors.primary : colors.white}
-                  style={{ opacity: resendActive ? 1 : 0.7 }}
+                  color={resendActive ? colors.primary : themeColors.white_common}
+                  style={styles.resendText}
                 >
                   {t('auth.otp.resend')}
                 </AppText>
-              </RippleButton>
+              </TouchableOpacity>
             </View>
 
             <TimerDisplay timer={timer} color={colors.primary} />
           </View>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
+
+      {/* Account Locked Modal */}
+      <AccountLockedModal
+        visible={isAccountLockedModalVisible}
+        onClose={() => setIsAccountLockedModalVisible(false)}
+      />
+
+      {/* Password Expiry Modal */}
+      <PasswordExpiryModal
+        visible={isPasswordExpiryModalVisible}
+        onReset={() => {
+          setIsPasswordExpiryModalVisible(false);
+          navigation.navigate('ChangeForgottenPassword', { emailID });
+        }}
+        onDismiss={() => setIsPasswordExpiryModalVisible(false)}
+      />
     </AppContainer>
   );
 };
@@ -436,6 +517,9 @@ const styles = StyleSheet.create({
   errorText: {
     marginTop: hp(1),
     textAlign: 'center',
+  },
+  resendText: {
+    opacity: 0.7,
   },
 });
 

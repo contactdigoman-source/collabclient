@@ -1,4 +1,5 @@
 import AadhaarInputScreen from './aadhaar/AadhaarInputScreen';
+import AadhaarOtpScreen from './aadhaar/AadhaarOtpScreen';
 import PanCardCaptureScreen from './aadhaar/PanCardCaptureScreen';
 import AttendanceLogsScreen from './attendance/AttendanceLogsScreen';
 import ChangeForgottenPassword from './auth/ChangeForgottenPassword';
@@ -32,6 +33,7 @@ export {
   OtpScreen,
   ChangeForgottenPassword,
   AadhaarInputScreen,
+  AadhaarOtpScreen,
   PanCardCaptureScreen,
   PermissionsScreen,
   PrivacyPolicyScreen,

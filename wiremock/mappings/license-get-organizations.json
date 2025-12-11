@@ -1,0 +1,30 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/api/license/[0-9]+/organizations",
+    "headers": {
+      "Authorization": {
+        "matches": "Bearer .+"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": [
+      {
+        "id": 1,
+        "name": "Example Organization",
+        "description": "Example organization description",
+        "domain": "example.com",
+        "status": "Active",
+        "setupStatus": "Completed",
+        "licenseId": 1,
+        "createdAt": "2024-01-01T00:00:00Z"
+      }
+    ]
+  }
+}
+

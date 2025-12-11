@@ -1,0 +1,40 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/api/attendance/sync",
+    "headers": {
+      "Content-Type": {
+        "equalTo": "application/json"
+      },
+      "Authorization": {
+        "matches": "Bearer .+"
+      }
+    },
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": "$.records"
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "success": true,
+      "syncedCount": 1,
+      "failedCount": 0,
+      "results": [
+        {
+          "timestamp": 1705312200000,
+          "synced": true,
+          "serverId": 123,
+          "error": null
+        }
+      ]
+    }
+  }
+}
+
+

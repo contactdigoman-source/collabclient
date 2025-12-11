@@ -1,0 +1,30 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/api/members/reactivate",
+    "headers": {
+      "Content-Type": {
+        "equalTo": "application/json"
+      },
+      "Authorization": {
+        "matches": "Bearer .+"
+      }
+    },
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": "$.memberIds"
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "success": true,
+      "message": "Members reactivated successfully"
+    }
+  }
+}
+

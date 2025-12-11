@@ -1,0 +1,33 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "/api/members/invited",
+    "headers": {
+      "Authorization": {
+        "matches": "Bearer .+"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "success": true,
+      "data": [
+        {
+          "id": "1",
+          "fullname": "invited",
+          "email": "invited@example.com",
+          "designation": "",
+          "userpicture": "",
+          "status": "invited",
+          "invitedDate": "2024-01-15",
+          "invited_at": "2024-01-15T10:00:00Z"
+        }
+      ]
+    }
+  }
+}
+

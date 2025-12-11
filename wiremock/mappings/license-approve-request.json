@@ -1,0 +1,44 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPathPattern": "/api/license/approval-requests/[0-9]+/approve",
+    "headers": {
+      "Content-Type": {
+        "equalTo": "application/json"
+      },
+      "Authorization": {
+        "matches": "Bearer .+"
+      }
+    },
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": "$.approvedLicenseId"
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "id": 1,
+      "userId": 1,
+      "userEmail": "user@example.com",
+      "userFirstName": "John",
+      "userLastName": "Doe",
+      "requestedLicenseId": 1,
+      "requestedLicenseKey": "LICENSE-2024-001",
+      "approvedLicenseId": 1,
+      "approvedLicenseKey": "LICENSE-2024-001",
+      "status": "Approved",
+      "rejectionReason": null,
+      "createdAt": "2024-01-15T00:00:00Z",
+      "reviewedAt": "2024-01-15T12:00:00Z",
+      "reviewedBy": 2,
+      "reviewerName": "Admin User",
+      "notes": "Approved for use"
+    }
+  }
+}
+

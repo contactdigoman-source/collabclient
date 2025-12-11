@@ -1,0 +1,42 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/api/members/active",
+    "headers": {
+      "Authorization": {
+        "matches": "Bearer .+"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "success": true,
+      "data": [
+        {
+          "id": "1",
+          "fullname": "John Doe",
+          "email": "john.doe@example.com",
+          "designation": "Developer",
+          "userpicture": "",
+          "status": "active",
+          "createdAt": "2024-01-01T00:00:00Z"
+        },
+        {
+          "id": "2",
+          "fullname": "Jane Smith",
+          "email": "jane.smith@example.com",
+          "designation": "Designer",
+          "userpicture": "",
+          "status": "active",
+          "createdAt": "2024-01-02T00:00:00Z"
+        }
+      ],
+      "count": 2
+    }
+  }
+}
+

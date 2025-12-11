@@ -1,0 +1,42 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/api/aadhaar/verify-otp",
+    "headers": {
+      "Content-Type": {
+        "equalTo": "application/json"
+      }
+    },
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": "$.aadhaarNumber"
+      },
+      {
+        "matchesJsonPath": "$.otp"
+      },
+      {
+        "matchesJsonPath": "$.emailID"
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "verified": true,
+      "success": true,
+      "message": "Aadhaar verified successfully",
+      "aadhaarDetails": {
+        "name": "JOHN DOE",
+        "dob": "01-01-1990",
+        "gender": "M",
+        "maskedAadhaar": "1234****9012"
+      },
+      "isValidated": true
+    }
+  }
+}
+
+

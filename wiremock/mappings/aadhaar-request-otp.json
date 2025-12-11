@@ -1,0 +1,33 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/api/aadhaar/request-otp",
+    "headers": {
+      "Content-Type": {
+        "equalTo": "application/json"
+      }
+    },
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": "$.aadhaarNumber"
+      },
+      {
+        "matchesJsonPath": "$.emailID"
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "success": true,
+      "message": "OTP sent to registered mobile number",
+      "txnId": "txn-123456789",
+      "expiresIn": 300
+    }
+  }
+}
+
+

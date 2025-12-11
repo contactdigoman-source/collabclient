@@ -1,32 +1,34 @@
 import * as React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import BootSplash from 'react-native-bootsplash';
-import Config from 'react-native-config';
-
 import AppNavigation from './src/navigation';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { persistor, store } from './src/redux';
+import { DarkThemeColors } from './src/themes';
 import './src/i18n'; // Initialize i18n
+import { getCorrelationId } from './src/services/logger'; // Initialize correlation ID
+
+// Default loading spinner component for PersistGate
+const LoadingSpinner = () => (
+  <View style={styles.loadingContainer}>
+    <ActivityIndicator size="large" color={DarkThemeColors.primary} />
+  </View>
+);
 
 export default function App() {
+  // Initialize correlation ID on app startup
   React.useEffect(() => {
-    // Mirror chat_messaging config logging for quick environment diagnostics
-    // Values come from .env / react-native-config
-    // eslint-disable-next-line no-console
-    console.log('ENVIRONMENT', Config.ENVIRONMENT);
-    // eslint-disable-next-line no-console
-    console.log('API_URL', Config.API_URL);
+    getCorrelationId();
   }, []);
-
+  
   return (
     <GestureHandlerRootView style={styles.flex1}>
       <SafeAreaProvider>
         <View style={styles.container}>
           <Provider store={store}>
-            <PersistGate loading={null} persistor={persistor}>
+            <PersistGate loading={<LoadingSpinner />} persistor={persistor}>
               <AppNavigation />
             </PersistGate>
           </Provider>
@@ -43,5 +45,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'black',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: DarkThemeColors.black,
   },
 });

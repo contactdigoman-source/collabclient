@@ -1,0 +1,46 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "/api/auth/profile",
+    "headers": {
+      "Authorization": {
+        "matches": "Bearer .+"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "id": 1,
+      "email": "user@example.com",
+      "firstName": "John",
+      "lastName": "Doe",
+      "phoneNumber": "+1234567890",
+      "isEmailVerified": true,
+      "isPhoneVerified": false,
+      "profilePhotoUrl": "https://example.com/profile-photos/user-1.jpg",
+      "dateOfActivation": "2024-01-01T00:00:00Z",
+      "dateOfBirth": "1990-01-01T00:00:00Z",
+      "empId": "EMP-001",
+      "employmentType": "Full Time",
+      "designation": "Software Engineer",
+      "organizationName": "Example Organization",
+      "department": "Engineering",
+      "roles": ["ORGUSER"],
+      "createdAt": "2024-01-01T00:00:00Z",
+      "lastLoginAt": "2024-01-15T10:00:00Z",
+      "aadhaarVerification": {
+        "isVerified": true,
+        "verificationMethod": "FACE_RD",
+        "lastVerifiedDate": "2024-01-15",
+        "maskedAadhaarNumber": "1234****9012",
+        "isPanCardVerified": false
+      }
+    }
+  }
+}
+
+

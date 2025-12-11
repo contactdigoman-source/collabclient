@@ -11,6 +11,7 @@ import {
 } from '../../components';
 import { hp, wp, Images } from '../../constants';
 import { useAppDispatch, useAppSelector, store } from '../../redux';
+import { DarkThemeColors, LightThemeColors } from '../../themes';
 import {
   getRawAadhaarNumber,
   startFaceAuth,
@@ -36,6 +37,9 @@ export default function AadhaarInputScreen(): React.JSX.Element {
   const dispatch = useAppDispatch();
   const { t } = useTranslation();
 
+  const { appTheme } = useAppSelector(state => state.appState);
+  const themeColors = appTheme === 'dark' ? DarkThemeColors : LightThemeColors;
+
   const { isAuthenticatingFace, isAadhaarFaceValidated } = useAppSelector(
     state => ({
       isAuthenticatingFace: state.aadhaarState.isAuthenticatingFace,
@@ -49,7 +53,9 @@ export default function AadhaarInputScreen(): React.JSX.Element {
 
   /** Reset face auth flag on unmount */
   useEffect(() => {
-    return () => dispatch(setIsAuthenticatingFace(false));
+    return () => {
+      dispatch(setIsAuthenticatingFace(false));
+    };
   }, [dispatch]);
 
   /** Listen for Face RD success/failure events */
@@ -78,12 +84,11 @@ export default function AadhaarInputScreen(): React.JSX.Element {
       (error: any) => {
         console.log('Face RD Failure:', error);
         dispatch(setIsAuthenticatingFace(false));
-        // Navigate to OTP screen as fallback
+        // Hard fallback: Navigate to OTP screen ONLY when Face RD fails
         const rawAadhaar = getRawAadhaarNumber(aadhaarInput);
         if (rawAadhaar && rawAadhaar.length === AADHAAR_LENGTH) {
-          navigation.navigate('OtpScreen', {
+          navigation.navigate('AadhaarOtpScreen', {
             emailID: store.getState().userState?.userData?.email || '',
-            isAadhaarFallback: true,
             aadhaarNumber: rawAadhaar,
           });
         } else {
@@ -113,7 +118,7 @@ export default function AadhaarInputScreen(): React.JSX.Element {
     navigation.navigate('PanCardCaptureScreen');
   }, [navigation]);
 
-  /** Capture Face button handler - Android uses Face RD, iOS uses OTP */
+  /** Capture Face button handler - Android: Face RD first, OTP is hard fallback only. iOS: OTP only */
   const onCaptureFacePress = useCallback((): void => {
     const rawAadhaar = getRawAadhaarNumber(aadhaarInput);
     if (rawAadhaar?.length !== AADHAAR_LENGTH) {
@@ -123,16 +128,15 @@ export default function AadhaarInputScreen(): React.JSX.Element {
 
     setAadhaarNumberErr('');
     
-    // On iOS or if face RD fails, use OTP-based authentication
+    // iOS: Always use OTP-based authentication (Aadhaar OTP only, one time per day)
     if (Platform.OS === 'ios') {
-      // iOS: Navigate directly to OTP screen
-      navigation.navigate('OtpScreen', {
+      // iOS: Navigate directly to Aadhaar OTP screen (no Face RD on iOS)
+      navigation.navigate('AadhaarOtpScreen', {
         emailID: store.getState().userState?.userData?.email || '',
-        isAadhaarFallback: true,
         aadhaarNumber: rawAadhaar,
       });
     } else {
-      // Android: Use Face RD
+      // Android: ALWAYS attempt Face RD first, OTP is hard fallback only on failure
       dispatch(setIsAuthenticatingFace(true));
 
       // Check if Face RD module is available
@@ -140,26 +144,19 @@ export default function AadhaarInputScreen(): React.JSX.Element {
       const { FaceAuth } = NativeModules;
       
       if (!FaceAuth) {
-        // Face RD not available, fallback to OTP
-        console.log('Face RD module not available, using OTP fallback');
+        // Hard fallback: Face RD module not available, use Aadhaar OTP
+        console.log('Face RD module not available, using Aadhaar OTP as hard fallback');
         dispatch(setIsAuthenticatingFace(false));
-        navigation.navigate('OtpScreen', {
+        navigation.navigate('AadhaarOtpScreen', {
           emailID: store.getState().userState?.userData?.email || '',
-          isAadhaarFallback: true,
           aadhaarNumber: rawAadhaar,
         });
         return;
       }
 
-      if (__DEV__) {
-        // In dev mode, skip Face RD for testing
-        dispatch(setIsAadhaarFaceValidated(true));
-        const rawAadhaarForStorage = getRawAadhaarNumber(aadhaarInput);
-        dispatch(setStoredAadhaarNumber(rawAadhaarForStorage));
-      } else {
-        // Production: Start Face RD authentication
-        startFaceAuth(rawAadhaar);
-      }
+      // Always attempt Face RD authentication first (irrespective of dev/prod mode)
+      // OTP is hard fallback - only used when Face RD fails (via FaceAuthFailure event listener)
+      startFaceAuth(rawAadhaar);
     }
   }, [aadhaarInput, dispatch, t, navigation]);
 
@@ -189,9 +186,9 @@ export default function AadhaarInputScreen(): React.JSX.Element {
       }
     } else {
       // Permission denied, go to dashboard
-    navigation.navigate('DashboardScreen');
+      navigation.navigate('DashboardScreen');
     }
-  }, [dispatch, navigation]);
+  }, [dispatch, navigation, aadhaarInput]);
 
   /** Open Privacy Policy screen */
   const onPrivacyPolicyPress = useCallback((): void => {
@@ -275,14 +272,14 @@ export default function AadhaarInputScreen(): React.JSX.Element {
                 ]}
               >
                 {aadhaarNotAvailable && (
-                  <AppText size={hp(1.5)} color={colors.white}>
+                  <AppText size={hp(1.5)} color={themeColors.white_common}>
                     ✓
                   </AppText>
                 )}
               </View>
               <AppText
                 size={hp('1.5%')}
-                color={colors.white}
+                color={themeColors.white_common}
                 style={styles.checkboxLabel}
               >
                 Aadhaar not available
@@ -300,7 +297,7 @@ export default function AadhaarInputScreen(): React.JSX.Element {
             <View style={styles.policyContainer}>
               <AppText
                 size={hp('1.5%')}
-                color={colors.white}
+                color={themeColors.white_common}
                 style={styles.policyText}
               >
                 {t('aadhaar.authorize')}{' '}
@@ -320,8 +317,8 @@ export default function AadhaarInputScreen(): React.JSX.Element {
               title={
                 isAuthenticatingFace
                   ? t('aadhaar.authenticating')
-                      : Platform.OS === 'ios'
-                      ? 'Verify with OTP'
+                  : Platform.OS === 'ios'
+                  ? 'Verify with OTP'
                   : t('aadhaar.captureFace')
               }
               onPress={onCaptureFacePress}

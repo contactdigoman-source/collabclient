@@ -20,6 +20,7 @@ import EarlyCheckoutModal from './app-modals/EarlyCheckoutModal';
 import AttendanceDetailModal from './app-modals/AttendanceDetailModal';
 import PasswordExpiryModal from './app-modals/PasswordExpiryModal';
 import FaceRDVerificationModal from './app-modals/FaceRDVerificationModal';
+import LanguagePickerModal from './app-modals/LanguagePickerModal';
 
 export {
   AppInput,
@@ -44,5 +45,6 @@ export {
   AttendanceDetailModal,
   PasswordExpiryModal,
   FaceRDVerificationModal,
+  LanguagePickerModal,
 };
 

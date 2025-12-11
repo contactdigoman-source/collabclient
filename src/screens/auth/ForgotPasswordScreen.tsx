@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -21,7 +21,7 @@ import {
 import { Icons, Images, MAIL_FORMAT, hp } from '../../constants';
 import { NavigationProp, RootStackParamList } from '../../types/navigation';
 import { useTranslation } from '../../hooks/useTranslation';
-import { isAccountLocked } from '../../services';
+import { forgotPassword } from '../../services/auth/forgot-password-service';
 
 interface ForgotPasswordScreenProps {
   route: RouteProp<RootStackParamList, 'ForgotPasswordScreen'> & {
@@ -42,13 +42,8 @@ export default function ForgotPasswordScreen({
   const [emailError, setEmailError] = useState<string | null>(null);
   const [isAccountLockedModalVisible, setIsAccountLockedModalVisible] =
     useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Check if account is locked on mount
-  useEffect(() => {
-    if (isAccountLocked()) {
-      setIsAccountLockedModalVisible(true);
-    }
-  }, []);
 
   const validateEmail = useCallback((): boolean => {
     if (!email.trim()) {
@@ -64,24 +59,44 @@ export default function ForgotPasswordScreen({
   }, [email, t]);
 
   const onNextPress = useCallback(async (): Promise<void> => {
-    // Check if account is locked
-    if (isAccountLocked()) {
-      setIsAccountLockedModalVisible(true);
-      return;
-    }
-
     if (!validateEmail()) return;
-
     Keyboard.dismiss();
-    navigation.navigate('OtpScreen', { emailID: email, isPasswordReset: true });
-    // Example API call placeholder
-    // const response = await dispatch(sendOtpForForgotPassword(email.trim()));
-    // if (response.data.success) {
-    //   navigation.navigate('VerifyEmailScreen', { emailID: email.trim() });
-    // } else {
-    //   setEmailError('Email address not registered with us');
-    // }
-  }, [email, validateEmail, navigation]);
+
+    setIsLoading(true);
+    setEmailError(null);
+
+    try {
+      const response = await forgotPassword({ email: email.trim() });
+
+      // Check account status
+      if (response.accountStatus === 'locked') {
+        setIsAccountLockedModalVisible(true);
+        setIsLoading(false);
+        return;
+      }
+
+      if (response.accountStatus === 'inactive') {
+        setEmailError(t('auth.forgotPassword.accountInactive', 'Your account is inactive. Please contact support.'));
+        setIsLoading(false);
+        return;
+      }
+
+      // If OTP was sent successfully, navigate to OTP screen
+      if (response.success && response.otpSent) {
+        navigation.navigate('OtpScreen', {
+          emailID: email.trim(),
+          isPasswordReset: true,
+        });
+      } else {
+        setEmailError(response.message || t('auth.forgotPassword.requestFailed', 'Failed to send password reset OTP. Please try again.'));
+      }
+    } catch (error: any) {
+      console.error('Forgot password error:', error);
+      setEmailError(error.message || t('auth.forgotPassword.requestFailed', 'Failed to send password reset OTP. Please try again.'));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [email, validateEmail, navigation, t]);
 
   const handleCloseLockedModal = useCallback((): void => {
     setIsAccountLockedModalVisible(false);
@@ -129,6 +144,8 @@ export default function ForgotPasswordScreen({
               title={t('auth.forgotPassword.next')}
               style={styles.button}
               onPress={onNextPress}
+              loading={isLoading}
+              disabled={isLoading}
             />
           </View>
         </TouchableWithoutFeedback>

@@ -1,0 +1,23 @@
+{
+  "name": "nexval-wiremock",
+  "version": "1.0.0",
+  "description": "WireMock stubs for Nexval Attendance API",
+  "scripts": {
+    "start": "wiremock --port 8080 --root-dir ./mappings",
+    "start:docker": "docker-compose up -d",
+    "stop:docker": "docker-compose down",
+    "logs:docker": "docker-compose logs -f"
+  },
+  "keywords": [
+    "wiremock",
+    "api",
+    "stubs",
+    "mock"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "wiremock": "^2.35.0"
+  }
+}
+

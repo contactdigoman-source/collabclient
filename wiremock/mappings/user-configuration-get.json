@@ -1,0 +1,43 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "/api/user/configuration",
+    "headers": {
+      "Authorization": {
+        "matches": "Bearer .+"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "workingHours": {
+        "enabled": true,
+        "startTime": "09:00",
+        "endTime": "18:00",
+        "minimumHours": 9.0,
+        "timezone": "Asia/Kolkata"
+      },
+      "reminders": {
+        "checkInReminder": {
+          "enabled": true,
+          "time": "08:45",
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        "checkOutReminder": {
+          "enabled": true,
+          "time": "17:45",
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        "breakReminder": {
+          "enabled": true,
+          "intervalMinutes": 30
+        }
+      }
+    }
+  }
+}
+

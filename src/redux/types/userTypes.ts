@@ -1,10 +1,20 @@
 // User Data Types
 export interface UserData {
+  id?: number;
   firstName?: string;
   lastName?: string;
   email?: string;
+  phoneNumber?: string;
+  isEmailVerified?: boolean;
+  isPhoneVerified?: boolean;
+  requiresPasswordChange?: boolean;
+  roles?: string[];
+  firstTimeLogin?: boolean;
   [key: string]: any; // Allow additional properties
 }
+
+// Account Status Type
+export type AccountStatus = 'active' | 'locked' | 'password expired' | 'inactive';
 
 // Location Region Type
 export interface LocationRegion {
@@ -36,9 +46,18 @@ export interface AttendanceRecord {
   PhoneNumber?: string;
 }
 
+// First Time Login Data (temporary storage before API submission)
+export interface FirstTimeLoginData {
+  firstName: string;
+  lastName: string;
+  newPassword: string;
+}
+
 // User State Type
 export interface UserState {
   userData: UserData | null;
+  jwtToken: string | null; // JWT token for API authentication
+  accountStatus: AccountStatus | null; // Current account status
   userLocationRegion: LocationRegion;
   userLastAttendance: AttendanceRecord | null;
   userAttendanceHistory: AttendanceRecord[];
@@ -46,5 +65,6 @@ export interface UserState {
   lastAadhaarVerificationDate: string | null; // Format: YYYY-MM-DD
   isPanCardVerified: boolean; // If user verified using PAN card instead of Aadhaar
   storedAadhaarNumber: string | null; // Stored Aadhaar number for Face RD verification
+  firstTimeLoginData: FirstTimeLoginData | null; // Temporary storage for first-time login form data
 }
 

@@ -1,41 +1,143 @@
-import { MMKV } from 'react-native-mmkv';
+import axios from 'axios';
+import { Configs } from '../../constants/configs';
+import { logServiceError } from '../logger';
+import { getDeviceUniqueIdentifier } from '../device/device-identifier-service';
+import { store } from '../../redux';
+import { setUserData, setJWTToken } from '../../redux/reducers/userReducer';
 
-const storage = new MMKV();
+const API_BASE_URL = Configs.apiBaseUrl;
 
-const FIRST_TIME_LOGIN_KEY = 'has_completed_first_time_login';
+// First Time Login API Types
+export interface FirstTimeLoginRequest {
+  email: string;
+  firstName: string;
+  lastName: string;
+  newPassword: string;
+  consent: {
+    agreed: boolean;
+    timestamp: string; // ISO 8601 format
+    permissions: string[]; // List of permission IDs that were consented to
+  };
+  deviceIdentifier: string;
+  timestamp: string; // ISO 8601 format - time when form was submitted
+}
+
+export interface FirstTimeLoginResponse {
+  success: boolean;
+  message: string;
+  token?: string; // JWT token
+  expiresAt?: string;
+  user?: {
+    id: number;
+    email: string;
+    firstName: string;
+    lastName: string;
+    phoneNumber?: string;
+    isEmailVerified: boolean;
+    isPhoneVerified: boolean;
+    requiresPasswordChange: boolean;
+    roles: string[];
+    firstTimeLogin: boolean;
+  };
+}
 
 /**
- * Check if user has completed first-time login
- * @returns true if user has completed first-time login, false otherwise
+ * Submits first-time login data including consent information
+ * @param {Object} data - First time login data
+ * @param {string} data.email - User email
+ * @param {string} data.firstName - User first name
+ * @param {string} data.lastName - User last name
+ * @param {string} data.newPassword - New password
+ * @param {string[]} data.permissions - List of permission IDs that were consented to
+ * @returns {Promise<FirstTimeLoginResponse>} API response
  */
-export const hasCompletedFirstTimeLogin = (): boolean => {
+export const submitFirstTimeLogin = async (data: {
+  email: string;
+  firstName: string;
+  lastName: string;
+  newPassword: string;
+  permissions: string[];
+}): Promise<FirstTimeLoginResponse> => {
   try {
-    return storage.getBoolean(FIRST_TIME_LOGIN_KEY) || false;
-  } catch (error) {
-    console.log('Error checking first-time login status:', error);
-    return false;
-  }
-};
+    // Get device unique identifier
+    const deviceIdentifier = await getDeviceUniqueIdentifier();
 
-/**
- * Mark first-time login as completed
- */
-export const markFirstTimeLoginCompleted = (): void => {
-  try {
-    storage.set(FIRST_TIME_LOGIN_KEY, true);
-  } catch (error) {
-    console.log('Error marking first-time login as completed:', error);
-  }
-};
+    // Get current timestamp
+    const timestamp = new Date().toISOString();
 
-/**
- * Reset first-time login status (useful for testing or logout)
- */
-export const resetFirstTimeLogin = (): void => {
-  try {
-    storage.delete(FIRST_TIME_LOGIN_KEY);
-  } catch (error) {
-    console.log('Error resetting first-time login status:', error);
+    // Prepare request payload
+    const requestData: FirstTimeLoginRequest = {
+      email: data.email,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      newPassword: data.newPassword,
+      consent: {
+        agreed: true,
+        timestamp: timestamp,
+        permissions: data.permissions,
+      },
+      deviceIdentifier: deviceIdentifier,
+      timestamp: timestamp,
+    };
+
+    // Make API call
+    const response = await axios.post<FirstTimeLoginResponse>(
+      `${API_BASE_URL}/api/auth/first-time-login`,
+      requestData,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+
+    // If successful, update Redux store
+    if (response.data.success && response.data.user) {
+      // Update user data
+      store.dispatch(
+        setUserData({
+          ...response.data.user,
+          firstTimeLogin: false, // Mark as completed
+        }),
+      );
+
+      // Store JWT token if provided
+      if (response.data.token) {
+        store.dispatch(setJWTToken(response.data.token));
+      }
+    }
+
+    return response.data;
+  } catch (error: any) {
+    const errorMessage =
+      error.response?.data?.message ||
+      error.message ||
+      'Failed to submit first-time login data';
+
+    logServiceError(
+      'auth',
+      'first-time-login-service.ts',
+      'submitFirstTimeLogin',
+      error,
+      {
+        request: {
+          url: `${API_BASE_URL}/api/auth/first-time-login`,
+          method: 'POST',
+          statusCode: error.response?.status,
+          requestBody: {
+            email: data.email,
+            firstName: data.firstName,
+            // Don't log password
+          },
+          responseBody: error.response?.data,
+        },
+        metadata: {
+          email: data.email,
+        },
+      },
+    );
+
+    throw new Error(errorMessage);
   }
 };
 

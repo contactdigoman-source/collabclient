@@ -1,0 +1,36 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/api/members/search",
+    "queryParameters": {
+      "q": {
+        "matches": ".+"
+      }
+    },
+    "headers": {
+      "Authorization": {
+        "matches": "Bearer .+"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "success": true,
+      "data": [
+        {
+          "id": "1",
+          "fullname": "John Doe",
+          "email": "john.doe@example.com",
+          "designation": "",
+          "userpicture": "",
+          "status": "active"
+        }
+      ]
+    }
+  }
+}
+

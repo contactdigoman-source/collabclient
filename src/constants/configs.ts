@@ -7,10 +7,16 @@ const termsUrl = Config.TERM_AND_CONDITIONS_URL || 'https://colab.nexaei.com/ter
 console.log('Privacy Policy URL:', privacyUrl);
 console.log('Terms & Conditions URL:', termsUrl);
 
+// API Base URL for all API calls
+const apiBaseUrl = Config.API_BASE_URL || 'http://localhost:8080';
+
+// Log API URL for debugging (remove in production if needed)
+console.log('API Base URL:', apiBaseUrl);
+
 export const Configs = {
+  apiBaseUrl: apiBaseUrl,
   privacyPolicyUrl: privacyUrl,
   termsAndConditionsUrl: termsUrl,
-  //   apiBaseUrl: Config.API_URL,
   //   attendanceBaseUrl: Config.ATTENDANCE_BASE_URL,
   //   supportBaseUrl: Config.SUPPORT_BASE_URL,
   //   fileViewerBaseUrl: Config.FILE_VIEWER_BASE_URL,

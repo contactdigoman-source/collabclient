@@ -20,13 +20,14 @@ import {
 } from '../../components';
 import { NavigationProp } from '../../types/navigation';
 import { hp, wp, Icons, Images } from '../../constants';
-import { useAppDispatch, setUserData } from '../../redux';
+import { useAppDispatch, useAppSelector, setFirstTimeLoginData } from '../../redux';
 import { useTranslation } from '../../hooks/useTranslation';
 
 export default function FirstTimeLoginScreen(): React.JSX.Element {
   const navigation = useNavigation<NavigationProp>();
   const dispatch = useAppDispatch();
   const { t } = useTranslation();
+  const userData = useAppSelector((state) => state.userState.userData);
 
   // Refs for input focus management
   const lastNameRef = useRef<TextInput>(null);
@@ -148,27 +149,21 @@ export default function FirstTimeLoginScreen(): React.JSX.Element {
       return;
     }
 
-    // Update user data with first name and last name
-    await dispatch(
-      setUserData({
+    // Save first-time login data to store (will be sent to API in PermissionsScreen)
+    dispatch(
+      setFirstTimeLoginData({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        email: '', // Email will be set from login screen data
+        newPassword: newPassword, // Store password temporarily
       }),
     );
-
-    // Don't mark as completed yet - wait until PermissionsScreen is completed
-    // markFirstTimeLoginCompleted() will be called in PermissionsScreen
-
-    // TODO: Save the new password securely (e.g., update password via API)
-    // For now, we'll just navigate to privacy policy screen
-    console.log('New password set:', { firstName, lastName });
 
     // Navigate to PermissionsScreen after successful validation
     navigation.replace('PermissionsScreen');
   }, [
     firstName,
     lastName,
+    newPassword,
     validateAllFields,
     dispatch,
     navigation,

@@ -13,7 +13,14 @@
     "build:android:apk": "bash scripts/build-android-apk.sh",
     "build:android:bundle": "bash scripts/build-android-bundle.sh",
     "build:android:install": "bash scripts/install-android-apk.sh",
-    "build:ios:ipa": "bash scripts/build-ios-ipa.sh"
+    "build:ios:ipa": "bash scripts/build-ios-ipa.sh",
+    "wiremock:start": "bash scripts/start-wiremock.sh",
+    "wiremock:stop": "cd wiremock && docker-compose down",
+    "wiremock:logs": "cd wiremock && docker-compose logs -f",
+    "wiremock:list": "bash scripts/list-wiremock-endpoints.sh",
+    "wiremock:export": "bash scripts/export-wiremock-mappings.sh",
+    "wiremock:build-push-start": "bash scripts/build-push-start-wiremock.sh",
+    "wiremock:build-push-start:help": "echo 'Usage: npm run wiremock:build-push-start [version] [registry] [push] [use-registry]' && echo '  version: Image version tag (default: latest)' && echo '  registry: Docker Hub username or registry URL (optional)' && echo '  push: true to push to registry (default: false)' && echo '  use-registry: true to use registry image instead of building (default: false)'"
   },
   "dependencies": {
     "@notifee/react-native": "^9.1.8",

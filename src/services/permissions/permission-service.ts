@@ -1,5 +1,4 @@
 import { Platform, PermissionsAndroid, Linking, Alert } from 'react-native';
-import { PERMISSIONS, request, check, RESULTS, openSettings } from 'react-native-permissions';
 
 export type PermissionType =
   | 'location'
@@ -15,62 +14,57 @@ export interface PermissionStatus {
   canRequest: boolean;
 }
 
-// Map permission types to platform-specific permissions
-const getPermissionConstant = (type: PermissionType): string => {
-  if (Platform.OS === 'ios') {
-    switch (type) {
-      case 'location':
-        return PERMISSIONS.IOS.LOCATION_WHEN_IN_USE;
-      case 'storage':
-        return PERMISSIONS.IOS.PHOTO_LIBRARY;
-      case 'camera':
-        return PERMISSIONS.IOS.CAMERA;
-      case 'microphone':
-        return PERMISSIONS.IOS.MICROPHONE;
-      case 'phone':
-        return PERMISSIONS.IOS.CONTACTS; // iOS doesn't have phone state permission
-      case 'device':
-        return PERMISSIONS.IOS.IDFA; // Device identifier
-      default:
-        return '';
-    }
-  } else {
-    switch (type) {
-      case 'location':
-        return PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION;
-      case 'storage':
-        return PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE;
-      case 'camera':
-        return PERMISSIONS.ANDROID.CAMERA;
-      case 'microphone':
-        return PERMISSIONS.ANDROID.RECORD_AUDIO;
-      case 'phone':
-        return PERMISSIONS.ANDROID.READ_PHONE_STATE;
-      case 'device':
-        return PERMISSIONS.ANDROID.READ_PHONE_STATE; // Device ID is part of phone state
-      default:
-        return '';
-    }
+// Map permission types to Android permission constants
+// Accessing constants directly to avoid Hermes "property is not configurable" errors
+const getAndroidPermission = (type: PermissionType): typeof PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION | null => {
+  if (Platform.OS !== 'android') {
+    return null;
+  }
+
+  // Access constants directly without storing in variables to avoid frozen object issues
+  switch (type) {
+    case 'location':
+      return PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION;
+    case 'storage':
+      return PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE;
+    case 'camera':
+      return PermissionsAndroid.PERMISSIONS.CAMERA;
+    case 'microphone':
+      return PermissionsAndroid.PERMISSIONS.RECORD_AUDIO;
+    case 'phone':
+      return PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE;
+    case 'device':
+      return PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE;
+    default:
+      return null;
   }
 };
 
 /**
  * Check if a specific permission is granted
+ * Note: iOS permissions are handled differently and may require react-native-permissions for full support
  */
 export const checkPermission = async (
   type: PermissionType,
 ): Promise<PermissionStatus> => {
   try {
-    const permission = getPermissionConstant(type);
+    if (Platform.OS === 'ios') {
+      // iOS permissions require Info.plist configuration and may need react-native-permissions
+      // For now, return a default status (can be enhanced later)
+      console.warn(`iOS permission check for ${type} - consider using react-native-permissions for full support`);
+      return { type, granted: false, canRequest: true };
+    }
+
+    const permission = getAndroidPermission(type);
     if (!permission) {
       return { type, granted: false, canRequest: false };
     }
 
-    const result = await check(permission);
+    const result = await PermissionsAndroid.check(permission);
     return {
       type,
-      granted: result === RESULTS.GRANTED || result === RESULTS.LIMITED,
-      canRequest: result === RESULTS.DENIED,
+      granted: result,
+      canRequest: !result, // Can request if not granted
     };
   } catch (error) {
     console.error(`Error checking permission ${type}:`, error);
@@ -80,18 +74,26 @@ export const checkPermission = async (
 
 /**
  * Request a specific permission
+ * Note: iOS permissions are handled differently and may require react-native-permissions for full support
  */
 export const requestPermission = async (
   type: PermissionType,
 ): Promise<boolean> => {
   try {
-    const permission = getPermissionConstant(type);
+    if (Platform.OS === 'ios') {
+      // iOS permissions require Info.plist configuration and may need react-native-permissions
+      // For now, return false (can be enhanced later)
+      console.warn(`iOS permission request for ${type} - consider using react-native-permissions for full support`);
+      return false;
+    }
+
+    const permission = getAndroidPermission(type);
     if (!permission) {
       return false;
     }
 
-    const result = await request(permission);
-    return result === RESULTS.GRANTED || result === RESULTS.LIMITED;
+    const result = await PermissionsAndroid.request(permission);
+    return result === PermissionsAndroid.RESULTS.GRANTED;
   } catch (error) {
     console.error(`Error requesting permission ${type}:`, error);
     return false;
@@ -171,9 +173,11 @@ export const getMissingPermissions = async (): Promise<PermissionType[]> => {
  * Open app settings for user to manually grant permissions
  */
 export const openAppSettings = (): void => {
-  openSettings().catch(() => {
+  try {
     Linking.openSettings();
-  });
+  } catch (error) {
+    console.error('Error opening app settings:', error);
+  }
 };
 
 /**

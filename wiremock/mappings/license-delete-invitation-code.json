@@ -1,0 +1,21 @@
+{
+  "request": {
+    "method": "DELETE",
+    "urlPathPattern": "/api/license/invitation-codes/[0-9]+",
+    "headers": {
+      "Authorization": {
+        "matches": "Bearer .+"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "message": "Invitation code deleted successfully"
+    }
+  }
+}
+

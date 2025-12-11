@@ -1,7 +1,8 @@
 import axios from 'axios';
-import Config from 'react-native-config';
+import { Configs } from '../../constants/configs';
+import { logServiceError } from '../logger';
 
-const API_BASE_URL = Config.API_BASE_URL || 'https://your-api.com';
+const API_BASE_URL = Configs.apiBaseUrl;
 
 export interface RequestOTPParams {
   aadhaarNumber: string;
@@ -36,7 +37,26 @@ export const requestAadhaarOTP = async (params: RequestOTPParams): Promise<boole
     
     return response.data?.success === true;
   } catch (error: any) {
-    console.error('Failed to request Aadhaar OTP:', error);
+    logServiceError(
+      'aadhaar',
+      'otp-service.ts',
+      'requestAadhaarOTP',
+      error,
+      {
+        request: {
+          url: `${API_BASE_URL}/api/aadhaar/request-otp`,
+          method: 'POST',
+          statusCode: error.response?.status,
+          requestBody: { aadhaarNumber: params.aadhaarNumber, emailID: params.emailID },
+          responseBody: error.response?.data,
+        },
+        metadata: {
+          aadhaarNumber: params.aadhaarNumber ? `${params.aadhaarNumber.substring(0, 4)}****${params.aadhaarNumber.substring(8)}` : undefined,
+          emailID: params.emailID,
+        },
+      }
+    );
+    
     if (error.response) {
       // Server responded with error
       throw new Error(error.response.data?.message || 'Failed to request OTP');
@@ -73,7 +93,26 @@ export const verifyAadhaarOTP = async (params: VerifyOTPParams): Promise<boolean
     
     return response.data?.verified === true && response.data?.success === true;
   } catch (error: any) {
-    console.error('Failed to verify Aadhaar OTP:', error);
+    logServiceError(
+      'aadhaar',
+      'otp-service.ts',
+      'verifyAadhaarOTP',
+      error,
+      {
+        request: {
+          url: `${API_BASE_URL}/api/aadhaar/verify-otp`,
+          method: 'POST',
+          statusCode: error.response?.status,
+          requestBody: { aadhaarNumber: params.aadhaarNumber, emailID: params.emailID },
+          responseBody: error.response?.data,
+        },
+        metadata: {
+          aadhaarNumber: params.aadhaarNumber ? `${params.aadhaarNumber.substring(0, 4)}****${params.aadhaarNumber.substring(8)}` : undefined,
+          emailID: params.emailID,
+        },
+      }
+    );
+    
     if (error.response) {
       // Server responded with error
       const errorMessage = error.response.data?.message || 'Invalid OTP';

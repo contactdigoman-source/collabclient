@@ -1,0 +1,42 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/api/organization/setup",
+    "headers": {
+      "Content-Type": {
+        "equalTo": "application/json"
+      },
+      "Authorization": {
+        "matches": "Bearer .+"
+      }
+    },
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": "$.organizationName"
+      },
+      {
+        "matchesJsonPath": "$.regions"
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "organizationId": 1,
+      "organizationName": "Example Organization",
+      "status": "Active",
+      "regions": [
+        {
+          "id": 1,
+          "name": "Head Quarter",
+          "code": "HQ"
+        }
+      ],
+      "message": "Organization setup completed successfully"
+    }
+  }
+}
+

@@ -1,0 +1,40 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/api/auth/update-profile",
+    "headers": {
+      "Content-Type": {
+        "equalTo": "application/json"
+      },
+      "Authorization": {
+        "matches": "Bearer .+"
+      }
+    },
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": "$.firstName"
+      },
+      {
+        "matchesJsonPath": "$.lastName"
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "id": 1,
+      "email": "user@example.com",
+      "firstName": "John",
+      "lastName": "Doe",
+      "phoneNumber": "+1234567890",
+      "isEmailVerified": true,
+      "isPhoneVerified": false,
+      "requiresPasswordChange": false,
+      "roles": ["ORGUSER"]
+    }
+  }
+}
+

@@ -200,13 +200,21 @@
     "member": "Member",
     "displayBreakStatus": "Display Break Status",
     "darkMode": "Dark Mode",
+    "preferredLanguage": "Preferred Language",
     "attendanceLogs": "Attendance Logs",
     "viewProfile": "View Profile",
     "geoLocations": "Geo-locations",
     "security": "Security",
     "supportAndLearn": "Support & Learn",
     "logout": "Logout",
-    "version": "Version: 1.2.4"
+    "version": "Version: 1.2.4",
+    "language": {
+      "selectLanguage": "Select Language",
+      "english": "English",
+      "spanish": "Spanish",
+      "hindi": "Hindi",
+      "bengali": "Bengali"
+    }
   },
   "security": {
     "usbDebuggingDetected": "USB Debugging Detected",

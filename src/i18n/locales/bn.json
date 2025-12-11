@@ -191,6 +191,7 @@
     "member": "সদস্য",
     "displayBreakStatus": "বিরতি অবস্থা প্রদর্শন করুন",
     "darkMode": "ডার্ক মোড",
+    "preferredLanguage": "পছন্দের ভাষা",
     "attendanceLogs": "উপস্থিতি লগ",
     "viewProfile": "প্রোফাইল দেখুন",
     "supportAndLearn": "সহায়তা এবং শিখুন",
@@ -203,7 +204,14 @@
     "empId": "কর্মচারী আইডি",
     "employmentType": "চাকরির ধরন",
     "designation": "পদবী",
-    "profileDetails": "প্রোফাইল বিবরণ"
+    "profileDetails": "প্রোফাইল বিবরণ",
+    "language": {
+      "selectLanguage": "ভাষা নির্বাচন করুন",
+      "english": "ইংরেজি",
+      "spanish": "স্প্যানিশ",
+      "hindi": "হিন্দি",
+      "bengali": "বাংলা"
+    }
   },
   "security": {
     "usbDebuggingDetected": "USB ডিবাগিং সনাক্ত করা হয়েছে",

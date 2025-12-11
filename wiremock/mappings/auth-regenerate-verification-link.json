@@ -1,0 +1,28 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/api/auth/regenerate-verification-link",
+    "headers": {
+      "Content-Type": {
+        "equalTo": "application/json"
+      }
+    },
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": "$.email"
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "message": "New verification link generated. Please check your email.",
+      "token": "encrypted-verification-token-12345",
+      "otp": null
+    }
+  }
+}
+

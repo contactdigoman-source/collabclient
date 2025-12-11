@@ -1,0 +1,40 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/api/organization/create",
+    "headers": {
+      "Content-Type": {
+        "equalTo": "application/json"
+      },
+      "Authorization": {
+        "matches": "Bearer .+"
+      }
+    },
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": "$.name"
+      },
+      {
+        "matchesJsonPath": "$.licenseId"
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "id": 1,
+      "name": "New Organization",
+      "description": "New organization description",
+      "domain": "neworg.com",
+      "status": "Active",
+      "setupStatus": "Pending",
+      "licenseId": 1,
+      "createdAt": "2024-01-15T00:00:00Z",
+      "updatedAt": "2024-01-15T00:00:00Z"
+    }
+  }
+}
+

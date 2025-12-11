@@ -13,10 +13,12 @@ export type RootStackParamList = {
   ViewProfileScreen: undefined;
   OtpScreen: {
     emailID?: string;
-    isAadhaarFallback?: boolean;
-    aadhaarNumber?: string;
     isPasswordReset?: boolean;
     isPunchFlow?: boolean;
+  };
+  AadhaarOtpScreen: {
+    emailID?: string;
+    aadhaarNumber?: string;
   };
   ChangeForgottenPassword: { emailID?: string };
   AadhaarInputScreen: undefined;

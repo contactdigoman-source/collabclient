@@ -1,0 +1,37 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/api/seed/test-login",
+    "headers": {
+      "Content-Type": {
+        "equalTo": "application/json"
+      }
+    },
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": "$.email"
+      },
+      {
+        "matchesJsonPath": "$.password"
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "success": true,
+      "userExists": true,
+      "email": "licenseadmin@nexaei.com",
+      "isActive": true,
+      "isEmailVerified": true,
+      "passwordMatches": true,
+      "storedHashPreview": "hashed-password-preview...",
+      "computedHashPreview": "hashed-password-preview...",
+      "message": "Password matches!"
+    }
+  }
+}
+

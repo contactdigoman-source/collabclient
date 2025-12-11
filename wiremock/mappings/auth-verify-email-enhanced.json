@@ -1,0 +1,39 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/api/auth/verify-email",
+    "headers": {
+      "Content-Type": {
+        "equalTo": "application/json"
+      }
+    },
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": "$.token"
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "message": "Email verified successfully",
+      "isVerified": true,
+      "requiresOrganizationSetup": false,
+      "requiresFirstTimeLogin": true,
+      "showSetupOptions": false,
+      "user": {
+        "id": 1,
+        "email": "user@example.com",
+        "firstName": "John",
+        "lastName": "Doe",
+        "isEmailVerified": true
+      },
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+    }
+  }
+}
+
+

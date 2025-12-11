@@ -191,6 +191,7 @@
     "member": "सदस्य",
     "displayBreakStatus": "ब्रेक स्थिति प्रदर्शित करें",
     "darkMode": "डार्क मोड",
+    "preferredLanguage": "पसंदीदा भाषा",
     "attendanceLogs": "उपस्थिति लॉग",
     "viewProfile": "प्रोफ़ाइल देखें",
     "supportAndLearn": "सहायता और सीखें",
@@ -203,7 +204,14 @@
     "empId": "कर्मचारी आईडी",
     "employmentType": "रोजगार प्रकार",
     "designation": "पदनाम",
-    "profileDetails": "प्रोफ़ाइल विवरण"
+    "profileDetails": "प्रोफ़ाइल विवरण",
+    "language": {
+      "selectLanguage": "भाषा चुनें",
+      "english": "अंग्रेजी",
+      "spanish": "स्पेनिश",
+      "hindi": "हिन्दी",
+      "bengali": "बंगाली"
+    }
   },
   "security": {
     "usbDebuggingDetected": "USB डिबगिंग का पता चला",

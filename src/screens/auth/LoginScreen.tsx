@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -21,21 +21,10 @@ import {
 } from '../../components';
 import PasswordExpiryModal from '../../components/app-modals/PasswordExpiryModal';
 import { hp, Icons, Images, MAIL_FORMAT } from '../../constants';
-import { useAppDispatch, setUserData } from '../../redux';
+import { useAppDispatch, setUserData, setJWTToken, setAccountStatus } from '../../redux';
 import { NavigationProp } from '../../types/navigation';
 import { useTranslation } from '../../hooks/useTranslation';
-import {
-  isAccountLocked,
-  incrementLoginAttempts,
-  resetLoginAttempts,
-  incrementSuccessfulLoginCount,
-} from '../../services';
-
-interface EmailName {
-  firstName: string;
-  lastName: string;
-  email: string;
-}
+import { loginUser, storeJWTToken, AccountStatus } from '../../services/auth/login-service';
 
 export default function LoginScreen(): React.JSX.Element {
   const navigation = useNavigation<NavigationProp>();
@@ -49,17 +38,13 @@ export default function LoginScreen(): React.JSX.Element {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [password, setPassword] = useState<string>('');
   const [passError, setPassError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  
   const [isAccountLockedModalVisible, setIsAccountLockedModalVisible] =
     useState<boolean>(false);
   const [isPasswordExpiryModalVisible, setIsPasswordExpiryModalVisible] =
     useState<boolean>(false);
-
-  // Check if account is locked on mount
-  useEffect(() => {
-    if (isAccountLocked()) {
-      setIsAccountLockedModalVisible(true);
-    }
-  }, []);
 
   const validateEmail = useCallback((): boolean => {
     if (!email.trim()) {
@@ -75,59 +60,76 @@ export default function LoginScreen(): React.JSX.Element {
   }, [email, t]);
 
   const onLoginPress = useCallback(async (): Promise<void> => {
-    // Check if account is locked
-    if (isAccountLocked()) {
-      setIsAccountLockedModalVisible(true);
-      return;
-    }
-
     if (!validateEmail()) return;
-    // TODO: Add real validation
     if (!password.trim()) {
       setPassError(t('auth.login.passwordRequired'));
       return;
     }
 
-    // Increment login attempts (for demo: locks on every 3rd attempt)
-    const attempts = incrementLoginAttempts();
+    setIsLoading(true);
+    setLoginError(null);
+    setEmailError(null);
+    setPassError(null);
 
-    // Check if account should be locked after this attempt
-    if (attempts % 3 === 0) {
-      setIsAccountLockedModalVisible(true);
-      return;
+    try {
+      // Call login API
+      const loginResponse = await loginUser({ email, password });
+
+      // Store JWT token securely in Keychain
+      await storeJWTToken(loginResponse.token, loginResponse.user.email);
+
+      // Save user data and token to Redux store
+      dispatch(setUserData({
+        id: loginResponse.user.id,
+        firstName: loginResponse.user.firstName,
+        lastName: loginResponse.user.lastName,
+        email: loginResponse.user.email,
+        phoneNumber: loginResponse.user.phoneNumber,
+        isEmailVerified: loginResponse.user.isEmailVerified,
+        isPhoneVerified: loginResponse.user.isPhoneVerified,
+        requiresPasswordChange: loginResponse.user.requiresPasswordChange,
+        roles: loginResponse.user.roles,
+        firstTimeLogin: loginResponse.user.firstTimeLogin,
+      }));
+      dispatch(setJWTToken(loginResponse.token));
+      dispatch(setAccountStatus(loginResponse.accountStatus));
+
+      // Handle account status
+      // Possible values: "active" | "locked" | "password expired" | "inactive"
+      const accountStatus = loginResponse.accountStatus?.toLowerCase() as AccountStatus;
+      
+      if (accountStatus === 'locked') {
+        // Show AccountLockedModal - user cannot proceed
+        setIsAccountLockedModalVisible(true);
+        setIsLoading(false);
+        return;
+      }
+
+      if (accountStatus === 'password expired') {
+        // Show PasswordExpiryModal - user can reset password or dismiss
+        setIsPasswordExpiryModalVisible(true);
+        setIsLoading(false);
+        return;
+      }
+
+      if (accountStatus === 'inactive') {
+        // Show error message - user cannot proceed
+        setLoginError('Your account is inactive. Please contact support.');
+        setIsLoading(false);
+        return;
+      }
+
+      // accountStatus === 'active' - proceed with navigation
+
+      // Always navigate to OTP screen after successful login
+      // OTP screen will decide whether to go to dashboard or first-time login
+      navigation.replace('OtpScreen', { emailID: email });
+    } catch (error: any) {
+      console.error('Login error:', error);
+      setLoginError(error.message || t('auth.login.loginFailed') || 'Login failed. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
-
-    // Helper to capitalize first letter
-    const capitalize = (str: string): string => {
-      return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-    };
-
-    // Extract name from email
-    const getNameFromEmail = (emailAddress: string): EmailName => {
-      if (!emailAddress || typeof emailAddress !== 'string')
-        return { firstName: '', lastName: '', email: '' };
-
-      // Extract the part before '@'
-      const namePart = emailAddress.split('@')[0];
-
-      // Replace dots, underscores, or hyphens with spaces
-      const parts = namePart.split(/[._-]+/).filter(Boolean);
-
-      const firstName = parts[0] ? capitalize(parts[0]) : '';
-      const lastName = parts[1] ? capitalize(parts[1]) : '';
-
-      return { firstName, lastName, email: emailAddress };
-    };
-
-    // Reset login attempts on successful login
-    resetLoginAttempts();
-
-    // Dispatch user data after login
-    await dispatch(setUserData(getNameFromEmail(email)));
-
-    // Always navigate to OTP screen first after login
-    // OTP screen will then navigate to FirstTimeLoginScreen or DashboardScreen
-    navigation.replace('OtpScreen', { emailID: email });
   }, [email, password, dispatch, navigation, validateEmail, t]);
 
   const handleCloseLockedModal = useCallback((): void => {
@@ -142,10 +144,9 @@ export default function LoginScreen(): React.JSX.Element {
 
   const handlePasswordExpiryDismiss = useCallback((): void => {
     setIsPasswordExpiryModalVisible(false);
-    // Continue with normal login flow
-    dispatch(setUserData(getNameFromEmail(email)));
-    navigation.replace('OtpScreen', { emailID: email });
-  }, [dispatch, navigation, email]);
+    // User chose to dismiss - they should reset password via the modal
+    // Navigation will be handled by handlePasswordExpiryReset
+  }, []);
 
   const onForgotPasswordPress = useCallback((): void => {
     navigation.navigate('ForgotPasswordScreen', { emailID: email });
@@ -207,18 +208,30 @@ export default function LoginScreen(): React.JSX.Element {
               onSubmitEditing={onLoginPress}
             />
 
+            {loginError && (
+              <AppText
+                size={hp(1.8)}
+                color="#E53131"
+                style={styles.errorText}
+              >
+                {loginError}
+              </AppText>
+            )}
+
             <AppButton
-              title={t('auth.login.title')}
+              title={isLoading ? t('auth.login.loading') || 'Logging in...' : t('auth.login.title')}
               style={styles.button}
               onPress={onLoginPress}
+              disabled={isLoading}
+              loading={isLoading}
             />
 
             <View style={styles.forgotPassword}>
-              <TouchableOpacity onPress={onForgotPasswordPress} activeOpacity={0.7}>
-                <AppText 
-                  size={hp(1.74)} 
-                  color={colors.primary}
-                >
+              <TouchableOpacity
+                onPress={onForgotPasswordPress}
+                activeOpacity={0.7}
+              >
+                <AppText size={hp(1.74)} color={colors.primary}>
                   {t('auth.login.forgotPassword')}
                 </AppText>
               </TouchableOpacity>
@@ -289,5 +302,10 @@ const styles = StyleSheet.create({
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  errorText: {
+    marginTop: hp(1),
+    marginBottom: hp(1),
+    textAlign: 'center',
   },
 });

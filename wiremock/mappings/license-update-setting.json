@@ -1,0 +1,29 @@
+{
+  "request": {
+    "method": "PUT",
+    "urlPathPattern": "/api/license/settings/.+",
+    "headers": {
+      "Content-Type": {
+        "equalTo": "application/json"
+      },
+      "Authorization": {
+        "matches": "Bearer .+"
+      }
+    },
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": "$.value"
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "message": "Setting updated successfully"
+    }
+  }
+}
+

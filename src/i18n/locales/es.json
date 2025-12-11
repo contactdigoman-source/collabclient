@@ -191,6 +191,7 @@
     "member": "Miembro",
     "displayBreakStatus": "Mostrar Estado de Descanso",
     "darkMode": "Modo Oscuro",
+    "preferredLanguage": "Idioma Preferido",
     "attendanceLogs": "Registros de Asistencia",
     "viewProfile": "Ver Perfil",
     "supportAndLearn": "Soporte y Aprendizaje",
@@ -203,7 +204,14 @@
     "empId": "ID de empleado",
     "employmentType": "Tipo de empleo",
     "designation": "Designación",
-    "profileDetails": "Detalles del Perfil"
+    "profileDetails": "Detalles del Perfil",
+    "language": {
+      "selectLanguage": "Seleccionar Idioma",
+      "english": "Inglés",
+      "spanish": "Español",
+      "hindi": "Hindi",
+      "bengali": "Bengalí"
+    }
   },
   "security": {
     "usbDebuggingDetected": "Depuración USB Detectada",

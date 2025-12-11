@@ -7,6 +7,7 @@ import BootSplash from 'react-native-bootsplash';
 
 import {
   AadhaarInputScreen,
+  AadhaarOtpScreen,
   AttendanceLogsScreen,
   ChangeForgottenPassword,
   CheckInScreen,
@@ -34,14 +35,17 @@ import {
 import { store } from '../redux';
 import DashboardScreen from './BottomTabBar';
 import { useAppSelector } from '../redux';
-import { checkUsbDebuggingStatus, hasCompletedFirstTimeLogin } from '../services';
+import {
+  checkUsbDebuggingStatus,
+} from '../services';
 import { RootStackParamList } from '../types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function AppNavigation(): React.JSX.Element {
   const { appTheme } = useAppSelector(state => state.appState);
-  const [isUsbDebuggingEnabled, setIsUsbDebuggingEnabled] = React.useState<boolean>(false);
+  const [isUsbDebuggingEnabled, setIsUsbDebuggingEnabled] =
+    React.useState<boolean>(false);
   const [isChecking, setIsChecking] = React.useState<boolean>(true);
 
   // Check if USB debugging check should be bypassed
@@ -80,15 +84,25 @@ export default function AppNavigation(): React.JSX.Element {
     return () => clearInterval(interval);
   }, [bypassUsbCheck]);
 
-  // Show blocking screen if USB debugging is enabled (unless bypassed)
-  if (Platform.OS === 'android' && !bypassUsbCheck && (isChecking || isUsbDebuggingEnabled)) {
-    // Hide splash when USB debugging screen is shown
-    React.useEffect(() => {
-      if (!isChecking) {
-        BootSplash.hide({ fade: true });
-      }
-    }, [isChecking]);
+  // Hide splash when USB debugging screen is shown (moved to top level to follow Rules of Hooks)
+  React.useEffect(() => {
+    // Only hide splash if we're showing USB debugging screen and checking is complete
+    if (
+      Platform.OS === 'android' &&
+      !bypassUsbCheck &&
+      !isChecking &&
+      isUsbDebuggingEnabled
+    ) {
+      BootSplash.hide({ fade: true });
+    }
+  }, [isChecking, isUsbDebuggingEnabled, bypassUsbCheck]);
 
+  // Show blocking screen if USB debugging is enabled (unless bypassed)
+  if (
+    Platform.OS === 'android' &&
+    !bypassUsbCheck &&
+    (isChecking || isUsbDebuggingEnabled)
+  ) {
     if (isChecking) {
       return (
         <View style={styles.container}>
@@ -131,11 +145,15 @@ export default function AppNavigation(): React.JSX.Element {
       >
         <Stack.Navigator
           initialRouteName={
-            store.getState().userState.userData?.email
-              ? hasCompletedFirstTimeLogin()
-                ? 'DashboardScreen'
-                : 'FirstTimeLoginScreen'
-              : 'LoginScreen'
+            (() => {
+              const userData = store.getState().userState.userData;
+              if (!userData?.email) {
+                return 'LoginScreen';
+              }
+              // Use firstTimeLogin from userData (set by API response)
+              const isFirstTime = userData.firstTimeLogin ?? false;
+              return isFirstTime ? 'FirstTimeLoginScreen' : 'DashboardScreen';
+            })()
           }
           screenOptions={{ headerShown: false }}
         >
@@ -153,10 +171,7 @@ export default function AppNavigation(): React.JSX.Element {
             name="ForgotPasswordScreen"
             component={ForgotPasswordScreen}
           />
-          <Stack.Screen
-            name="CheckInScreen"
-            component={CheckInScreen}
-          />
+          <Stack.Screen name="CheckInScreen" component={CheckInScreen} />
           <Stack.Screen
             name="ConfirmPunchScreen"
             component={ConfirmPunchScreen}
@@ -181,6 +196,10 @@ export default function AppNavigation(): React.JSX.Element {
           <Stack.Screen
             name="AadhaarInputScreen"
             component={AadhaarInputScreen}
+          />
+          <Stack.Screen
+            name="AadhaarOtpScreen"
+            component={AadhaarOtpScreen}
           />
           <Stack.Screen
             name="PanCardCaptureScreen"
@@ -213,4 +232,3 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
-
