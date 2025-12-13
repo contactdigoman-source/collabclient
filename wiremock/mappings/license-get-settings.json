@@ -1,12 +1,7 @@
 {
   "request": {
     "method": "GET",
-    "url": "/api/license/settings",
-    "headers": {
-      "Authorization": {
-        "matches": "Bearer .+"
-      }
-    }
+    "url": "/api/license/settings"
   },
   "response": {
     "status": 200,
@@ -20,4 +15,3 @@
     }
   }
 }
-

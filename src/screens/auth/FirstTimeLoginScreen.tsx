@@ -20,14 +20,14 @@ import {
 } from '../../components';
 import { NavigationProp } from '../../types/navigation';
 import { hp, wp, Icons, Images } from '../../constants';
-import { useAppDispatch, useAppSelector, setFirstTimeLoginData } from '../../redux';
+import { useAppDispatch, setFirstTimeLoginData } from '../../redux';
 import { useTranslation } from '../../hooks/useTranslation';
 
 export default function FirstTimeLoginScreen(): React.JSX.Element {
   const navigation = useNavigation<NavigationProp>();
   const dispatch = useAppDispatch();
   const { t } = useTranslation();
-  const userData = useAppSelector((state) => state.userState.userData);
+ 
 
   // Refs for input focus management
   const lastNameRef = useRef<TextInput>(null);

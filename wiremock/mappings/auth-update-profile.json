@@ -5,9 +5,6 @@
     "headers": {
       "Content-Type": {
         "equalTo": "application/json"
-      },
-      "Authorization": {
-        "matches": "Bearer .+"
       }
     },
     "bodyPatterns": [
@@ -16,6 +13,15 @@
       },
       {
         "matchesJsonPath": "$.lastName"
+      },
+      {
+        "matchesJsonPath": "$.dateOfBirth"
+      },
+      {
+        "matchesJsonPath": "$.employmentType"
+      },
+      {
+        "matchesJsonPath": "$.designation"
       }
     ]
   },
@@ -32,9 +38,13 @@
       "phoneNumber": "+1234567890",
       "isEmailVerified": true,
       "isPhoneVerified": false,
+      "profilePhotoUrl": "https://example.com/profile-photos/user-1.jpg",
+      "dateOfBirth": "1990-01-01T00:00:00Z",
+      "employmentType": "Full Time",
       "requiresPasswordChange": false,
-      "roles": ["ORGUSER"]
+      "roles": [
+        "ORGUSER"
+      ]
     }
   }
 }
-

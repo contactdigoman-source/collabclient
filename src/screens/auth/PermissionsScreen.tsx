@@ -19,7 +19,6 @@ import { hp, wp, FontTypes } from '../../constants';
 import { useTheme } from '@react-navigation/native';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useAppDispatch, useAppSelector, setFirstTimeLoginData } from '../../redux';
-import { submitFirstTimeLogin } from '../../services/auth/first-time-login-service';
 import { requestAllPermissions } from '../../services/permissions/permission-service';
 
 interface PermissionItem {
@@ -118,24 +117,22 @@ export default function PermissionsScreen(): React.JSX.Element {
       // Get list of permission IDs that were shown (all permissions in this screen)
       const permissionIds = PERMISSIONS.map((p) => p.id);
 
-      // Submit first-time login data with consent
-      await submitFirstTimeLogin({
-        email: email,
-        firstName: firstTimeLoginData.firstName,
-        lastName: firstTimeLoginData.lastName,
-        newPassword: firstTimeLoginData.newPassword,
+      // Get current timestamp for permissions
+      const permissionsTimestamp = new Date().toISOString();
+
+      // Save permissions and timestamp to firstTimeLoginData in store
+      dispatch(setFirstTimeLoginData({
+        ...firstTimeLoginData,
         permissions: permissionIds,
-      });
+        permissionsTimestamp: permissionsTimestamp,
+      }));
 
-      // Clear temporary first-time login data
-      dispatch(setFirstTimeLoginData(null));
-
-      // Navigate to DashboardScreen (home)
-      navigation.replace('DashboardScreen');
+      // Navigate to ProfilePhotoScreen
+      navigation.replace('ProfilePhotoScreen');
     } catch (error: any) {
       Alert.alert(
         t('auth.permissions.error', 'Error'),
-        error.message || t('auth.permissions.submitError', 'Failed to submit first-time login data. Please try again.'),
+        error.message || t('auth.permissions.submitError', 'Failed to save permissions. Please try again.'),
       );
     } finally {
       setIsSubmitting(false);

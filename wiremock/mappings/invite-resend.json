@@ -1,12 +1,7 @@
 {
   "request": {
     "method": "POST",
-    "urlPathPattern": "/api/invite/[0-9]+/resend",
-    "headers": {
-      "Authorization": {
-        "matches": "Bearer .+"
-      }
-    }
+    "urlPathPattern": "/api/invite/[0-9]+/resend"
   },
   "response": {
     "status": 200,
@@ -18,4 +13,3 @@
     }
   }
 }
-

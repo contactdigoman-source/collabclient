@@ -1,12 +1,7 @@
 {
   "request": {
     "method": "DELETE",
-    "urlPathPattern": "/api/license/[0-9]+",
-    "headers": {
-      "Authorization": {
-        "matches": "Bearer .+"
-      }
-    }
+    "urlPathPattern": "/api/license/[0-9]+"
   },
   "response": {
     "status": 200,
@@ -18,4 +13,3 @@
     }
   }
 }
-

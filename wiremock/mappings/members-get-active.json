@@ -1,12 +1,7 @@
 {
   "request": {
     "method": "GET",
-    "urlPathPattern": "/api/members/active",
-    "headers": {
-      "Authorization": {
-        "matches": "Bearer .+"
-      }
-    }
+    "urlPathPattern": "/api/members/active"
   },
   "response": {
     "status": 200,
@@ -23,7 +18,7 @@
           "designation": "Developer",
           "userpicture": "",
           "status": "active",
-          "createdAt": "2024-01-01T00:00:00Z"
+          "createdAt": "2026-01-01T00:00:00Z"
         },
         {
           "id": "2",
@@ -32,11 +27,10 @@
           "designation": "Designer",
           "userpicture": "",
           "status": "active",
-          "createdAt": "2024-01-02T00:00:00Z"
+          "createdAt": "2026-01-02T00:00:00Z"
         }
       ],
       "count": 2
     }
   }
 }
-

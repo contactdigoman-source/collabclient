@@ -1,5 +1,6 @@
 import React, { useMemo, useCallback } from 'react';
 import { View, StyleSheet, FlatList } from 'react-native';
+import moment from 'moment';
 import {
   AppContainer,
   AppText,
@@ -8,22 +9,22 @@ import {
 } from '../../components';
 import { useAppSelector } from '../../redux';
 import { useTranslation } from '../../hooks/useTranslation';
-
-interface AttendanceItem {
-  DateOfPunch: string;
-  [key: string]: any;
-}
+import { wp } from '../../constants';
+import { AttendanceRecord } from '../../redux/types/userTypes';
 
 export default function AttendanceLogsScreen(): React.JSX.Element {
   const { t } = useTranslation();
   const { userAttendanceHistory } = useAppSelector(state => state.userState);
 
   /** Group attendance logs by date — memoized for performance */
-  const groupedData = useMemo<AttendanceItem[][]>(() => {
+  const groupedData = useMemo<AttendanceRecord[][]>(() => {
     if (!userAttendanceHistory?.length) return [];
-    const grouped: { [key: string]: AttendanceItem[] } = userAttendanceHistory.reduce(
-      (group: { [key: string]: AttendanceItem[] }, attendance: AttendanceItem) => {
-        const date = attendance.DateOfPunch;
+    const grouped: { [key: string]: AttendanceRecord[] } = userAttendanceHistory.reduce(
+      (group: { [key: string]: AttendanceRecord[] }, attendance: AttendanceRecord) => {
+        const date = attendance.DateOfPunch || 
+          (attendance.Timestamp 
+            ? moment(attendance.Timestamp).format('YYYY-MM-DD')
+            : moment().format('YYYY-MM-DD'));
         if (!group[date]) group[date] = [];
         group[date].push(attendance);
         return group;
@@ -36,7 +37,7 @@ export default function AttendanceLogsScreen(): React.JSX.Element {
 
   /** Stable renderItem reference */
   const renderHistoryItem = useCallback(
-    ({ item }: { item: AttendanceItem[] }) => <AttendanceLogItem item={item} />,
+    ({ item }: { item: AttendanceRecord[] }) => <AttendanceLogItem item={item} />,
     [],
   );
 
@@ -73,7 +74,7 @@ const EmptyList = React.memo((): React.JSX.Element => {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: wp(4.27), // 17px / 375px * 100 (matching DayAttendanceItem margin)
   },
   emptyContainer: {
     flexGrow: 1,
@@ -81,4 +82,3 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
-

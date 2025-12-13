@@ -10,6 +10,7 @@ import {
   AadhaarOtpScreen,
   AttendanceLogsScreen,
   ChangeForgottenPassword,
+  ChangePasswordScreen,
   CheckInScreen,
   ConfirmPunchScreen,
   FirstTimeLoginScreen,
@@ -37,6 +38,8 @@ import DashboardScreen from './BottomTabBar';
 import { useAppSelector } from '../redux';
 import {
   checkUsbDebuggingStatus,
+  isSessionExpired,
+  logoutUser,
 } from '../services';
 import { RootStackParamList } from '../types/navigation';
 
@@ -47,6 +50,60 @@ export default function AppNavigation(): React.JSX.Element {
   const [isUsbDebuggingEnabled, setIsUsbDebuggingEnabled] =
     React.useState<boolean>(false);
   const [isChecking, setIsChecking] = React.useState<boolean>(true);
+
+  // Compute initial route name once on mount
+  // Use a fallback to ensure we always have a valid route name
+  const initialRouteName = React.useMemo(() => {
+    try {
+      const userState = store.getState()?.userState;
+      if (!userState) {
+        console.log('[Navigation] No userState, defaulting to LoginScreen');
+        return 'LoginScreen';
+      }
+
+      const userData = userState.userData;
+      const expiresAt = userState.expiresAt;
+      
+      console.log('[Navigation] Checking initial route:', {
+        hasUserData: !!userData,
+        email: userData?.email,
+        expiresAt,
+        jwtToken: !!userState.jwtToken,
+      });
+      
+      // Check if user is logged in
+      if (!userData?.email) {
+        console.log('[Navigation] No user data, going to LoginScreen');
+        return 'LoginScreen';
+      }
+      
+      // Check if session is expired (only if expiresAt is provided)
+      if (expiresAt) {
+        const expired = isSessionExpired(expiresAt);
+        console.log('[Navigation] Session expiration check:', { expiresAt, expired });
+        if (expired) {
+          // Session expired - navigate to login
+          // Don't call logoutUser here as it's async and navigation isn't ready yet
+          // The logout will be handled when user tries to interact with the app
+          console.log('[Navigation] Session expired, going to LoginScreen');
+          return 'LoginScreen';
+        }
+      } else {
+        // If no expiresAt but user is logged in, allow access (might be old session)
+        console.log('[Navigation] No expiresAt, but user logged in, allowing access');
+      }
+      
+      // Use firstTimeLogin from userData (set by API response)
+      const isFirstTime = userData.firstTimeLogin ?? false;
+      const route = isFirstTime ? 'FirstTimeLoginScreen' : 'DashboardScreen';
+      console.log('[Navigation] Navigating to:', route);
+      return route;
+    } catch (error) {
+      console.error('[Navigation] Error determining initial route:', error);
+      // Always fallback to LoginScreen if there's any error
+      return 'LoginScreen';
+    }
+  }, []); // Only compute once on mount
 
   // Check if USB debugging check should be bypassed
   const bypassUsbCheck = Config.BYPASS_USB_DEBUGGING_CHECK === 'true';
@@ -142,19 +199,13 @@ export default function AppNavigation(): React.JSX.Element {
           // Hide splash screen only when navigation is ready to prevent black screen
           BootSplash.hide({ fade: true });
         }}
+        onError={(error) => {
+          // Log navigation errors but don't crash the app
+          console.error('[Navigation] NavigationContainer error:', error);
+        }}
       >
         <Stack.Navigator
-          initialRouteName={
-            (() => {
-              const userData = store.getState().userState.userData;
-              if (!userData?.email) {
-                return 'LoginScreen';
-              }
-              // Use firstTimeLogin from userData (set by API response)
-              const isFirstTime = userData.firstTimeLogin ?? false;
-              return isFirstTime ? 'FirstTimeLoginScreen' : 'DashboardScreen';
-            })()
-          }
+          initialRouteName={initialRouteName || 'LoginScreen'}
           screenOptions={{ headerShown: false }}
         >
           <Stack.Screen name="LoginScreen" component={LoginScreen} />
@@ -192,6 +243,10 @@ export default function AppNavigation(): React.JSX.Element {
           <Stack.Screen
             name="ChangeForgottenPassword"
             component={ChangeForgottenPassword}
+          />
+          <Stack.Screen
+            name="ChangePasswordScreen"
+            component={ChangePasswordScreen}
           />
           <Stack.Screen
             name="AadhaarInputScreen"
@@ -232,3 +287,4 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
+

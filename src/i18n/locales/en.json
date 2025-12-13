@@ -160,7 +160,9 @@
     "verifying": "Authenticating...",
     "failed": "Biometric verification failed",
     "useOTP": "Use OTP instead",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "notInstalled": "Download and install Aadhaar FaceRD for successful attendance.",
+    "downloadHere": "Download Here"
   },
   "home": {
     "colleagues": "Colleagues",
@@ -207,7 +209,18 @@
     "security": "Security",
     "supportAndLearn": "Support & Learn",
     "logout": "Logout",
-    "version": "Version: 1.2.4",
+    "version": "Version: 1.0.0",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "email": "Email",
+    "dateOfActivation": "Date of Activation",
+    "dateOfBirth": "Date of Birth",
+    "empId": "Employee ID",
+    "employmentType": "Employment Type",
+    "designation": "Designation",
+    "profileDetails": "Profile Details",
+    "currentPassword": "Current Password",
+    "supportEmail": "support@example.com",
     "language": {
       "selectLanguage": "Select Language",
       "english": "English",
@@ -242,7 +255,9 @@
     "loading": "Loading...",
     "error": "Error",
     "success": "Success",
-    "featureLocked": "This feature is locked!"
+    "featureLocked": "This feature is locked!",
+    "okay": "Okay",
+    "contact": "Contact us at"
   }
 }
 

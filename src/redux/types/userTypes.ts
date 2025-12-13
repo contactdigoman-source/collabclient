@@ -51,12 +51,15 @@ export interface FirstTimeLoginData {
   firstName: string;
   lastName: string;
   newPassword: string;
+  permissions?: string[]; // List of permission IDs that were consented to
+  permissionsTimestamp?: string; // ISO 8601 format - time when permissions were granted
 }
 
 // User State Type
 export interface UserState {
   userData: UserData | null;
   jwtToken: string | null; // JWT token for API authentication
+  expiresAt: string | null; // Session expiration timestamp (ISO 8601 format)
   accountStatus: AccountStatus | null; // Current account status
   userLocationRegion: LocationRegion;
   userLastAttendance: AttendanceRecord | null;
@@ -66,5 +69,6 @@ export interface UserState {
   isPanCardVerified: boolean; // If user verified using PAN card instead of Aadhaar
   storedAadhaarNumber: string | null; // Stored Aadhaar number for Face RD verification
   firstTimeLoginData: FirstTimeLoginData | null; // Temporary storage for first-time login form data
+  displayBreakStatus: boolean; // User preference to display break status on home screen
 }
 

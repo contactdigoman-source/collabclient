@@ -1,12 +1,7 @@
 {
   "request": {
     "method": "GET",
-    "urlPathPattern": "/api/invite",
-    "headers": {
-      "Authorization": {
-        "matches": "Bearer .+"
-      }
-    }
+    "urlPathPattern": "/api/invite"
   },
   "response": {
     "status": 200,
@@ -19,8 +14,8 @@
         "email": "invited1@example.com",
         "roleId": 11,
         "roleName": "ORGUSER",
-        "invitedAt": "2024-01-15T10:00:00Z",
-        "expiresAt": "2024-01-22T10:00:00Z",
+        "invitedAt": "2026-01-15T10:00:00Z",
+        "expiresAt": "2026-01-22T10:00:00Z",
         "isAccepted": false,
         "isExpired": false,
         "invitationToken": null
@@ -30,8 +25,8 @@
         "email": "invited2@example.com",
         "roleId": 11,
         "roleName": "ORGUSER",
-        "invitedAt": "2024-01-14T10:00:00Z",
-        "expiresAt": "2024-01-21T10:00:00Z",
+        "invitedAt": "2026-01-14T10:00:00Z",
+        "expiresAt": "2026-01-21T10:00:00Z",
         "isAccepted": true,
         "isExpired": false,
         "invitationToken": null
@@ -39,4 +34,3 @@
     ]
   }
 }
-

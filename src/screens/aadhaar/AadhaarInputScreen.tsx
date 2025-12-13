@@ -8,6 +8,7 @@ import {
   AppInput,
   AppText,
   BackHeader,
+  FaceRDNotInstalledModal,
 } from '../../components';
 import { hp, wp, Images } from '../../constants';
 import { useAppDispatch, useAppSelector, store } from '../../redux';
@@ -18,6 +19,7 @@ import {
   storeAadhaarNumber,
   requestLocationPermission,
   isLocationEnabled,
+  isFaceRDAppInstalled,
 } from '../../services';
 import {
   setIsAadhaarFaceValidated,
@@ -50,6 +52,7 @@ export default function AadhaarInputScreen(): React.JSX.Element {
   const [aadhaarInput, setAadhaarInput] = useState<string>('');
   const [aadhaarNumberErr, setAadhaarNumberErr] = useState<string>('');
   const [aadhaarNotAvailable, setAadhaarNotAvailable] = useState<boolean>(false);
+  const [showFaceRDNotInstalledModal, setShowFaceRDNotInstalledModal] = useState<boolean>(false);
 
   /** Reset face auth flag on unmount */
   useEffect(() => {
@@ -119,7 +122,7 @@ export default function AadhaarInputScreen(): React.JSX.Element {
   }, [navigation]);
 
   /** Capture Face button handler - Android: Face RD first, OTP is hard fallback only. iOS: OTP only */
-  const onCaptureFacePress = useCallback((): void => {
+  const onCaptureFacePress = useCallback(async (): Promise<void> => {
     const rawAadhaar = getRawAadhaarNumber(aadhaarInput);
     if (rawAadhaar?.length !== AADHAAR_LENGTH) {
       setAadhaarNumberErr(t('aadhaar.aadhaarLengthError'));
@@ -136,6 +139,15 @@ export default function AadhaarInputScreen(): React.JSX.Element {
         aadhaarNumber: rawAadhaar,
       });
     } else {
+      // Android: Check if Face RD app is installed first
+      const isInstalled = await isFaceRDAppInstalled();
+      
+      if (!isInstalled) {
+        // Show modal to download FaceRD app
+        setShowFaceRDNotInstalledModal(true);
+        return;
+      }
+
       // Android: ALWAYS attempt Face RD first, OTP is hard fallback only on failure
       dispatch(setIsAuthenticatingFace(true));
 
@@ -328,6 +340,10 @@ export default function AadhaarInputScreen(): React.JSX.Element {
           </>
         )}
       </View>
+      <FaceRDNotInstalledModal
+        visible={showFaceRDNotInstalledModal}
+        onClose={() => setShowFaceRDNotInstalledModal(false)}
+      />
     </AppContainer>
   );
 }

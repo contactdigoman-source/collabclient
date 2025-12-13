@@ -1,7 +1,6 @@
-import React, { useCallback, useState } from 'react';
-import { StyleSheet, View, Alert, TouchableOpacity, Image, ScrollView } from 'react-native';
-import { useNavigation, useTheme } from '@react-navigation/native';
-import ImagePicker, { ImageOrVideo } from 'react-native-image-crop-picker';
+import React, { useCallback, useState, useEffect } from 'react';
+import { StyleSheet, View, Alert, ScrollView } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 import {
   AnimatedSwitch,
@@ -12,25 +11,41 @@ import {
   UserImage,
   LanguagePickerModal,
 } from '../../components';
-import { hp, wp, Icons } from '../../constants';
-import { useAppDispatch, useAppSelector, setUserData } from '../../redux';
+import { hp, Icons } from '../../constants';
+import { useAppDispatch, useAppSelector, setDisplayBreakStatus } from '../../redux';
 import { setAppTheme } from '../../redux';
 import { APP_THEMES, DarkThemeColors } from '../../themes';
-import { logoutUser } from '../../services';
+import { logoutUser, getProfile } from '../../services';
 import { NavigationProp } from '../../types/navigation';
 import { useTranslation } from '../../hooks/useTranslation';
 
 export default function ProfileDrawerScreen(): React.JSX.Element {
-  const { colors } = useTheme();
   const dispatch = useAppDispatch();
   const navigation = useNavigation<NavigationProp>();
   const { t, currentLanguage } = useTranslation();
 
   const { appTheme } = useAppSelector(state => state.appState);
-  const { userData } = useAppSelector(state => state.userState);
+  const { userData, displayBreakStatus } = useAppSelector(state => state.userState);
 
-  const [isDisplayCheckoutStatus, setIsDisplayCheckoutStatus] = useState<boolean>(false);
   const [isLanguageModalVisible, setIsLanguageModalVisible] = useState<boolean>(false);
+
+  // Load profile data on mount - gracefully handle service unavailability
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!userData?.email) return;
+      
+      try {
+        await getProfile();
+      } catch (error: any) {
+        // Silently fail - app should work even if profile service is down
+        // User can still use the app with cached data from Redux
+        console.warn('[ProfileDrawer] Failed to load profile (service may be down):', error.message);
+        // Don't show error to user - app should continue working
+      }
+    };
+
+    loadProfile();
+  }, [userData?.email]); // Run when email changes
   
   const getLanguageDisplayName = (code: string): string => {
     const languages: Record<string, string> = {
@@ -42,62 +57,6 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
     return languages[code] || code;
   };
 
-  const handleEditPhoto = useCallback(() => {
-    Alert.alert(
-      t('auth.profilePhoto.title'),
-      t('auth.profilePhoto.subtitle'),
-      [
-        {
-          text: t('auth.profilePhoto.takePhoto'),
-          onPress: () => {
-            ImagePicker.openCamera({
-              width: 300,
-              height: 300,
-              cropping: true,
-              mediaType: 'photo',
-            })
-              .then((image: ImageOrVideo) => {
-                if (userData) {
-                  const updatedUser = { ...userData, profilePhoto: image.path };
-                  dispatch(setUserData(updatedUser));
-                }
-              })
-              .catch((e: any) => {
-                if (e.code !== 'E_PICKER_CANCELLED') {
-                  Alert.alert(t('common.error'), e.message);
-                }
-              });
-          },
-        },
-        {
-          text: t('auth.profilePhoto.chooseFromGallery'),
-          onPress: () => {
-            ImagePicker.openPicker({
-              width: 300,
-              height: 300,
-              cropping: true,
-              mediaType: 'photo',
-            })
-              .then((image: ImageOrVideo) => {
-                if (userData) {
-                  const updatedUser = { ...userData, profilePhoto: image.path };
-                  dispatch(setUserData(updatedUser));
-                }
-              })
-              .catch((e: any) => {
-                if (e.code !== 'E_PICKER_CANCELLED') {
-                  Alert.alert(t('common.error'), e.message);
-                }
-              });
-          },
-        },
-        {
-          text: t('common.cancel'),
-          style: 'cancel',
-        },
-      ],
-    );
-  }, [t, dispatch, userData]);
 
 
   const toggleAppTheme = useCallback((): void => {
@@ -107,6 +66,10 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
       dispatch(setAppTheme(APP_THEMES.dark));
     }
   }, [appTheme, dispatch]);
+
+  const toggleDisplayBreakStatus = useCallback((): void => {
+    dispatch(setDisplayBreakStatus(!displayBreakStatus));
+  }, [dispatch, displayBreakStatus]);
 
   const onAttendanceLogsPress = useCallback((): void => {
     navigation.navigate('AttendanceLogsScreen');
@@ -118,23 +81,38 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
 
 
   const onGeoLocationsPress = useCallback((): void => {
-    //TODO: Navigate to Geo-locations screen
+    // Disabled for now
   }, []);
 
   const onSecurityPress = useCallback((): void => {
-    //TODO: Navigate to Security screen
-  }, []);
+    navigation.navigate('ChangePasswordScreen');
+  }, [navigation]);
 
   const onSupportAndLearnPress = useCallback((): void => {
-    //TODO
-  }, []);
+    const supportEmail = t('profile.supportEmail', 'support@example.com');
+    Alert.alert(
+      t('profile.supportAndLearn'),
+      `${t('common.contact', 'Contact us at')}: ${supportEmail}`,
+      [{ text: t('common.okay', 'Okay') }]
+    );
+  }, [t]);
 
   const onLogoutPress = useCallback(async (): Promise<void> => {
-    await logoutUser();
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'LoginScreen' }],
-    });
+    try {
+      await logoutUser();
+      if (navigation && navigation.reset) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'LoginScreen' }],
+        });
+      }
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Even if navigation fails, try to navigate
+      if (navigation && navigation.navigate) {
+        navigation.navigate('LoginScreen');
+      }
+    }
   }, [navigation]);
 
   const onLanguagePress = useCallback((): void => {
@@ -156,15 +134,6 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
                 charsCount={2}
               />
             </View>
-            <TouchableOpacity
-              style={[styles.editIconContainer, { backgroundColor: colors.card }]}
-              onPress={handleEditPhoto}
-            >
-              <Image
-                source={Icons.edit}
-                style={[styles.editIcon, { tintColor: colors.text }]}
-              />
-            </TouchableOpacity>
           </View>
           <AppText numberOfLines={1} size={hp(2.7)} style={styles.userName}>
             {`${userData?.firstName || ''} ${userData?.lastName || ''}`}
@@ -176,15 +145,13 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
 
         {/* Display Break Status */}
         <ProfileDrawerItem
-          disabled
           title={t('profile.displayBreakStatus')}
           icon={Icons.display_break_status}
           iconColor={DarkThemeColors.white_common}
           rightContent={
             <AnimatedSwitch
-              disabled
-              value={isDisplayCheckoutStatus}
-              onValueChange={setIsDisplayCheckoutStatus}
+              value={displayBreakStatus}
+              onValueChange={toggleDisplayBreakStatus}
               style={{ marginEnd: hp(2) }}
             />
           }
@@ -224,6 +191,7 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
 
         {/* Attendance Logs */}
         <ProfileDrawerItem
+          disabled
           title={t('profile.attendanceLogs')}
           icon={Icons.attendance_logs}
           iconColor={DarkThemeColors.white_common}
@@ -240,6 +208,7 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
 
         {/* Geo-locations */}
         <ProfileDrawerItem
+          disabled
           title={t('profile.geoLocations')}
           icon={Icons.geo_locations}
           iconColor={DarkThemeColors.white_common}
@@ -331,23 +300,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: DarkThemeColors.white_common,
     marginTop: hp(0.5),
-  },
-  editIconContainer: {
-    position: 'absolute',
-    bottom: 0,
-    right: wp(2),
-    borderRadius: 20,
-    padding: 6,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  editIcon: {
-    width: 18,
-    height: 18,
-    resizeMode: 'contain',
   },
   versionContainer: {
     alignItems: 'center',

@@ -21,7 +21,7 @@ import {
 } from '../../components';
 import PasswordExpiryModal from '../../components/app-modals/PasswordExpiryModal';
 import { hp, Icons, Images, MAIL_FORMAT } from '../../constants';
-import { useAppDispatch, setUserData, setJWTToken, setAccountStatus } from '../../redux';
+import { useAppDispatch, setUserData, setJWTToken, setExpiresAt, setAccountStatus } from '../../redux';
 import { NavigationProp } from '../../types/navigation';
 import { useTranslation } from '../../hooks/useTranslation';
 import { loginUser, storeJWTToken, AccountStatus } from '../../services/auth/login-service';
@@ -92,6 +92,7 @@ export default function LoginScreen(): React.JSX.Element {
         firstTimeLogin: loginResponse.user.firstTimeLogin,
       }));
       dispatch(setJWTToken(loginResponse.token));
+      dispatch(setExpiresAt(loginResponse.expiresAt));
       dispatch(setAccountStatus(loginResponse.accountStatus));
 
       // Handle account status

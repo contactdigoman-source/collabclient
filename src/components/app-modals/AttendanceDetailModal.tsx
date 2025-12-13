@@ -1,13 +1,12 @@
-import React, { useMemo, useRef } from 'react';
-import { View, StyleSheet, Modal, TouchableOpacity } from 'react-native';
+import React, { useMemo, useEffect } from 'react';
+import { View, StyleSheet, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import MapView, { Marker } from 'react-native-maps';
 import moment from 'moment';
+import { Marker, Region } from 'react-native-maps';
 
 import { AppText, AppMap } from '..';
-import { hp, wp } from '../../constants';
+import { hp, wp, FontTypes } from '../../constants';
 import { DarkThemeColors } from '../../themes';
-import { Region, ZOOM_IN_DELTA } from '../../constants/location';
 
 interface AttendanceRecord {
   Timestamp: string | number;
@@ -33,114 +32,135 @@ export default function AttendanceDetailModal({
   onClose,
 }: AttendanceDetailModalProps): React.JSX.Element {
   const insets = useSafeAreaInsets();
-  const mapRef = useRef<MapView>(null);
 
-  // Get check-in record
-  const checkInRecord = useMemo(() => {
-    return records.find(r => r.PunchDirection === 'IN');
-  }, [records]);
-
-  // Get check-out record
-  const checkOutRecord = useMemo(() => {
-    return records.find(r => r.PunchDirection === 'OUT');
-  }, [records]);
-
-  // Parse all locations from records
-  const allLocations = useMemo(() => {
-    const locations: Array<{ coordinate: Region; record: AttendanceRecord; label: string }> = [];
-    
-    records.forEach((record) => {
-      if (record?.LatLon) {
-        try {
-          const [lat, lon] = record.LatLon.split(',').map(Number);
-          if (!isNaN(lat) && !isNaN(lon)) {
-            const direction = record.PunchDirection === 'IN' ? 'Check In' : 'Check Out';
-            const time = moment(record.Timestamp).format('HH:mm');
-            locations.push({
-              coordinate: {
-                latitude: lat,
-                longitude: lon,
-                latitudeDelta: ZOOM_IN_DELTA,
-                longitudeDelta: ZOOM_IN_DELTA,
-              },
-              record,
-              label: `${direction} - ${time}`,
-            });
-          }
-        } catch {
-          // Skip invalid locations
-        }
+  // Debug logging
+  useEffect(() => {
+    if (visible) {
+      console.log('[AttendanceDetailModal] Modal opened');
+      console.log('[AttendanceDetailModal] Date:', date);
+      console.log('[AttendanceDetailModal] Records count:', records?.length || 0);
+      console.log('[AttendanceDetailModal] Records:', JSON.stringify(records, null, 2));
+      if (records && records.length > 0) {
+        console.log('[AttendanceDetailModal] First record:', records[0]);
       }
+    }
+  }, [visible, date, records]);
+
+  // Sort records by timestamp
+  const sortedRecords = useMemo(() => {
+    if (!records || !Array.isArray(records) || records.length === 0) {
+      console.log('[AttendanceDetailModal] No records available');
+      return [];
+    }
+    console.log('[AttendanceDetailModal] Processing records:', records.length);
+    const sorted = [...records].sort((a, b) => {
+      const timeA = typeof a.Timestamp === 'string' ? parseInt(a.Timestamp, 10) : a.Timestamp;
+      const timeB = typeof b.Timestamp === 'string' ? parseInt(b.Timestamp, 10) : b.Timestamp;
+      console.log('[AttendanceDetailModal] Sorting:', { timeA, timeB, diff: timeA - timeB });
+      return timeA - timeB;
     });
-    
-    return locations;
+    console.log('[AttendanceDetailModal] Sorted records:', sorted.length);
+    return sorted;
   }, [records]);
 
-  // Calculate map region to fit all markers
-  const mapRegion = useMemo<Region | null>(() => {
-    if (allLocations.length === 0) return null;
-
-    if (allLocations.length === 1) {
-      return allLocations[0].coordinate;
+  // Format time (e.g., "10:30")
+  const formatTime = (timestamp: string | number): string => {
+    try {
+      // Handle both Unix timestamp (milliseconds) and ISO string
+      const timeMoment = typeof timestamp === 'string' 
+        ? moment(timestamp) 
+        : moment(timestamp);
+      if (!timeMoment.isValid()) {
+        console.warn('[AttendanceDetailModal] Invalid timestamp:', timestamp);
+        return '--:--';
+      }
+      return timeMoment.format('HH:mm');
+    } catch (error) {
+      console.error('[AttendanceDetailModal] Error formatting time:', error, timestamp);
+      return '--:--';
     }
+  };
 
-    // Calculate bounds to fit all markers
-    const latitudes = allLocations.map(loc => loc.coordinate.latitude);
-    const longitudes = allLocations.map(loc => loc.coordinate.longitude);
-    
-    const minLat = Math.min(...latitudes);
-    const maxLat = Math.max(...latitudes);
-    const minLon = Math.min(...longitudes);
-    const maxLon = Math.max(...longitudes);
+  // Format date with year (e.g., "7 Apr, 25")
+  const formatDateWithYear = (timestamp: string | number): string => {
+    try {
+      const timeMoment = typeof timestamp === 'string' 
+        ? moment(timestamp) 
+        : moment(timestamp);
+      if (!timeMoment.isValid()) {
+        console.warn('[AttendanceDetailModal] Invalid timestamp for date:', timestamp);
+        return '--';
+      }
+      return timeMoment.format('D MMM, YY');
+    } catch (error) {
+      console.error('[AttendanceDetailModal] Error formatting date:', error, timestamp);
+      return '--';
+    }
+  };
 
-    const centerLat = (minLat + maxLat) / 2;
-    const centerLon = (minLon + maxLon) / 2;
-    
-    // Add padding
-    const latDelta = Math.max((maxLat - minLat) * 1.5, ZOOM_IN_DELTA * 2);
-    const lonDelta = Math.max((maxLon - minLon) * 1.5, ZOOM_IN_DELTA * 2);
+  // Get address or default
+  const getAddress = (record: AttendanceRecord): string => {
+    return record.Address || 'Address not available';
+  };
 
+  // Parse LatLon string to get coordinates
+  const parseLatLon = (latLon?: string): { latitude: number; longitude: number } | null => {
+    if (!latLon) return null;
+    const parts = latLon.split(',');
+    if (parts.length !== 2) return null;
+    const latitude = parseFloat(parts[0].trim());
+    const longitude = parseFloat(parts[1].trim());
+    if (isNaN(latitude) || isNaN(longitude)) return null;
+    return { latitude, longitude };
+  };
+
+  // Get map region for a record
+  const getMapRegion = (record: AttendanceRecord): Region => {
+    const coords = parseLatLon(record.LatLon);
+    if (coords) {
+      return {
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      };
+    }
+    // Default region if no coordinates
     return {
-      latitude: centerLat,
-      longitude: centerLon,
-      latitudeDelta: latDelta,
-      longitudeDelta: lonDelta,
+      latitude: 22.5726,
+      longitude: 88.3639,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
     };
-  }, [allLocations]);
+  };
 
-  // Get addresses for all records
-  const addresses = useMemo(() => {
-    return allLocations.map(loc => ({
-      address: loc.record.Address || 'Address not available',
-      label: loc.label,
-      direction: loc.record.PunchDirection,
-    }));
-  }, [allLocations]);
+  // Check if record is a break
+  const isBreak = (record: AttendanceRecord): boolean => {
+    if (record.PunchDirection !== 'OUT') return false;
+    if (!record.AttendanceStatus) return false;
+    const breakStatuses = ['LUNCH', 'SHORTBREAK', 'COMMUTING', 'PERSONALTIMEOUT', 'OUTFORDINNER'];
+    return breakStatuses.includes(record.AttendanceStatus.toUpperCase());
+  };
 
-  // Check if has checkout
-  const hasCheckout = !!checkOutRecord;
-  const statusColor = hasCheckout ? '#62C268' : '#E53131';
-
-  // Format date
-  const formattedDate = useMemo(() => {
-    const dateMoment = moment(date, 'YYYY-MM-DD');
-    const today = moment().startOf('day');
-    
-    if (dateMoment.isSame(today, 'day')) {
-      return 'Today';
-    } else {
-      return dateMoment.format('ddd, D MMM YYYY');
+  // Get break label
+  const getBreakLabel = (record: AttendanceRecord): string => {
+    if (!isBreak(record)) return '';
+    const status = record.AttendanceStatus?.toUpperCase();
+    switch (status) {
+      case 'LUNCH':
+        return 'Lunch';
+      case 'SHORTBREAK':
+        return 'Short Break';
+      case 'COMMUTING':
+        return 'Commuting';
+      case 'PERSONALTIMEOUT':
+        return 'Personal Timeout';
+      case 'OUTFORDINNER':
+        return 'Out for Dinner';
+      default:
+        return 'Break';
     }
-  }, [date]);
-
-  // Focus map on location when modal opens
-  React.useEffect(() => {
-    if (visible && mapRegion && mapRef.current) {
-      setTimeout(() => {
-        mapRef.current?.animateToRegion(mapRegion, 500);
-      }, 100);
-    }
-  }, [visible, mapRegion]);
+  };
 
   return (
     <Modal
@@ -150,11 +170,27 @@ export default function AttendanceDetailModal({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View style={[styles.modalContainer, { paddingTop: insets.top + hp(2) }]}>
-          {/* Header */}
+        <TouchableOpacity
+          style={styles.overlayTouchable}
+          activeOpacity={1}
+          onPress={onClose}
+        />
+        <View
+          style={[
+            styles.drawerContainer,
+            { 
+              paddingTop: insets.top + hp(1),
+              paddingBottom: insets.bottom + hp(2),
+            },
+          ]}
+        >
+          {/* Drawer Handle - Top */}
+          <View style={styles.drawerHandle} />
+
+          {/* Header - Fixed at top after handle */}
           <View style={styles.header}>
-            <AppText size={hp(2.5)} fontType="bold" color={DarkThemeColors.white_common}>
-              {formattedDate}
+            <AppText size={hp(2.5)} fontType={FontTypes.bold} color={DarkThemeColors.white_common}>
+              {moment(date, 'YYYY-MM-DD').format('D MMM YYYY')}
             </AppText>
             <TouchableOpacity
               onPress={onClose}
@@ -168,59 +204,95 @@ export default function AttendanceDetailModal({
             </TouchableOpacity>
           </View>
 
-          {/* Map View */}
-          {mapRegion ? (
-            <View style={styles.mapContainer}>
-              <AppMap
-                ref={mapRef}
-                region={mapRegion}
-                style={styles.map}
-                onMapReady={() => {
-                  if (mapRef.current && mapRegion) {
-                    mapRef.current.animateToRegion(mapRegion, 500);
-                  }
-                }}
-              >
-                {allLocations.map((location, index) => (
-                  <Marker
-                    key={`marker-${index}`}
-                    coordinate={location.coordinate}
-                    title={location.label}
-                  />
-                ))}
-              </AppMap>
-            </View>
-          ) : (
-            <View style={[styles.mapContainer, styles.mapPlaceholder]}>
-              <AppText color={DarkThemeColors.white_common}>
-                Location not available
-              </AppText>
-            </View>
-          )}
+          {/* Records List - Scrollable content below header */}
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={true}
+            nestedScrollEnabled={false}
+            bounces={true}
+            scrollEventThrottle={16}
+            removeClippedSubviews={false}
+            keyboardShouldPersistTaps="handled"
+            alwaysBounceVertical={false}
+          >
+            {sortedRecords.length > 0 ? sortedRecords.map((record, index) => {
+              console.log('[AttendanceDetailModal] Rendering record:', index, record);
+              const coords = parseLatLon(record.LatLon);
+              const mapRegion = getMapRegion(record);
+              const breakLabel = getBreakLabel(record);
 
-          {/* Addresses and Status */}
-          <View style={[styles.detailsContainer, { paddingBottom: insets.bottom + hp(2) }]}>
-            {addresses.map((addr, index) => (
-              <View key={`address-${index}`} style={styles.addressSection}>
-                <AppText 
-                  size={hp(1.6)} 
-                  color={DarkThemeColors.white_common} 
-                  style={styles.addressLabel}
-                >
-                  {addr.label}
+              return (
+                <View key={`record-${record.Timestamp}-${index}-${record.PunchDirection}`} style={styles.recordCard}>
+                  {/* Direction Label */}
+                  <AppText
+                    size={hp(2)}
+                    fontType={FontTypes.medium}
+                    color={DarkThemeColors.white_common}
+                    style={styles.directionText}
+                  >
+                    {record.PunchDirection === 'IN' ? 'In' : 'Out'}: {formatTime(record.Timestamp)}
+                    {breakLabel && ` (${breakLabel})`}
+                  </AppText>
+
+                  {/* Date */}
+                  <AppText
+                    size={hp(1.8)}
+                    color={DarkThemeColors.white_common}
+                    style={styles.dateText}
+                  >
+                    {formatDateWithYear(record.Timestamp)}
+                  </AppText>
+
+                  {/* Map - Always show a map for each record, non-scrollable */}
+                  <View style={styles.mapContainer} key={`map-${record.Timestamp}-${index}`}>
+                    <AppMap
+                      style={styles.map}
+                      region={mapRegion}
+                      key={`appmap-${record.Timestamp}-${index}`}
+                      scrollEnabled={false}
+                      zoomEnabled={false}
+                      pitchEnabled={false}
+                      rotateEnabled={false}
+                    >
+                      {coords && (
+                        <Marker
+                          key={`marker-${record.Timestamp}-${index}`}
+                          coordinate={coords}
+                          title={record.PunchDirection === 'IN' ? 'Check In' : 'Check Out'}
+                        />
+                      )}
+                    </AppMap>
+                  </View>
+
+                  {/* Address */}
+                  <AppText
+                    size={hp(1.6)}
+                    color={DarkThemeColors.white_common + 'CC'}
+                    style={styles.addressText}
+                  >
+                    {getAddress(record)}
+                  </AppText>
+
+                  {/* Divider (except last item) */}
+                  {index < sortedRecords.length - 1 && (
+                    <View style={styles.divider} />
+                  )}
+                </View>
+              );
+            }) : null}
+
+            {sortedRecords.length === 0 && (
+              <View style={styles.emptyContainer}>
+                <AppText size={hp(2)} color={DarkThemeColors.white_common + '80'}>
+                  No attendance records available for this date
                 </AppText>
-                <AppText size={hp(1.8)} color={DarkThemeColors.white_common} style={styles.addressText}>
-                  {addr.address}
+                <AppText size={hp(1.5)} color={DarkThemeColors.white_common + '60'} style={{ marginTop: hp(1) }}>
+                  Date: {moment(date, 'YYYY-MM-DD').format('D MMM YYYY')}
                 </AppText>
               </View>
-            ))}
-
-            <View style={styles.statusSection}>
-              <AppText size={hp(2)} color={statusColor} style={styles.statusText}>
-                {hasCheckout ? 'OD' : 'No Checkout'}
-              </AppText>
-            </View>
-          </View>
+            )}
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -231,17 +303,44 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+    position: 'relative',
   },
-  modalContainer: {
-    flex: 1,
+  overlayTouchable: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  drawerContainer: {
     backgroundColor: DarkThemeColors.black,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    height: '90%',
+    flexDirection: 'column',
+    width: '100%',
+  },
+  drawerHandle: {
+    width: wp(15),
+    height: 4,
+    backgroundColor: DarkThemeColors.white_common + '40',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: hp(1),
+    marginBottom: hp(1),
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: wp(5),
+    paddingTop: hp(1),
     paddingBottom: hp(2),
+    borderBottomWidth: 1,
+    borderBottomColor: DarkThemeColors.white_common + '20',
+    width: '100%',
+    zIndex: 10,
   },
   closeButton: {
     width: hp(3),
@@ -253,41 +352,57 @@ const styles = StyleSheet.create({
     fontSize: hp(2.5),
     fontWeight: '300',
   },
-  mapContainer: {
-    height: hp(40),
+  scrollView: {
+    flex: 1,
     width: '100%',
   },
-  map: {
-    flex: 1,
-  },
-  mapPlaceholder: {
-    backgroundColor: DarkThemeColors.grey_dark_37,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  detailsContainer: {
+  scrollContent: {
     paddingHorizontal: wp(5),
     paddingTop: hp(2),
-    gap: hp(2),
+    paddingBottom: hp(4),
   },
-  addressSection: {
-    paddingVertical: hp(1),
-    marginBottom: hp(1),
+  recordCard: {
+    paddingVertical: hp(2),
   },
-  addressLabel: {
-    opacity: 0.7,
-    marginBottom: hp(0.5),
+  directionText: {
+    fontFamily: 'Noto Sans',
     fontWeight: '500',
+    marginBottom: hp(0.5),
+    color: DarkThemeColors.white_common,
+  },
+  dateText: {
+    fontFamily: 'Noto Sans',
+    fontWeight: '400',
+    marginBottom: hp(1),
+    color: DarkThemeColors.white_common,
+  },
+  mapContainer: {
+    width: '100%',
+    height: hp(20), // ~160px height for maps
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: hp(1),
+    backgroundColor: DarkThemeColors.black,
+  },
+  map: {
+    width: '100%',
+    height: '100%',
   },
   addressText: {
-    lineHeight: hp(2.5),
+    fontFamily: 'Noto Sans',
+    fontWeight: '400',
+    lineHeight: hp(2.2),
+    color: DarkThemeColors.white_common + 'CC',
   },
-  statusSection: {
+  divider: {
+    width: '100%',
+    height: 1,
+    backgroundColor: DarkThemeColors.white_common + '20',
+    marginTop: hp(2),
+  },
+  emptyContainer: {
+    paddingVertical: hp(5),
     alignItems: 'center',
-    paddingVertical: hp(1),
-  },
-  statusText: {
-    fontWeight: '600',
+    justifyContent: 'center',
   },
 });
-

@@ -23,7 +23,7 @@
       "licenseAdminPasswordHash": "hashed-password-preview...",
       "expectedPasswordHash": "hashed-password-preview...",
       "passwordHashMatches": true,
-      "defaultLicenseKey": "LICENSE-2024-001"
+      "defaultLicenseKey": "LICENSE-2026-001"
     }
   }
 }

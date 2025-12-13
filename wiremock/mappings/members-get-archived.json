@@ -1,12 +1,7 @@
 {
   "request": {
     "method": "GET",
-    "url": "/api/members/archived",
-    "headers": {
-      "Authorization": {
-        "matches": "Bearer .+"
-      }
-    }
+    "url": "/api/members/archived"
   },
   "response": {
     "status": 200,
@@ -23,10 +18,9 @@
           "designation": "",
           "userpicture": "",
           "status": "archived",
-          "archivedDate": "2024-01-10"
+          "archivedDate": "2026-01-10"
         }
       ]
     }
   }
 }
-

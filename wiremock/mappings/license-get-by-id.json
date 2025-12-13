@@ -1,12 +1,7 @@
 {
   "request": {
     "method": "GET",
-    "urlPathPattern": "/api/license/[0-9]+",
-    "headers": {
-      "Authorization": {
-        "matches": "Bearer .+"
-      }
-    }
+    "urlPathPattern": "/api/license/[0-9]+"
   },
   "response": {
     "status": 200,
@@ -15,16 +10,15 @@
     },
     "jsonBody": {
       "id": 1,
-      "licenseKey": "LICENSE-2024-001",
+      "licenseKey": "LICENSE-2026-001",
       "licenseType": "Enterprise",
       "maxUsers": 100,
       "maxRegions": 10,
-      "startDate": "2024-01-01T00:00:00Z",
-      "endDate": "2024-12-31T23:59:59Z",
+      "startDate": "2026-01-01T00:00:00Z",
+      "endDate": "2026-12-31T23:59:59Z",
       "isActive": true,
       "enterpriseId": 1,
-      "createdAt": "2024-01-01T00:00:00Z"
+      "createdAt": "2026-01-01T00:00:00Z"
     }
   }
 }
-

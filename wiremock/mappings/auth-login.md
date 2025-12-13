@@ -25,7 +25,7 @@ The `accountStatus` field in the login response can have the following values:
 ```json
 {
   "token": "JWT_TOKEN_HERE",
-  "expiresAt": "2024-12-31T23:59:59Z",
+  "expiresAt": "2026-12-31T23:59:59Z",
   "user": {
     "id": 1,
     "email": "user@example.com",

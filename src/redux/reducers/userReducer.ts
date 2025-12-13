@@ -12,6 +12,7 @@ import {
 const initialState: UserState = {
   userData: null,
   jwtToken: null,
+  expiresAt: null,
   accountStatus: null,
   userLocationRegion: DEFAULT_REGION,
   userLastAttendance: null,
@@ -21,6 +22,7 @@ const initialState: UserState = {
   isPanCardVerified: false,
   storedAadhaarNumber: null,
   firstTimeLoginData: null,
+  displayBreakStatus: false,
 };
 
 const userSlice = createSlice({
@@ -32,6 +34,9 @@ const userSlice = createSlice({
     },
     setJWTToken(state, action: PayloadAction<string | null>) {
       state.jwtToken = action.payload;
+    },
+    setExpiresAt(state, action: PayloadAction<string | null>) {
+      state.expiresAt = action.payload;
     },
     setAccountStatus(state, action: PayloadAction<AccountStatus | null>) {
       state.accountStatus = action.payload;
@@ -79,12 +84,20 @@ const userSlice = createSlice({
     setFirstTimeLoginData(state, action: PayloadAction<FirstTimeLoginData | null>) {
       state.firstTimeLoginData = action.payload;
     },
+    setDisplayBreakStatus(state, action: PayloadAction<boolean>) {
+      state.displayBreakStatus = action.payload;
+    },
+    // Reset user state to initial state (for logout)
+    resetUserState(state) {
+      return initialState;
+    },
   },
 });
 
 export const {
   setUserData,
   setJWTToken,
+  setExpiresAt,
   setAccountStatus,
   setUserLocationRegion,
   setUserLastAttendance,
@@ -94,5 +107,7 @@ export const {
   setIsPanCardVerified,
   setStoredAadhaarNumber,
   setFirstTimeLoginData,
+  setDisplayBreakStatus,
+  resetUserState,
 } = userSlice.actions;
 export default userSlice.reducer;

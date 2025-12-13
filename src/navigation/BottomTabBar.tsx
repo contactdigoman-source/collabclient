@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CurvedBottomBar } from 'react-native-curved-bottom-bar';
 
 import { hp, Icons, Images } from '../constants';
+import { DarkThemeColors } from '../themes';
 import { AppImage, AppText, RippleButton, FaceRDVerificationModal } from '../components';
 import { DaysBottomTabScreen, HomeScreen } from '../screens';
 import { useAppSelector } from '../redux';
@@ -39,7 +40,8 @@ interface TabBarProps {
 }
 
 export default function BottomTabBar(): React.JSX.Element {
-  const { colors } = useTheme();
+  const theme = useTheme();
+  const colors = useMemo(() => theme?.colors || {}, [theme?.colors]);
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
   const { appTheme } = useAppSelector(state => state.appState);
@@ -163,8 +165,12 @@ export default function BottomTabBar(): React.JSX.Element {
       const { icon, label } = ROUTE_CONFIG[routeName] || ROUTE_CONFIG.HomeTab;
       const isActive = routeName === selectedTab;
 
-      const tintColor = isActive ? colors.primary : colors.white;
-      const textColor = isActive ? colors.primary : colors.white;
+      const tintColor = isActive 
+        ? (colors.primary || DarkThemeColors.primary) 
+        : (colors.text || DarkThemeColors.white_common);
+      const textColor = isActive 
+        ? (colors.primary || DarkThemeColors.primary) 
+        : (colors.text || DarkThemeColors.white_common);
 
       return (
         <View style={styles.centered}>
@@ -200,7 +206,7 @@ export default function BottomTabBar(): React.JSX.Element {
       style={[
         styles.flex1,
         {
-          backgroundColor: colors.home_footer_bg,
+          backgroundColor: (colors as any).home_footer_bg || DarkThemeColors.home_footer_bg,
           paddingBottom: insets.bottom,
         },
       ]}
@@ -212,20 +218,20 @@ export default function BottomTabBar(): React.JSX.Element {
         strokeWidth={1}
         shadowStyle={[
           styles.shadow,
-          { shadowColor: colors.home_footer_border },
+          { shadowColor: (colors as any).home_footer_border || DarkThemeColors.home_footer_border },
         ]}
         circleWidth={CIRCLE_WIDTH}
         height={CIRCLE_WIDTH}
         circlePosition="CENTER"
-        bgColor={colors.home_footer_bg}
+        bgColor={(colors as any).home_footer_bg || DarkThemeColors.home_footer_bg}
         initialRouteName="HomeTab"
         renderCircle={() => (
           <Animated.View
-            style={[styles.btnCircle, { backgroundColor: colors.transparent }]}
+            style={[styles.btnCircle, { backgroundColor: (colors as any).transparent || DarkThemeColors.transparent }]}
           >
             <RippleButton
               rippleContainerBorderRadius={ATTENDANCE_ICON_SIZE}
-              rippleColor={colors.black}
+              rippleColor={(colors as any).black || DarkThemeColors.black}
               style={styles.flex1}
               onLongPress={onPunchButtonLongPress}
               accessibilityRole="button"

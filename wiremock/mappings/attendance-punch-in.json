@@ -5,9 +5,6 @@
     "headers": {
       "Content-Type": {
         "equalTo": "application/json"
-      },
-      "Authorization": {
-        "matches": "Bearer .+"
       }
     }
   },
@@ -19,7 +16,7 @@
     "jsonBody": {
       "id": 1,
       "userId": 1,
-      "punchInTime": "2024-01-15T09:00:00Z",
+      "punchInTime": "2026-01-15T09:00:00Z",
       "punchOutTime": null,
       "location": "Office",
       "latitude": "22.5726",
@@ -28,4 +25,3 @@
     }
   }
 }
-

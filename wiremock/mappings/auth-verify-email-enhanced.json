@@ -22,7 +22,7 @@
       "message": "Email verified successfully",
       "isVerified": true,
       "requiresOrganizationSetup": false,
-      "requiresFirstTimeLogin": true,
+      "requiresFirstTimeLogin": false,
       "showSetupOptions": false,
       "user": {
         "id": 1,

@@ -1,12 +1,7 @@
 {
   "request": {
     "method": "GET",
-    "urlPathPattern": "/api/attendance",
-    "headers": {
-      "Authorization": {
-        "matches": "Bearer .+"
-      }
-    }
+    "urlPathPattern": "/api/attendance"
   },
   "response": {
     "status": 200,
@@ -17,8 +12,8 @@
       {
         "id": 1,
         "userId": 1,
-        "punchInTime": "2024-01-15T09:00:00Z",
-        "punchOutTime": "2024-01-15T18:00:00Z",
+        "punchInTime": "2026-01-15T09:00:00Z",
+        "punchOutTime": "2026-01-15T18:00:00Z",
         "location": "Office",
         "latitude": "22.5726",
         "longitude": "88.3639",
@@ -27,8 +22,8 @@
       {
         "id": 2,
         "userId": 1,
-        "punchInTime": "2024-01-14T09:00:00Z",
-        "punchOutTime": "2024-01-14T18:00:00Z",
+        "punchInTime": "2026-01-14T09:00:00Z",
+        "punchOutTime": "2026-01-14T18:00:00Z",
         "location": "Office",
         "latitude": "22.5726",
         "longitude": "88.3639",
@@ -37,4 +32,3 @@
     ]
   }
 }
-

@@ -5,9 +5,6 @@
     "headers": {
       "Content-Type": {
         "equalTo": "application/json"
-      },
-      "Authorization": {
-        "matches": "Bearer .+"
       }
     },
     "bodyPatterns": [
@@ -36,12 +33,24 @@
           "checkInReminder": {
             "enabled": true,
             "time": "08:45",
-            "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+            "days": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday"
+            ]
           },
           "checkOutReminder": {
             "enabled": true,
             "time": "17:45",
-            "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+            "days": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday"
+            ]
           },
           "breakReminder": {
             "enabled": true,
@@ -52,4 +61,3 @@
     }
   }
 }
-

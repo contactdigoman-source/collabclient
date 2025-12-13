@@ -25,5 +25,7 @@ export const Icons = {
   // TODO: Add actual icon files for these
   geo_locations: require('../assets/icons/geolocations.png'), // Placeholder - replace with actual geo_locations icon
   security: require('../assets/icons/security.png'), // Placeholder - replace with actual security icon
+  clock: require('../assets/icons/clock.png'), // Placeholder - replace with actual notification icon
+  daymap: require('../assets/icons/daymap.png'), // Placeholder - replace with actual attendance icon
 };
 

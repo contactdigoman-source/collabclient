@@ -20,7 +20,9 @@ import EarlyCheckoutModal from './app-modals/EarlyCheckoutModal';
 import AttendanceDetailModal from './app-modals/AttendanceDetailModal';
 import PasswordExpiryModal from './app-modals/PasswordExpiryModal';
 import FaceRDVerificationModal from './app-modals/FaceRDVerificationModal';
+import FaceRDNotInstalledModal from './app-modals/FaceRDNotInstalledModal';
 import LanguagePickerModal from './app-modals/LanguagePickerModal';
+import ComingSoonBadge from './app-badges/ComingSoonBadge';
 
 export {
   AppInput,
@@ -45,6 +47,8 @@ export {
   AttendanceDetailModal,
   PasswordExpiryModal,
   FaceRDVerificationModal,
+  FaceRDNotInstalledModal,
   LanguagePickerModal,
+  ComingSoonBadge,
 };
 

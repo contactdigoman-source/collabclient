@@ -1,12 +1,7 @@
 {
   "request": {
     "method": "GET",
-    "urlPathPattern": "/api/license/[0-9]+/invitation-codes",
-    "headers": {
-      "Authorization": {
-        "matches": "Bearer .+"
-      }
-    }
+    "urlPathPattern": "/api/license/[0-9]+/invitation-codes"
   },
   "response": {
     "status": 200,
@@ -25,8 +20,8 @@
         "usedAt": null,
         "usedByUserId": null,
         "usedByOrganizationId": null,
-        "createdAt": "2024-01-01T00:00:00Z",
-        "expiresAt": "2024-12-31T23:59:59Z"
+        "createdAt": "2026-01-01T00:00:00Z",
+        "expiresAt": "2026-12-31T23:59:59Z"
       },
       {
         "id": 2,
@@ -36,13 +31,12 @@
         "assignedRoleId": 11,
         "assignedRoleName": "ORGUSER",
         "isUsed": true,
-        "usedAt": "2024-01-10T00:00:00Z",
+        "usedAt": "2026-01-10T00:00:00Z",
         "usedByUserId": 2,
         "usedByOrganizationId": 1,
-        "createdAt": "2024-01-01T00:00:00Z",
-        "expiresAt": "2024-12-31T23:59:59Z"
+        "createdAt": "2026-01-01T00:00:00Z",
+        "expiresAt": "2026-12-31T23:59:59Z"
       }
     ]
   }
 }
-

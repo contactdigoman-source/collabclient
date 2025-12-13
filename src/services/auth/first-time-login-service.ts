@@ -3,7 +3,10 @@ import { Configs } from '../../constants/configs';
 import { logServiceError } from '../logger';
 import { getDeviceUniqueIdentifier } from '../device/device-identifier-service';
 import { store } from '../../redux';
-import { setUserData, setJWTToken } from '../../redux/reducers/userReducer';
+import { setUserData, setJWTToken, setExpiresAt } from '../../redux/reducers/userReducer';
+
+// FormData is available globally in React Native
+declare const FormData: any;
 
 const API_BASE_URL = Configs.apiBaseUrl;
 
@@ -57,39 +60,82 @@ export const submitFirstTimeLogin = async (data: {
   lastName: string;
   newPassword: string;
   permissions: string[];
+  permissionsTimestamp?: string; // Optional: timestamp when permissions were granted
+  profilePhoto?: string; // Optional: path to profile photo file
 }): Promise<FirstTimeLoginResponse> => {
   try {
     // Get device unique identifier
     const deviceIdentifier = await getDeviceUniqueIdentifier();
 
-    // Get current timestamp
+    // Get current timestamp for form submission
     const timestamp = new Date().toISOString();
 
-    // Prepare request payload
-    const requestData: FirstTimeLoginRequest = {
-      email: data.email,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      newPassword: data.newPassword,
-      consent: {
-        agreed: true,
-        timestamp: timestamp,
-        permissions: data.permissions,
-      },
-      deviceIdentifier: deviceIdentifier,
-      timestamp: timestamp,
-    };
+    // Use provided permissions timestamp or current timestamp
+    const consentTimestamp = data.permissionsTimestamp || timestamp;
 
-    // Make API call
-    const response = await axios.post<FirstTimeLoginResponse>(
-      `${API_BASE_URL}/api/auth/first-time-login`,
-      requestData,
-      {
-        headers: {
-          'Content-Type': 'application/json',
+    let response: axios.AxiosResponse<FirstTimeLoginResponse>;
+
+    // If profile photo is provided, use FormData (multipart/form-data)
+    if (data.profilePhoto) {
+      // Use React Native's built-in FormData
+      const formData = new FormData();
+
+      // Add text fields
+      formData.append('email', data.email);
+      formData.append('firstName', data.firstName);
+      formData.append('lastName', data.lastName);
+      formData.append('newPassword', data.newPassword);
+      formData.append('deviceIdentifier', deviceIdentifier);
+      formData.append('timestamp', timestamp);
+      formData.append('consent[agreed]', 'true');
+      formData.append('consent[timestamp]', consentTimestamp);
+      formData.append('consent[permissions]', JSON.stringify(data.permissions));
+
+      // Add profile photo
+      formData.append('profilePhoto', {
+        uri: data.profilePhoto,
+        type: 'image/jpeg',
+        name: 'profile.jpg',
+      } as any);
+
+      // Make API call with FormData
+      // Note: Don't set Content-Type header - axios will set it automatically with boundary
+      response = await axios.post<FirstTimeLoginResponse>(
+        `${API_BASE_URL}/api/auth/first-time-login`,
+        formData,
+        {
+          headers: {
+            'Accept': 'application/json',
+          },
         },
-      },
-    );
+      );
+    } else {
+      // No photo, use JSON
+      const requestData: FirstTimeLoginRequest = {
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        newPassword: data.newPassword,
+        consent: {
+          agreed: true,
+          timestamp: consentTimestamp,
+          permissions: data.permissions,
+        },
+        deviceIdentifier: deviceIdentifier,
+        timestamp: timestamp,
+      };
+
+      // Make API call
+      response = await axios.post<FirstTimeLoginResponse>(
+        `${API_BASE_URL}/api/auth/first-time-login`,
+        requestData,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+    }
 
     // If successful, update Redux store
     if (response.data.success && response.data.user) {
@@ -104,6 +150,11 @@ export const submitFirstTimeLogin = async (data: {
       // Store JWT token if provided
       if (response.data.token) {
         store.dispatch(setJWTToken(response.data.token));
+      }
+      
+      // Store expiration time if provided
+      if (response.data.expiresAt) {
+        store.dispatch(setExpiresAt(response.data.expiresAt));
       }
     }
 

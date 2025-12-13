@@ -6,17 +6,10 @@ import moment from 'moment';
 import AppText from '../app-texts/AppText';
 import AppImage from '../app-images/AppImage';
 import { hp, Icons } from '../../constants';
-
-interface AttendanceItem {
-  Timestamp: string | number;
-  PunchType: string;
-  PunchDirection: string;
-  IsSynced: string;
-  CreatedOn: string | number;
-}
+import { AttendanceRecord } from '../../redux/types/userTypes';
 
 interface AttendanceLogItemProps {
-  item: AttendanceItem[];
+  item: AttendanceRecord[];
 }
 
 const AttendanceLogItem: React.FC<AttendanceLogItemProps> = ({ item }) => {
@@ -78,7 +71,7 @@ const AttendanceLogItem: React.FC<AttendanceLogItemProps> = ({ item }) => {
 
       <View style={styles.itemsWrapper}>
         {item.map((attendanceItem) => {
-          const { Timestamp, PunchType, PunchDirection, IsSynced, CreatedOn } =
+          const { Timestamp, PunchType = '', PunchDirection = 'IN', IsSynced = 'N', CreatedOn } =
             attendanceItem;
 
           const formattedTime = useMemo(
@@ -92,7 +85,7 @@ const AttendanceLogItem: React.FC<AttendanceLogItemProps> = ({ item }) => {
               <View style={styles.flex1}>
                 <AppText
                   style={styles.capitalizeText}
-                >{`${PunchType} ${PunchDirection}`}</AppText>
+                >{`${PunchType || ''} ${PunchDirection}`}</AppText>
               </View>
 
               {/* Divider */}
@@ -137,9 +130,11 @@ const AttendanceLogItem: React.FC<AttendanceLogItemProps> = ({ item }) => {
 
 const styles = StyleSheet.create({
   container: {
+    width: '100%',
     padding: hp(1.86),
     marginVertical: hp(1),
     borderRadius: hp(1.74),
+    alignSelf: 'stretch',
   },
   headerText: {
     opacity: 0.5,
@@ -178,4 +173,3 @@ const styles = StyleSheet.create({
 });
 
 export default memo(AttendanceLogItem);
-

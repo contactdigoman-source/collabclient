@@ -19,3 +19,20 @@ export * from './forgot-password-service';
 // Export first-time login service
 export * from './first-time-login-service';
 
+// Export session service
+export * from './session-service';
+
+// Export profile service
+export {
+  type ProfileResponse,
+  type UpdateProfileRequest,
+  type UpdateProfileResponse,
+  type UploadProfilePhotoResponse,
+  type ChangePasswordRequest,
+  type ChangePasswordResponse,
+  getProfile,
+  updateProfile,
+  uploadProfilePhoto,
+  changePassword,
+} from './profile-service';
+

@@ -5,9 +5,6 @@
     "headers": {
       "Content-Type": {
         "equalTo": "application/json"
-      },
-      "Authorization": {
-        "matches": "Bearer .+"
       }
     },
     "bodyPatterns": [
@@ -29,12 +26,11 @@
       "email": "invited@example.com",
       "roleId": 11,
       "roleName": "ORGUSER",
-      "invitedAt": "2024-01-15T10:00:00Z",
-      "expiresAt": "2024-01-22T10:00:00Z",
+      "invitedAt": "2026-01-15T10:00:00Z",
+      "expiresAt": "2026-01-22T10:00:00Z",
       "isAccepted": false,
       "isExpired": false,
       "invitationToken": "invitation-token-12345"
     }
   }
 }
-

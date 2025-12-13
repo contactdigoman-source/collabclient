@@ -12,8 +12,8 @@ import { AppContainer, AppText, AppButton, AppImage, BackHeader } from '../../co
 import { NavigationProp } from '../../types/navigation';
 import { hp, wp, FontTypes, Images } from '../../constants';
 import { useTranslation } from '../../hooks/useTranslation';
-import { markFirstTimeLoginCompleted } from '../../services';
-import { useAppDispatch, useAppSelector, setUserData } from '../../redux';
+import { useAppDispatch, useAppSelector, setUserData, setFirstTimeLoginData } from '../../redux';
+import { submitFirstTimeLogin } from '../../services/auth/first-time-login-service';
 
 // Try to import ImagePicker, fallback if not available
 let ImagePicker: any = null;
@@ -29,7 +29,7 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
-  const { userData } = useAppSelector(state => state.userState);
+  const { userData, firstTimeLoginData } = useAppSelector(state => state.userState);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
 
@@ -99,11 +99,38 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
       });
   }, [colors.primary, t]);
 
-  const handleSkip = useCallback((): void => {
-    // Mark first-time login as completed and navigate to dashboard
-    markFirstTimeLoginCompleted();
-    navigation.replace('DashboardScreen');
-  }, [navigation]);
+  const handleSkip = useCallback(async (): Promise<void> => {
+    // If we have first-time login data, submit it even if skipping photo
+    if (firstTimeLoginData && userData?.email) {
+      setLoading(true);
+      try {
+        await submitFirstTimeLogin({
+          email: userData.email,
+          firstName: firstTimeLoginData.firstName,
+          lastName: firstTimeLoginData.lastName,
+          newPassword: firstTimeLoginData.newPassword,
+          permissions: firstTimeLoginData.permissions || [],
+          permissionsTimestamp: firstTimeLoginData.permissionsTimestamp,
+        });
+        
+        // Clear temporary first-time login data
+        dispatch(setFirstTimeLoginData(null));
+        
+        // Navigate to dashboard
+        navigation.replace('DashboardScreen');
+      } catch (error: any) {
+        Alert.alert(
+          t('auth.profilePhoto.error'),
+          error.message || t('auth.profilePhoto.submitError', 'Failed to submit data. Please try again.'),
+        );
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // No first-time login data, just navigate
+      navigation.replace('DashboardScreen');
+    }
+  }, [navigation, firstTimeLoginData, userData, dispatch, t]);
 
   const handleContinue = useCallback(async (): Promise<void> => {
     if (!profileImage) {
@@ -126,26 +153,47 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
       // });
       // await uploadProfilePhoto(formData);
 
-      // Save profile photo to Redux
-      if (userData) {
-        const updatedUser = { ...userData, profilePhoto: profileImage };
-        dispatch(setUserData(updatedUser));
+      // Submit first-time login data with profile photo if available
+      if (firstTimeLoginData && userData?.email) {
+        await submitFirstTimeLogin({
+          email: userData.email,
+          firstName: firstTimeLoginData.firstName,
+          lastName: firstTimeLoginData.lastName,
+          newPassword: firstTimeLoginData.newPassword,
+          permissions: firstTimeLoginData.permissions || [],
+          permissionsTimestamp: firstTimeLoginData.permissionsTimestamp,
+          profilePhoto: profileImage, // Include profile photo in API call
+        });
+        
+        // Save profile photo to Redux after successful API call
+        if (userData) {
+          const updatedUser = { ...userData, profilePhoto: profileImage };
+          dispatch(setUserData(updatedUser));
+        }
+        
+        // Clear temporary first-time login data
+        dispatch(setFirstTimeLoginData(null));
+      } else {
+        // No first-time login data, just save photo to Redux
+        if (userData) {
+          const updatedUser = { ...userData, profilePhoto: profileImage };
+          dispatch(setUserData(updatedUser));
+        }
+        console.log('Profile photo saved:', profileImage);
       }
-
-      console.log('Profile photo saved:', profileImage);
-
-      // Mark first-time login as completed
-      markFirstTimeLoginCompleted();
 
       // Navigate to dashboard
       navigation.replace('DashboardScreen');
-    } catch (error) {
-      console.error('Error saving profile photo:', error);
-      Alert.alert(t('auth.profilePhoto.error'), t('auth.profilePhoto.saveError'));
+    } catch (error: any) {
+      console.error('Error saving profile photo or submitting data:', error);
+      Alert.alert(
+        t('auth.profilePhoto.error'),
+        error.message || t('auth.profilePhoto.saveError'),
+      );
     } finally {
       setLoading(false);
     }
-  }, [profileImage, navigation, t, dispatch, userData]);
+  }, [profileImage, navigation, t, dispatch, userData, firstTimeLoginData]);
 
   return (
     <AppContainer>

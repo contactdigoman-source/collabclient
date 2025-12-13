@@ -1,12 +1,7 @@
 {
   "request": {
     "method": "POST",
-    "urlPathPattern": "/api/organization/[0-9]+/deactivate",
-    "headers": {
-      "Authorization": {
-        "matches": "Bearer .+"
-      }
-    }
+    "urlPathPattern": "/api/organization/[0-9]+/deactivate"
   },
   "response": {
     "status": 200,
@@ -18,4 +13,3 @@
     }
   }
 }
-

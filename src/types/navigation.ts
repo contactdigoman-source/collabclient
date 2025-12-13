@@ -21,6 +21,7 @@ export type RootStackParamList = {
     aadhaarNumber?: string;
   };
   ChangeForgottenPassword: { emailID?: string };
+  ChangePasswordScreen: undefined;
   AadhaarInputScreen: undefined;
   PanCardCaptureScreen: undefined;
   PrivacyPolicyScreen: undefined;

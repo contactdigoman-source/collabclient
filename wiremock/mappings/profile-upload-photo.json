@@ -3,9 +3,6 @@
     "method": "POST",
     "url": "/api/auth/upload-profile-photo",
     "headers": {
-      "Authorization": {
-        "matches": "Bearer .+"
-      },
       "Content-Type": {
         "matches": "multipart/form-data.*"
       }
@@ -34,5 +31,3 @@
     }
   }
 }
-
-

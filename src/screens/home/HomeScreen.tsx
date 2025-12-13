@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { View, StyleSheet, StatusBar, FlatList, Animated } from 'react-native';
-import MapView from 'react-native-maps';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, StyleSheet, StatusBar, FlatList, Animated, RefreshControl, AppState, AppStateStatus } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   AppContainer,
   AppIconButton,
@@ -29,6 +30,10 @@ import {
   isUserOnBreak,
   scheduleBreakReminderNotifications,
   cancelBreakReminderNotifications,
+  getCurrentPositionOfUser,
+  requestLocationPermission,
+  isSessionExpired,
+  logoutUser,
 } from '../../services';
 import moment from 'moment';
 
@@ -61,6 +66,13 @@ export default function HomeScreen(): React.JSX.Element {
     state => state.userState.userLastAttendance,
   );
   const userData = useAppSelector(state => state.userState.userData);
+  const expiresAt = useAppSelector(state => state.userState.expiresAt);
+  const displayBreakStatus = useAppSelector(state => state.userState.displayBreakStatus);
+  const [currentLocation, setCurrentLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Check if user is on break
   const isOnBreak = useMemo(() => {
@@ -123,9 +135,116 @@ export default function HomeScreen(): React.JSX.Element {
     [appTheme],
   );
 
-  // Removed onRefreshMap as it's not used in the current implementation
+  // Function to update current location
+  const updateCurrentLocation = useCallback(async () => {
+    try {
+      // Request permission first (on Android, iOS handles this automatically)
+      const hasPermission = await requestLocationPermission(() => {
+        console.log('Location permission denied by user');
+      });
 
-  const lastAttendanceCoords = useMemo<Region>(() => {
+      if (!hasPermission) {
+        console.log('Location permission not granted');
+        return false;
+      }
+
+      const coords = await getCurrentPositionOfUser();
+      console.log('Current location fetched:', coords);
+      setCurrentLocation({
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      });
+      return true;
+    } catch (error) {
+      console.log('Error getting current location:', error);
+      // Fallback to last attendance location if current location fails
+      return false;
+    }
+  }, []);
+
+  // Check session expiration function
+  const checkSessionExpiration = useCallback(() => {
+    if (expiresAt && isSessionExpired(expiresAt)) {
+      // Session expired, logout user
+      logoutUser().catch(error => {
+        console.error('Error during logout on home screen:', error);
+      });
+    }
+  }, [expiresAt]);
+
+  // Check session expiration on mount and when expiresAt changes
+  useEffect(() => {
+    checkSessionExpiration();
+  }, [checkSessionExpiration]);
+
+  // Check session expiration when app comes to foreground
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'active') {
+        // App has come to the foreground, check if session expired
+        checkSessionExpiration();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [checkSessionExpiration]);
+
+  // Get current location on mount
+  useEffect(() => {
+    updateCurrentLocation();
+  }, [updateCurrentLocation]);
+
+  // Update location when screen is focused (e.g., after granting permissions)
+  useFocusEffect(
+    useCallback(() => {
+      updateCurrentLocation();
+    }, [updateCurrentLocation]),
+  );
+
+  // Handle pull-to-refresh
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    
+    // Check session expiration first
+    if (expiresAt && isSessionExpired(expiresAt)) {
+      // Session expired, logout user
+      setRefreshing(false);
+      logoutUser().catch(error => {
+        console.error('Error during logout on pull-to-refresh:', error);
+      });
+      return;
+    }
+    
+    // Update location if session is still valid
+    await updateCurrentLocation();
+    setRefreshing(false);
+  }, [updateCurrentLocation, expiresAt]);
+
+  // Animate map to current location when it's updated
+  useEffect(() => {
+    if (currentLocation && mapRef.current) {
+      const newRegion = {
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
+        latitudeDelta: ZOOM_IN_DELTA,
+        longitudeDelta: ZOOM_IN_DELTA,
+      };
+      mapRef.current.animateToRegion(newRegion, 1000);
+    }
+  }, [currentLocation]);
+
+  // Get map region - prefer current location, fallback to last attendance, then default
+  const mapRegion = useMemo<Region>(() => {
+    if (currentLocation) {
+      return {
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
+        latitudeDelta: ZOOM_IN_DELTA,
+        longitudeDelta: ZOOM_IN_DELTA,
+      };
+    }
     const latLon = userLastAttendance?.LatLon;
     if (latLon) {
       const [lat, lon] = latLon.split(',').map(Number);
@@ -137,7 +256,26 @@ export default function HomeScreen(): React.JSX.Element {
       };
     }
     return DEFAULT_REGION;
-  }, [userLastAttendance?.LatLon]);
+  }, [currentLocation, userLastAttendance?.LatLon]);
+
+  // Get marker coordinates - prefer current location
+  const markerCoordinates = useMemo(() => {
+    if (currentLocation) {
+      return {
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
+      };
+    }
+    const latLon = userLastAttendance?.LatLon;
+    if (latLon) {
+      const [lat, lon] = latLon.split(',').map(Number);
+      return { latitude: lat, longitude: lon };
+    }
+    return {
+      latitude: DEFAULT_REGION.latitude,
+      longitude: DEFAULT_REGION.longitude,
+    };
+  }, [currentLocation, userLastAttendance?.LatLon]);
 
   const sections = useMemo<SectionData[]>(
     () => [
@@ -255,13 +393,18 @@ export default function HomeScreen(): React.JSX.Element {
       <View>
         <AppMap
           ref={mapRef}
-          region={lastAttendanceCoords}
+          region={mapRegion}
           zoomEnabled={false}
           scrollEnabled={false}
           style={styles.map}
-        />
+        >
+          <Marker
+            coordinate={markerCoordinates}
+            title={t('home.currentLocation', 'Current Location')}
+          />
+        </AppMap>
         {/* Break Status Banner */}
-        {isOnBreak && breakStatusLabel && (
+        {isOnBreak && breakStatusLabel && displayBreakStatus && (
           <View style={styles.breakBanner}>
             <AppText
               size={hp(1.8)}
@@ -284,7 +427,7 @@ export default function HomeScreen(): React.JSX.Element {
         </View>
       </View>
     ),
-    [lastAttendanceCoords, t, isOnBreak, breakStatusLabel, breakStartTime],
+    [mapRegion, markerCoordinates, t, isOnBreak, breakStatusLabel, breakStartTime, displayBreakStatus],
   );
 
   const footerComponent = useMemo(
@@ -347,6 +490,9 @@ export default function HomeScreen(): React.JSX.Element {
         )}
         scrollEventThrottle={16}
         ListFooterComponent={footerComponent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       />
 
       <HomeHeader

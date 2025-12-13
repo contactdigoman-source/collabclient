@@ -2,6 +2,7 @@ import * as Keychain from 'react-native-keychain';
 import axios from 'axios';
 import { Configs } from '../../constants/configs';
 import { store, persistor } from '../../redux';
+import { resetUserState } from '../../redux/reducers/userReducer';
 import { logServiceError, resetCorrelationId } from '../logger';
 
 const API_BASE_URL = Configs.apiBaseUrl;
@@ -193,6 +194,6 @@ export const logoutUser = async (): Promise<void> => {
   resetCorrelationId();
   
   // Reset in-memory Redux state (including Aadhaar validated flag)
-  store.dispatch({ type: 'LOGOUT' });
+  store.dispatch(resetUserState());
 };
 

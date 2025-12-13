@@ -37,7 +37,7 @@ import {
 } from '../../services';
 import { verifyOTP, resendOTP } from '../../services/auth/otp-service';
 import { storeJWTToken } from '../../services/auth/login-service';
-import { setJWTToken, setUserData, setAccountStatus } from '../../redux';
+import { setJWTToken, setExpiresAt, setUserData, setAccountStatus } from '../../redux';
 import { NavigationProp, RootStackParamList } from '../../types/navigation';
 import { useTranslation } from '../../hooks/useTranslation';
 
@@ -242,6 +242,9 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
       if (verifyResponse.token) {
         await storeJWTToken(verifyResponse.token, emailID);
         dispatch(setJWTToken(verifyResponse.token));
+        if (verifyResponse.expiresAt) {
+          dispatch(setExpiresAt(verifyResponse.expiresAt));
+        }
       }
 
       // Handle navigation based on flow type

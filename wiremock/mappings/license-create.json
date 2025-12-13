@@ -5,9 +5,6 @@
     "headers": {
       "Content-Type": {
         "equalTo": "application/json"
-      },
-      "Authorization": {
-        "matches": "Bearer .+"
       }
     },
     "bodyPatterns": [
@@ -33,16 +30,15 @@
     },
     "jsonBody": {
       "id": 1,
-      "licenseKey": "LICENSE-2024-002",
+      "licenseKey": "LICENSE-2026-002",
       "licenseType": "Enterprise",
       "maxUsers": 100,
       "maxRegions": 10,
-      "startDate": "2024-01-01T00:00:00Z",
-      "endDate": "2024-12-31T23:59:59Z",
+      "startDate": "2026-01-01T00:00:00Z",
+      "endDate": "2026-12-31T23:59:59Z",
       "isActive": true,
       "enterpriseId": null,
-      "createdAt": "2024-01-15T00:00:00Z"
+      "createdAt": "2026-01-15T00:00:00Z"
     }
   }
 }
-

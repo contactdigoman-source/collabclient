@@ -1,0 +1,596 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/api/attendance/days"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": [
+      {
+        "dateOfPunch": "2024-12-12",
+        "attendanceStatus": "PRESENT",
+        "totalDuration": "09:00",
+        "breakDuration": "01:00",
+        "records": [
+          {
+            "Timestamp": 1702386000000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "JF2H+R2J, AA II, Newtown, Dharsamoktarpur, West Bengal 700135",
+            "DateOfPunch": "2024-12-12"
+          },
+          {
+            "Timestamp": 1702418400000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": "LUNCH",
+            "LatLon": "22.5740,88.3650",
+            "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2024-12-12"
+          },
+          {
+            "Timestamp": 1702422000000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "JF2H+R2J, AA II, Newtown, Dharsamoktarpur, West Bengal 700135",
+            "DateOfPunch": "2024-12-12"
+          },
+          {
+            "Timestamp": 1702450800000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": null,
+            "LatLon": "22.5725,88.3638",
+            "Address": "JF2H+R2J, AA II, Newtown, Dharsamoktarpur, West Bengal 700135",
+            "DateOfPunch": "2024-12-12"
+          }
+        ]
+      },
+      {
+        "dateOfPunch": "2024-12-11",
+        "attendanceStatus": "PRESENT",
+        "totalDuration": "08:30",
+        "breakDuration": "00:30",
+        "records": [
+          {
+            "Timestamp": 1702299600000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "JF2H+R2J, AA II, Newtown, Dharsamoktarpur, West Bengal 700135",
+            "DateOfPunch": "2024-12-11"
+          },
+          {
+            "Timestamp": 1702323000000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": "SHORTBREAK",
+            "LatLon": "22.5730,88.3642",
+            "Address": "Break Area, Office Complex, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2024-12-11"
+          },
+          {
+            "Timestamp": 1702324800000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "JF2H+R2J, AA II, Newtown, Dharsamoktarpur, West Bengal 700135",
+            "DateOfPunch": "2024-12-11"
+          },
+          {
+            "Timestamp": 1702331400000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": null,
+            "LatLon": "22.5724,88.3637",
+            "Address": "JF2H+R2J, AA II, Newtown, Dharsamoktarpur, West Bengal 700135",
+            "DateOfPunch": "2024-12-11"
+          }
+        ]
+      },
+      {
+        "dateOfPunch": "2024-12-10",
+        "attendanceStatus": "PARTIAL",
+        "totalDuration": "04:00",
+        "breakDuration": "00:00",
+        "records": [
+          {
+            "Timestamp": 1702213200000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2024-12-10"
+          }
+        ]
+      },
+      {
+        "dateOfPunch": "2024-12-09",
+        "attendanceStatus": "ABSENT",
+        "totalDuration": "00:00",
+        "breakDuration": "00:00",
+        "records": []
+      },
+      {
+        "dateOfPunch": "2024-12-08",
+        "attendanceStatus": "PRESENT",
+        "totalDuration": "09:15",
+        "breakDuration": "00:00",
+        "records": [
+          {
+            "Timestamp": 1702026000000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2024-12-08"
+          },
+          {
+            "Timestamp": 1702058400000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2024-12-08"
+          }
+        ]
+      },
+      {
+        "dateOfPunch": "2024-12-13",
+        "attendanceStatus": "PRESENT",
+        "totalDuration": "08:45",
+        "breakDuration": "00:45",
+        "records": [
+          {
+            "Timestamp": 1702472400000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2024-12-13"
+          },
+          {
+            "Timestamp": 1702494000000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": "LUNCH",
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2024-12-13"
+          },
+          {
+            "Timestamp": 1702497300000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2024-12-13"
+          },
+          {
+            "Timestamp": 1702537200000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2024-12-13"
+          }
+        ]
+      },
+      {
+        "dateOfPunch": "2024-12-14",
+        "attendanceStatus": "PRESENT",
+        "totalDuration": "09:30",
+        "breakDuration": "00:00",
+        "records": [
+          {
+            "Timestamp": 1702558800000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2024-12-14"
+          },
+          {
+            "Timestamp": 1702591200000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2024-12-14"
+          }
+        ]
+      },
+      {
+        "dateOfPunch": "2024-12-15",
+        "attendanceStatus": "PRESENT",
+        "totalDuration": "08:00",
+        "breakDuration": "01:00",
+        "records": [
+          {
+            "Timestamp": 1702645200000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2024-12-15"
+          },
+          {
+            "Timestamp": 1702666800000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": "LUNCH",
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2024-12-15"
+          },
+          {
+            "Timestamp": 1702670400000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2024-12-15"
+          },
+          {
+            "Timestamp": 1702692000000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2024-12-15"
+          }
+        ]
+      },
+      {
+        "dateOfPunch": "2024-12-16",
+        "attendanceStatus": "PARTIAL",
+        "totalDuration": "05:30",
+        "breakDuration": "00:00",
+        "records": [
+          {
+            "Timestamp": 1702731600000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2024-12-16"
+          },
+          {
+            "Timestamp": 1702751400000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": "PERSONALTIMEOUT",
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2024-12-16"
+          }
+        ]
+      },
+      {
+        "dateOfPunch": "2024-12-17",
+        "attendanceStatus": "PRESENT",
+        "totalDuration": "09:00",
+        "breakDuration": "00:30",
+        "records": [
+          {
+            "Timestamp": 1702818000000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2024-12-17"
+          },
+          {
+            "Timestamp": 1702839600000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": "SHORTBREAK",
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2024-12-17"
+          },
+          {
+            "Timestamp": 1702841400000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2024-12-17"
+          },
+          {
+            "Timestamp": 1702904400000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2024-12-17"
+          }
+        ]
+      },
+      {
+        "dateOfPunch": "2024-12-18",
+        "attendanceStatus": "ABSENT",
+        "totalDuration": "00:00",
+        "breakDuration": "00:00",
+        "records": []
+      },
+      {
+        "dateOfPunch": "2024-12-19",
+        "attendanceStatus": "PRESENT",
+        "totalDuration": "08:15",
+        "breakDuration": "00:00",
+        "records": [
+          {
+            "Timestamp": 1702986000000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2024-12-19"
+          },
+          {
+            "Timestamp": 1703016000000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2024-12-19"
+          }
+        ]
+      },
+      {
+        "dateOfPunch": "2024-12-20",
+        "attendanceStatus": "PRESENT",
+        "totalDuration": "09:45",
+        "breakDuration": "01:15",
+        "records": [
+          {
+            "Timestamp": 1703072400000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "JF2H+R2J, AA II, Newtown, Dharsamoktarpur, West Bengal 700135",
+            "DateOfPunch": "2024-12-20"
+          },
+          {
+            "Timestamp": 1703094000000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": "LUNCH",
+            "LatLon": "22.5745,88.3655",
+            "Address": "Cafeteria, Office Complex, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2024-12-20"
+          },
+          {
+            "Timestamp": 1703097900000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "JF2H+R2J, AA II, Newtown, Dharsamoktarpur, West Bengal 700135",
+            "DateOfPunch": "2024-12-20"
+          },
+          {
+            "Timestamp": 1703112000000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": "OUTFORDINNER",
+            "LatLon": "22.5760,88.3670",
+            "Address": "Restaurant, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2024-12-20"
+          },
+          {
+            "Timestamp": 1703118000000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "JF2H+R2J, AA II, Newtown, Dharsamoktarpur, West Bengal 700135",
+            "DateOfPunch": "2024-12-20"
+          },
+          {
+            "Timestamp": 1703128800000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": null,
+            "LatLon": "22.5722,88.3635",
+            "Address": "JF2H+R2J, AA II, Newtown, Dharsamoktarpur, West Bengal 700135",
+            "DateOfPunch": "2024-12-20"
+          }
+        ]
+      },
+      {
+        "dateOfPunch": "2025-12-13",
+        "attendanceStatus": "PRESENT",
+        "totalDuration": "08:30",
+        "breakDuration": "01:15",
+        "records": [
+          {
+            "Timestamp": 1734105600000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "JF2H+R2J, AA II, Newtown, Dharsamoktarpur, West Bengal 700135",
+            "DateOfPunch": "2025-12-13"
+          },
+          {
+            "Timestamp": 1734129000000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": "SHORTBREAK",
+            "LatLon": "22.5730,88.3642",
+            "Address": "JF2H+R2J, AA II, Newtown, Dharsamoktarpur, West Bengal 700135",
+            "DateOfPunch": "2025-12-13"
+          },
+          {
+            "Timestamp": 1734130800000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5728,88.3640",
+            "Address": "JF2H+R2J, AA II, Newtown, Dharsamoktarpur, West Bengal 700135",
+            "DateOfPunch": "2025-12-13"
+          },
+          {
+            "Timestamp": 1734144000000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": "LUNCH",
+            "LatLon": "22.5740,88.3650",
+            "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2025-12-13"
+          },
+          {
+            "Timestamp": 1734150000000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "JF2H+R2J, AA II, Newtown, Dharsamoktarpur, West Bengal 700135",
+            "DateOfPunch": "2025-12-13"
+          },
+          {
+            "Timestamp": 1734156000000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": null,
+            "LatLon": "22.5725,88.3638",
+            "Address": "JF2H+R2J, AA II, Newtown, Dharsamoktarpur, West Bengal 700135",
+            "DateOfPunch": "2025-12-13"
+          }
+        ]
+      },
+      {
+        "dateOfPunch": "2025-12-12",
+        "attendanceStatus": "PRESENT",
+        "totalDuration": "09:00",
+        "breakDuration": "01:00",
+        "records": [
+          {
+            "Timestamp": 1734019200000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "JF2H+R2J, AA II, Newtown, Dharsamoktarpur, West Bengal 700135",
+            "DateOfPunch": "2025-12-12"
+          },
+          {
+            "Timestamp": 1734041600000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": "LUNCH",
+            "LatLon": "22.5745,88.3655",
+            "Address": "Cafeteria, Office Complex, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2025-12-12"
+          },
+          {
+            "Timestamp": 1734045000000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "JF2H+R2J, AA II, Newtown, Dharsamoktarpur, West Bengal 700135",
+            "DateOfPunch": "2025-12-12"
+          },
+          {
+            "Timestamp": 1734076800000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": null,
+            "LatLon": "22.5724,88.3637",
+            "Address": "JF2H+R2J, AA II, Newtown, Dharsamoktarpur, West Bengal 700135",
+            "DateOfPunch": "2025-12-12"
+          }
+        ]
+      },
+      {
+        "dateOfPunch": "2025-12-11",
+        "attendanceStatus": "PRESENT",
+        "totalDuration": "08:45",
+        "breakDuration": "00:45",
+        "records": [
+          {
+            "Timestamp": 1733932800000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "JF2H+R2J, AA II, Newtown, Dharsamoktarpur, West Bengal 700135",
+            "DateOfPunch": "2025-12-11"
+          },
+          {
+            "Timestamp": 1733952000000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": "COMMUTING",
+            "LatLon": "22.5750,88.3660",
+            "Address": "Parking Area, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2025-12-11"
+          },
+          {
+            "Timestamp": 1733955600000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "JF2H+R2J, AA II, Newtown, Dharsamoktarpur, West Bengal 700135",
+            "DateOfPunch": "2025-12-11"
+          },
+          {
+            "Timestamp": 1733961600000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": null,
+            "LatLon": "22.5723,88.3636",
+            "Address": "JF2H+R2J, AA II, Newtown, Dharsamoktarpur, West Bengal 700135",
+            "DateOfPunch": "2025-12-11"
+          }
+        ]
+      },
+      {
+        "dateOfPunch": "2025-12-10",
+        "attendanceStatus": "PARTIAL",
+        "totalDuration": "04:00",
+        "breakDuration": "00:00",
+        "records": [
+          {
+            "Timestamp": 1733846400000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "JF2H+R2J, AA II, Newtown, Dharsamoktarpur, West Bengal 700135",
+            "DateOfPunch": "2025-12-10"
+          }
+        ]
+      },
+      {
+        "dateOfPunch": "2025-12-09",
+        "attendanceStatus": "ABSENT",
+        "totalDuration": "00:00",
+        "breakDuration": "00:00",
+        "records": []
+      },
+      {
+        "dateOfPunch": "2025-12-08",
+        "attendanceStatus": "PRESENT",
+        "totalDuration": "09:15",
+        "breakDuration": "00:30",
+        "records": [
+          {
+            "Timestamp": 1733673600000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "JF2H+R2J, AA II, Newtown, Dharsamoktarpur, West Bengal 700135",
+            "DateOfPunch": "2025-12-08"
+          },
+          {
+            "Timestamp": 1733694000000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": "PERSONALTIMEOUT",
+            "LatLon": "22.5735,88.3645",
+            "Address": "Personal Break Area, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2025-12-08"
+          },
+          {
+            "Timestamp": 1733695800000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "JF2H+R2J, AA II, Newtown, Dharsamoktarpur, West Bengal 700135",
+            "DateOfPunch": "2025-12-08"
+          },
+          {
+            "Timestamp": 1733702400000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": null,
+            "LatLon": "22.5722,88.3635",
+            "Address": "JF2H+R2J, AA II, Newtown, Dharsamoktarpur, West Bengal 700135",
+            "DateOfPunch": "2025-12-08"
+          }
+        ]
+      }
+    ]
+  }
+}
+

@@ -1,6 +1,6 @@
 import React, { memo, useMemo, useCallback, ReactNode, forwardRef } from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
-import MapView, { Marker, Region, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Region } from 'react-native-maps';
 import { useAppSelector } from '../../redux';
 import { DEFAULT_REGION, hp, Icons, wp, Region as RegionType } from '../../constants';
 import AppImage from '../app-images/AppImage';
@@ -71,7 +71,6 @@ const AppMap = forwardRef<MapView, AppMapProps>(({
         {...commonProps}
         {...rest}
       >
-        {region && <Marker key="marker" coordinate={region as Region} />}
         {children}
       </MapView>
 

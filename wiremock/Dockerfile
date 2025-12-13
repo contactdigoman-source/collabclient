@@ -20,3 +20,4 @@ HEALTHCHECK --interval=10s --timeout=5s --retries=5 \
 # Default command includes response templating and verbose logging
 CMD ["--global-response-templating", "--verbose", "--disable-request-logging=false"]
 
+

@@ -1,12 +1,7 @@
 {
   "request": {
     "method": "POST",
-    "urlPathPattern": "/api/invite/[0-9]+/cancel",
-    "headers": {
-      "Authorization": {
-        "matches": "Bearer .+"
-      }
-    }
+    "urlPathPattern": "/api/invite/[0-9]+/cancel"
   },
   "response": {
     "status": 200,
@@ -18,4 +13,3 @@
     }
   }
 }
-

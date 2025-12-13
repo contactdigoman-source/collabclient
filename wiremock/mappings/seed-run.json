@@ -30,7 +30,7 @@
       },
       "serviceAccount": {
         "email": "serviceaccount@nexval.ai",
-        "password": "ServiceAccount@2024!",
+        "password": "ServiceAccount@2026!",
         "role": "SUPERADMIN"
       }
     }

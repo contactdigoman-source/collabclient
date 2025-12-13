@@ -17,7 +17,7 @@
       "success": true,
       "message": "First-time login completed successfully",
       "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
-      "expiresAt": "2024-12-31T23:59:59Z",
+      "expiresAt": "2026-12-31T23:59:59Z",
       "user": {
         "id": 1,
         "email": "user@example.com",

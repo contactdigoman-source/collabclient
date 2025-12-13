@@ -48,3 +48,4 @@ export const getStoredDeviceIdentifier = (): string | null => {
   }
 };
 
+

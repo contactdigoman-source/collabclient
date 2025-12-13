@@ -39,3 +39,4 @@ else
     echo "💡 Install jq for better formatting: brew install jq"
 fi
 
+

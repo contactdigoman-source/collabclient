@@ -1,12 +1,7 @@
 {
   "request": {
     "method": "GET",
-    "url": "/api/attendance/current",
-    "headers": {
-      "Authorization": {
-        "matches": "Bearer .+"
-      }
-    }
+    "url": "/api/attendance/current"
   },
   "response": {
     "status": 200,
@@ -16,7 +11,7 @@
     "jsonBody": {
       "id": 1,
       "userId": 1,
-      "punchInTime": "2024-01-15T09:00:00Z",
+      "punchInTime": "2026-01-15T09:00:00Z",
       "punchOutTime": null,
       "location": "Office",
       "latitude": "22.5726",
@@ -25,4 +20,3 @@
     }
   }
 }
-

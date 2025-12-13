@@ -3,6 +3,7 @@ import AadhaarOtpScreen from './aadhaar/AadhaarOtpScreen';
 import PanCardCaptureScreen from './aadhaar/PanCardCaptureScreen';
 import AttendanceLogsScreen from './attendance/AttendanceLogsScreen';
 import ChangeForgottenPassword from './auth/ChangeForgottenPassword';
+import ChangePasswordScreen from './auth/ChangePasswordScreen';
 import CheckInScreen from './attendance/CheckInScreen';
 import ConfirmPunchScreen from './attendance/ConfirmPunchScreen';
 import DaysBottomTabScreen from './attendance/DaysBottomTabScreen';
@@ -32,6 +33,7 @@ export {
   ViewProfileScreen,
   OtpScreen,
   ChangeForgottenPassword,
+  ChangePasswordScreen,
   AadhaarInputScreen,
   AadhaarOtpScreen,
   PanCardCaptureScreen,

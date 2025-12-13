@@ -1,12 +1,7 @@
 {
   "request": {
     "method": "GET",
-    "urlPathPattern": "/api/license/[0-9]+/organizations",
-    "headers": {
-      "Authorization": {
-        "matches": "Bearer .+"
-      }
-    }
+    "urlPathPattern": "/api/license/[0-9]+/organizations"
   },
   "response": {
     "status": 200,
@@ -22,9 +17,8 @@
         "status": "Active",
         "setupStatus": "Completed",
         "licenseId": 1,
-        "createdAt": "2024-01-01T00:00:00Z"
+        "createdAt": "2026-01-01T00:00:00Z"
       }
     ]
   }
 }
-

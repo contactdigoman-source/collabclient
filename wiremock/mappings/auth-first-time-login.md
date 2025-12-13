@@ -12,15 +12,16 @@
   "newPassword": "NewPassword123!@#",
   "consent": {
     "agreed": true,
-    "timestamp": "2024-01-15T10:30:00.000Z",
+    "timestamp": "2026-01-15T10:30:00.000Z",
     "permissions": ["location", "storage", "camera", "time", "personal", "device", "microphone", "phone"]
   },
   "deviceIdentifier": "ios-1705312200000-abc123def456",
-  "timestamp": "2024-01-15T10:30:00.000Z"
+  "timestamp": "2026-01-15T10:30:00.000Z"
 }
 ```
 
 ## Response
 - **Status**: 200 OK
 - **Body**: Contains `success`, `message`, `token`, `expiresAt`, and `user` object with updated user data
+
 

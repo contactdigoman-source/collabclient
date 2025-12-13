@@ -6,11 +6,6 @@
       "q": {
         "matches": ".+"
       }
-    },
-    "headers": {
-      "Authorization": {
-        "matches": "Bearer .+"
-      }
     }
   },
   "response": {
@@ -33,4 +28,3 @@
     }
   }
 }
-

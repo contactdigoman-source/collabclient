@@ -1,4 +1,4 @@
-import { NativeModules, DeviceEventEmitter } from 'react-native';
+import { NativeModules, DeviceEventEmitter, Platform, Linking } from 'react-native';
 import * as Keychain from 'react-native-keychain';
 import CryptoJS from 'react-native-crypto-js';
 import Config from 'react-native-config';
@@ -18,6 +18,37 @@ export const ERROR_MESSAGES = {
 
 export const getRawAadhaarNumber = (formatted: string): string => {
   return formatted.replace(/\s/g, '');
+};
+
+/**
+ * Check if Aadhaar FaceRD app is installed on Android
+ * @returns Promise<boolean> - true if app is installed, false otherwise
+ */
+export const isFaceRDAppInstalled = async (): Promise<boolean> => {
+  if (Platform.OS !== 'android') {
+    return false; // FaceRD is Android only
+  }
+
+  try {
+    // Try to check if the app can be opened via intent
+    // Package name for Aadhaar FaceRD: in.gov.uidai.rdservice
+    const packageName = 'in.gov.uidai.rdservice';
+    const intentUrl = `intent://#Intent;package=${packageName};end`;
+    
+    const canOpen = await Linking.canOpenURL(intentUrl);
+    
+    // Also check if FaceAuth module is available (native module check)
+    const { FaceAuth } = NativeModules as { FaceAuth?: FaceAuthModule };
+    
+    // App is considered installed if either check passes
+    // The module check is more reliable as it checks the actual native bridge
+    return !!(FaceAuth || canOpen);
+  } catch (error) {
+    console.error('Error checking FaceRD app installation:', error);
+    // Fallback: check if native module exists
+    const { FaceAuth } = NativeModules as { FaceAuth?: FaceAuthModule };
+    return !!FaceAuth;
+  }
 };
 
 export const storeAadhaarNumber = async (): Promise<void> => {
