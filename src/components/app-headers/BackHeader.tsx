@@ -75,7 +75,7 @@ function BackHeader({
           size={hp('2.48%')}
           source={Icons.back_arrow}
           style={styles.backIcon}
-          tintColor={colors.white}
+          tintColor={colors.text}
           onPress={onBackArrowPress}
           accessibilityRole="button"
           accessibilityLabel="Back"

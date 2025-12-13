@@ -6,7 +6,7 @@ import React, {
   useState,
 } from 'react';
 import { StyleSheet, View, StatusBar, TouchableOpacity } from 'react-native';
-import { useNavigation, CommonActions } from '@react-navigation/native';
+import { useNavigation, CommonActions, useTheme } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView from 'react-native-maps';
 
@@ -31,7 +31,6 @@ import { insertAttendancePunchRecord } from '../../services';
 import moment from 'moment';
 import { PUNCH_DIRECTIONS } from '../../constants/location';
 import { useTranslation } from '../../hooks/useTranslation';
-import { DarkThemeColors, LightThemeColors } from '../../themes';
 
 interface Coordinates {
   latitude: number;
@@ -45,15 +44,14 @@ export default function CheckInScreen(): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
   const navigation = useNavigation();
+  const { colors } = useTheme();
   const { t } = useTranslation();
 
   const mapRef = useRef<MapView>(null);
 
-  const { appTheme } = useAppSelector(state => state.appState);
   const userLocationRegion = useAppSelector(
     state => state.userState.userLocationRegion,
   );
-  const themeColors = appTheme === 'dark' ? DarkThemeColors : LightThemeColors;
   const userLastAttendance = useAppSelector(
     state => state.userState.userLastAttendance,
   );
@@ -465,34 +463,53 @@ export default function CheckInScreen(): React.JSX.Element {
   const buttonStyle = useMemo<{
     backgroundColor: string;
     borderRadius: number;
+    borderWidth?: number;
+    borderColor?: string;
+    shadowColor?: string;
+    shadowOffset?: { width: number; height: number };
+    shadowOpacity?: number;
+    shadowRadius?: number;
+    elevation?: number;
   }>(() => {
     if (isUserCheckedIn) {
-      // Check-out: White button with black text, rounded corners
+      // Check-out: Use theme card background with theme text, rounded corners, border, shadow, and glossy feel
       return {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: colors.card || '#FFFFFF',
         borderRadius: 7,
+        borderWidth: 1,
+        borderColor: colors.border || colors.text,
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        elevation: 8,
       };
     } else {
-      // Check-in: Green button with white text
+      // Check-in: Green button with white text, shadow, and glossy feel
       return {
         backgroundColor: '#62C268',
         borderRadius: 0,
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
+        elevation: 10,
       };
     }
-  }, [isUserCheckedIn]);
+  }, [isUserCheckedIn, colors.card, colors.border, colors.text]);
 
   const buttonTextColor = useMemo(() => {
-    return isUserCheckedIn ? '#000000' : '#FFFFFF';
-  }, [isUserCheckedIn]);
+    return isUserCheckedIn ? colors.text : '#FFFFFF';
+  }, [isUserCheckedIn, colors.text]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar
         barStyle="light-content"
-        backgroundColor={DarkThemeColors.black}
+        backgroundColor={colors.background}
       />
       <BackHeader
-        bgColor={DarkThemeColors.black}
+        bgColor={colors.background}
         title={isUserCheckedIn ? 'Check Out' : 'Check In'}
         rightContent={
           <TouchableOpacity
@@ -501,7 +518,7 @@ export default function CheckInScreen(): React.JSX.Element {
             accessibilityRole="button"
             accessibilityLabel="Close"
           >
-            <AppText style={styles.closeIcon} color={themeColors.white_common}>
+            <AppText style={styles.closeIcon} color={colors.text}>
               ✕
             </AppText>
           </TouchableOpacity>
@@ -531,29 +548,29 @@ export default function CheckInScreen(): React.JSX.Element {
           }}
         />
       ) : (
-        <View style={[styles.map, styles.mapPlaceholder]}>
-          <AppText color={themeColors.white_common} size={hp(2)}>
+        <View style={[styles.map, styles.mapPlaceholder, { backgroundColor: colors.background }]}>
+          <AppText color={colors.text} size={hp(2)}>
             {t('attendance.fetchingLocation')}
           </AppText>
         </View>
       )}
 
-      <View style={[styles.bottomContainer, { paddingBottom: insets.bottom || hp(2) }]}>
+      <View style={[styles.bottomContainer, { paddingBottom: insets.bottom || hp(2), backgroundColor: colors.background }]}>
         <View style={styles.addressContainer}>
           {permissionDenied ? (
-            <AppText color={themeColors.red || '#FF0000'} style={styles.addressText}>
+            <AppText color="#FF0000" style={styles.addressText}>
               {t('attendance.locationPermissionDenied')}
             </AppText>
           ) : isFetchingLocation || isFetchingAddress ? (
-            <AppText style={styles.addressText} color={themeColors.white_common}>
+            <AppText style={styles.addressText} color={colors.text}>
               {t('attendance.fetchingLocation')}
             </AppText>
           ) : currentAddress ? (
-            <AppText style={styles.addressText} color={themeColors.white_common}>
+            <AppText style={styles.addressText} color={colors.text}>
               {currentAddress}
             </AppText>
           ) : (
-            <AppText style={styles.addressText} color={themeColors.white_common}>
+            <AppText style={styles.addressText} color={colors.text}>
               {userLocationRegion?.latitude?.toFixed(4)},{' '}
               {userLocationRegion?.longitude?.toFixed(4)}
             </AppText>
@@ -570,6 +587,13 @@ export default function CheckInScreen(): React.JSX.Element {
             ...styles.checkInButton,
             backgroundColor: buttonStyle.backgroundColor,
             borderRadius: buttonStyle.borderRadius,
+            borderWidth: buttonStyle.borderWidth,
+            borderColor: buttonStyle.borderColor,
+            shadowColor: buttonStyle.shadowColor,
+            shadowOffset: buttonStyle.shadowOffset,
+            shadowOpacity: buttonStyle.shadowOpacity,
+            shadowRadius: buttonStyle.shadowRadius,
+            elevation: buttonStyle.elevation,
           }}
           borderRadius={buttonStyle.borderRadius}
           onPress={onCheckInPress}
@@ -590,7 +614,6 @@ export default function CheckInScreen(): React.JSX.Element {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: DarkThemeColors.black,
   },
   map: {
     flex: 1,
@@ -600,14 +623,12 @@ const styles = StyleSheet.create({
   mapPlaceholder: {
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: DarkThemeColors.black,
   },
   bottomContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: DarkThemeColors.black,
     paddingHorizontal: wp(5.33), // 19.97px from Figma (19.97/375 = 5.33%)
     paddingTop: hp(2.5),
   },
@@ -629,6 +650,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: hp(1),
+    overflow: 'visible', // Allow shadow to be visible
   },
   closeButton: {
     width: hp(2.48),

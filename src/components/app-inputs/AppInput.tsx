@@ -80,7 +80,7 @@ function AppInput({
             <AppImage
               source={icon}
               size={wp('5.60%')}
-              tintColor={iconTintColor || colors.white}
+              tintColor={iconTintColor || colors.text}
             />
           </View>
         )}

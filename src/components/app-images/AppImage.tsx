@@ -138,7 +138,7 @@ function AppImage({
                   }}
                   source={Icons.eye_closed}
                   resizeMode="contain"
-                  tintColor={colors.white}
+                  tintColor={colors.text || colors.white}
                 />
                 {isNoPreviewTitle && (
                   <AppText

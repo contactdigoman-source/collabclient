@@ -1,6 +1,6 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { StyleSheet, View, Alert, ScrollView } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useTheme } from '@react-navigation/native';
 
 import {
   AnimatedSwitch,
@@ -22,6 +22,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 export default function ProfileDrawerScreen(): React.JSX.Element {
   const dispatch = useAppDispatch();
   const navigation = useNavigation<NavigationProp>();
+  const { colors } = useTheme();
   const { t, currentLanguage } = useTranslation();
 
   const { appTheme } = useAppSelector(state => state.appState);
@@ -147,7 +148,7 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
         <ProfileDrawerItem
           title={t('profile.displayBreakStatus')}
           icon={Icons.display_break_status}
-          iconColor={DarkThemeColors.white_common}
+          iconColor={colors.text}
           rightContent={
             <AnimatedSwitch
               value={displayBreakStatus}
@@ -162,7 +163,7 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
           disabled
           title={t('profile.darkMode')}
           icon={Icons.dark_mode}
-          iconColor={DarkThemeColors.white_common}
+          iconColor={colors.text}
           rightContent={
             <AnimatedSwitch
               value={appTheme === APP_THEMES.dark}
@@ -176,12 +177,12 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
         <ProfileDrawerItem
           title={t('profile.preferredLanguage', 'Preferred Language')}
           icon={Icons.name}
-          iconColor={DarkThemeColors.white_common}
+          iconColor={colors.text}
           rightContent={
             <AppText
               size={hp(1.8)}
               style={{ marginEnd: hp(2), opacity: 0.7 }}
-              color={DarkThemeColors.white_common}
+              color={colors.text}
             >
               {getLanguageDisplayName(currentLanguage)}
             </AppText>
@@ -194,7 +195,7 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
           disabled
           title={t('profile.attendanceLogs')}
           icon={Icons.attendance_logs}
-          iconColor={DarkThemeColors.white_common}
+          iconColor={colors.text}
           onPress={onAttendanceLogsPress}
         />
 
@@ -202,7 +203,7 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
         <ProfileDrawerItem
           title={t('profile.viewProfile')}
           icon={Icons.profile_circle}
-          iconColor={DarkThemeColors.white_common}
+          iconColor={colors.text}
           onPress={onViewProfilePress}
         />
 
@@ -211,7 +212,7 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
           disabled
           title={t('profile.geoLocations')}
           icon={Icons.geo_locations}
-          iconColor={DarkThemeColors.white_common}
+          iconColor={colors.text}
           onPress={onGeoLocationsPress}
         />
 
@@ -219,7 +220,7 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
         <ProfileDrawerItem
           title={t('profile.security')}
           icon={Icons.security}
-          iconColor={DarkThemeColors.white_common}
+          iconColor={colors.text}
           onPress={onSecurityPress}
         />
 
@@ -227,7 +228,7 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
         <ProfileDrawerItem
           title={t('profile.supportAndLearn')}
           icon={Icons.support_learn}
-          iconColor={DarkThemeColors.white_common}
+          iconColor={colors.text}
           onPress={onSupportAndLearnPress}
         />
 
@@ -235,7 +236,7 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
         <ProfileDrawerItem
           title={t('profile.logout')}
           icon={Icons.logout}
-          iconColor={DarkThemeColors.white_common}
+          iconColor={colors.text}
           onPress={onLogoutPress}
         />
 

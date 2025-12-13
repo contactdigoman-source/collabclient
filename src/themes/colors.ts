@@ -26,6 +26,9 @@ export const DarkThemeColors = {
   switch_inactive_bg: '#272727',
   app_input_label: '#FFFFFF',
   grey_dark_37: '#373737',
+  cardBg: '#272727',
+  cardBorder: 'transparent',
+  separator: '#444444',
 } as const;
 
 export const LightThemeColors = {
@@ -56,5 +59,8 @@ export const LightThemeColors = {
   switch_inactive_bg: '#DCDDE1',
   app_input_label: '#000000',
   grey_dark_37: '#373737',
+  cardBg: '#FFFFFF',
+  cardBorder: '#E0E0E0',
+  separator: '#E0E0E0',
 } as const;
 

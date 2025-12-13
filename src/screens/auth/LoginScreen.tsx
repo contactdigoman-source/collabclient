@@ -169,10 +169,10 @@ export default function LoginScreen(): React.JSX.Element {
 
             {/* Welcome Text */}
             <View style={styles.welcomeContainer}>
-              <AppText style={styles.welcomeText}>
+              <AppText style={styles.welcomeText} color={colors.text || '#FFFFFF'}>
                 {t('auth.login.welcome')}
               </AppText>
-              <AppText style={styles.loginSubtitle}>
+              <AppText style={styles.loginSubtitle} color={colors.text || '#FFFFFF'}>
                 {t('auth.login.subtitle')}
               </AppText>
             </View>
@@ -283,7 +283,6 @@ const styles = StyleSheet.create({
     fontSize: hp(3.1), // 24.8921px equivalent
     lineHeight: hp(4.25), // 34px equivalent
     textAlign: 'center',
-    color: '#FFFFFF',
     marginBottom: hp(0.5),
   },
   loginSubtitle: {
@@ -293,7 +292,6 @@ const styles = StyleSheet.create({
     fontSize: hp(2), // 16px equivalent
     lineHeight: hp(2.75), // 22px equivalent
     textAlign: 'center',
-    color: '#FFFFFF',
   },
   button: {
     marginTop: hp(1.24),

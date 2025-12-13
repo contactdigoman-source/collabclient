@@ -33,7 +33,7 @@ export interface GetDaysAttendanceResponse {
  */
 export const getDaysAttendance = async (): Promise<AttendanceDay[]> => {
   try {
-    const token = await getJWTToken();
+    const token = await getJWTToken('');
     // if (!token) {
     //   // Return empty array if no token - treat as no data available
     //   return [];

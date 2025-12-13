@@ -13,7 +13,7 @@ import {
 } from '../../components';
 import { useAppDispatch, useAppSelector } from '../../redux';
 import { hp, wp, Icons, FontTypes } from '../../constants';
-import { DarkThemeColors } from '../../themes';
+import { DarkThemeColors, APP_THEMES } from '../../themes';
 import { useTranslation } from '../../hooks/useTranslation';
 import { getProfile, updateProfile, uploadProfilePhoto } from '../../services';
 
@@ -22,6 +22,7 @@ const DEFAULT_VALUE = 'None';
 export default function ViewProfileScreen(): React.JSX.Element {
   const theme = useTheme();
   const colors = theme?.colors || {};
+  const { appTheme } = useAppSelector(state => state.appState);
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const { userData } = useAppSelector(state => state.userState);
@@ -391,7 +392,7 @@ export default function ViewProfileScreen(): React.JSX.Element {
             >
               <Image
                 source={Icons.edit}
-                style={[styles.editPhotoIcon, { tintColor: DarkThemeColors.white_common }]}
+                style={[styles.editPhotoIcon, { tintColor: colors.text || DarkThemeColors.white_common }]}
               />
             </TouchableOpacity>
           )}
@@ -432,9 +433,22 @@ export default function ViewProfileScreen(): React.JSX.Element {
             </AppText>
             <TouchableOpacity
               onPress={handleDatePickerOpen}
-              style={styles.dateInputContainer}
+              style={[
+                styles.dateInputContainer,
+                {
+                  backgroundColor: (colors as any).cardBg || DarkThemeColors.black + '20',
+                  borderColor: appTheme === APP_THEMES.light 
+                    ? (colors as any).cardBorder || '#E0E0E0'
+                    : DarkThemeColors.white_common + '40',
+                  shadowColor: appTheme === APP_THEMES.light ? colors.black_common : 'transparent',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: appTheme === APP_THEMES.light ? 0.05 : 0,
+                  shadowRadius: appTheme === APP_THEMES.light ? 2 : 0,
+                  elevation: appTheme === APP_THEMES.light ? 1 : 0,
+                }
+              ]}
             >
-              <AppText size={hp(2)} color={dateOfBirth ? DarkThemeColors.white_common : DarkThemeColors.white_common + '80'}>
+              <AppText size={hp(2)} color={dateOfBirth ? colors.text || DarkThemeColors.white_common : (colors.text || DarkThemeColors.white_common) + '80'}>
                 {dateOfBirth || PROFILE_ITEMS.dob}
               </AppText>
             </TouchableOpacity>
@@ -483,7 +497,7 @@ export default function ViewProfileScreen(): React.JSX.Element {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.datePickerModal}>
-            <AppText size={hp(2.5)} fontType={FontTypes.medium} style={styles.modalTitle}>
+            <AppText size={hp(2.5)} fontType={FontTypes.medium} color={colors.text || DarkThemeColors.white_common} style={styles.modalTitle}>
               {t('profile.dateOfBirth')}
             </AppText>
             
@@ -554,10 +568,20 @@ export default function ViewProfileScreen(): React.JSX.Element {
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={[styles.modalButton, styles.cancelModalButton]}
+                style={[
+                  styles.modalButton,
+                  styles.cancelModalButton,
+                  {
+                    backgroundColor: appTheme === APP_THEMES.light 
+                      ? (colors as any).cardBg || '#F6F6F6'
+                      : DarkThemeColors.white_common + '20',
+                    borderWidth: appTheme === APP_THEMES.light ? 1 : 0,
+                    borderColor: appTheme === APP_THEMES.light ? (colors as any).cardBorder || '#E0E0E0' : 'transparent',
+                  }
+                ]}
                 onPress={handleDatePickerCancel}
               >
-                <AppText size={hp(2)} color={DarkThemeColors.white_common}>
+                <AppText size={hp(2)} color={colors.text || DarkThemeColors.white_common}>
                   {t('common.cancel')}
                 </AppText>
               </TouchableOpacity>
@@ -565,7 +589,7 @@ export default function ViewProfileScreen(): React.JSX.Element {
                 style={[styles.modalButton, styles.confirmModalButton]}
                 onPress={handleDatePickerConfirm}
               >
-                <AppText size={hp(2)} color={DarkThemeColors.white_common}>
+                <AppText size={hp(2)} color={colors.text || DarkThemeColors.white_common}>
                   {t('common.save')}
                 </AppText>
               </TouchableOpacity>
@@ -628,15 +652,12 @@ const styles = StyleSheet.create({
   },
   label: {
     marginBottom: hp(1),
-    color: DarkThemeColors.white_common,
   },
   dateInputContainer: {
     borderWidth: 1,
-    borderColor: DarkThemeColors.white_common + '40',
     borderRadius: 8,
     padding: hp(1.5),
     marginBottom: hp(2),
-    backgroundColor: DarkThemeColors.black + '20',
   },
   modalOverlay: {
     flex: 1,
@@ -645,7 +666,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   datePickerModal: {
-    backgroundColor: DarkThemeColors.black,
     borderRadius: 12,
     padding: hp(3),
     width: '85%',
@@ -654,7 +674,6 @@ const styles = StyleSheet.create({
   modalTitle: {
     textAlign: 'center',
     marginBottom: hp(3),
-    color: DarkThemeColors.white_common,
   },
   datePickerContainer: {
     marginVertical: hp(2),
@@ -666,7 +685,6 @@ const styles = StyleSheet.create({
     marginVertical: hp(1.5),
     paddingVertical: hp(1),
     borderBottomWidth: 1,
-    borderBottomColor: DarkThemeColors.white_common + '20',
   },
   datePickerButton: {
     width: 40,
@@ -694,7 +712,6 @@ const styles = StyleSheet.create({
     marginHorizontal: hp(1),
   },
   cancelModalButton: {
-    backgroundColor: DarkThemeColors.white_common + '20',
   },
   confirmModalButton: {
     backgroundColor: DarkThemeColors.primary,

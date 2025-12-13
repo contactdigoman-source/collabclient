@@ -1,9 +1,11 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet, Modal, TouchableOpacity } from 'react-native';
+import { useTheme } from '@react-navigation/native';
 import { AppText } from '..';
 import { hp, wp } from '../../constants';
 import { useTranslation } from '../../hooks/useTranslation';
-import { DarkThemeColors } from '../../themes';
+import { useAppSelector } from '../../redux';
+import { APP_THEMES } from '../../themes';
 
 interface BreakStatusOption {
   id: string;
@@ -26,7 +28,9 @@ export default function EarlyCheckoutModal({
   onSkip,
   onCancel,
 }: EarlyCheckoutModalProps): React.JSX.Element {
+  const { colors } = useTheme();
   const { t } = useTranslation();
+  const { appTheme } = useAppSelector(state => state.appState);
 
   const breakStatusOptions: BreakStatusOption[] = useMemo(() => [
     { 
@@ -59,7 +63,7 @@ export default function EarlyCheckoutModal({
       case 'LUNCH':
         return (
           <View style={[styles.iconContainer, iconStyle]}>
-            <AppText size={hp(2.5)} color={DarkThemeColors.white_common}>
+            <AppText size={hp(2.5)} color={colors.text}>
               🍽️
             </AppText>
           </View>
@@ -67,7 +71,7 @@ export default function EarlyCheckoutModal({
       case 'SHORTBREAK':
         return (
           <View style={[styles.iconContainer, iconStyle]}>
-            <AppText size={hp(2.5)} color={DarkThemeColors.white_common}>
+            <AppText size={hp(2.5)} color={colors.text}>
               ☕
             </AppText>
           </View>
@@ -75,7 +79,7 @@ export default function EarlyCheckoutModal({
       case 'COMMUTING':
         return (
           <View style={[styles.iconContainer, iconStyle]}>
-            <AppText size={hp(2.5)} color={DarkThemeColors.white_common}>
+            <AppText size={hp(2.5)} color={colors.text}>
               🚗
             </AppText>
           </View>
@@ -83,7 +87,7 @@ export default function EarlyCheckoutModal({
       case 'PERSONALTIMEOUT':
         return (
           <View style={[styles.iconContainer, iconStyle]}>
-            <AppText size={hp(2.5)} color={DarkThemeColors.white_common}>
+            <AppText size={hp(2.5)} color={colors.text}>
               ⏰
             </AppText>
           </View>
@@ -91,7 +95,7 @@ export default function EarlyCheckoutModal({
       case 'OUTFORDINNER':
         return (
           <View style={[styles.iconContainer, iconStyle]}>
-            <AppText size={hp(2.5)} color={DarkThemeColors.white_common}>
+            <AppText size={hp(2.5)} color={colors.text}>
               🍴
             </AppText>
           </View>
@@ -114,24 +118,31 @@ export default function EarlyCheckoutModal({
         onPress={onCancel}
       >
         <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
-          <View style={styles.modalContainer}>
+          <View style={[
+            styles.modalContainer,
+            {
+              backgroundColor: colors.card || '#272727',
+              borderWidth: appTheme === APP_THEMES.light ? 1 : 0,
+              borderColor: appTheme === APP_THEMES.light ? colors.border : 'transparent',
+            }
+          ]}>
             {/* Header with title and skip button */}
             <View style={styles.header}>
               <AppText
                 size={hp(2.25)} // 18px
                 style={styles.title}
-                color="#8C8C8C"
+                color={colors.text}
               >
                 {t('attendance.breakStatus.updateBreakStatus', 'Update break status')}
               </AppText>
               <TouchableOpacity
-                style={styles.skipButton}
+                style={[styles.skipButton, { backgroundColor: colors.border || '#545454' }]}
                 onPress={onSkip}
                 activeOpacity={0.7}
               >
                 <AppText
                   size={hp(1.8)} // 14.5714px
-                  color={DarkThemeColors.white_common}
+                  color={colors.text}
                 >
                   {t('attendance.breakStatus.skip', 'Skip')}
                 </AppText>
@@ -151,7 +162,7 @@ export default function EarlyCheckoutModal({
                   <AppText
                     size={hp(2.25)} // 18px
                     style={styles.optionLabel}
-                    color={DarkThemeColors.white_common}
+                    color={colors.text}
                   >
                     {option.label}
                   </AppText>
@@ -174,7 +185,6 @@ const styles = StyleSheet.create({
   modalContainer: {
     width: wp(100.56), // 377.1px / 375px * 100 = 100.56%
     height: hp(42.5), // 345.33px / 813.33px * 100 = 42.5%
-    backgroundColor: '#272727',
     borderTopLeftRadius: 10,
     borderTopRightRadius: 10,
     borderBottomLeftRadius: 0,
@@ -195,7 +205,6 @@ const styles = StyleSheet.create({
     lineHeight: hp(2.6), // 21px
   },
   skipButton: {
-    backgroundColor: '#545454',
     borderRadius: 100, // Fully rounded pill
     paddingHorizontal: wp(4), // ~15px
     paddingVertical: hp(0.7), // ~5.7px to get height of 28px

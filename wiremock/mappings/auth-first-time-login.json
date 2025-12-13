@@ -1,12 +1,7 @@
 {
   "request": {
     "method": "POST",
-    "url": "/api/auth/first-time-login",
-    "headers": {
-      "Content-Type": {
-        "equalTo": "application/json"
-      }
-    }
+    "url": "/api/auth/first-time-login"
   },
   "response": {
     "status": 200,

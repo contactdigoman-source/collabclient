@@ -211,12 +211,13 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
             size={hp(2.5)}
             fontType={FontTypes.medium}
             style={styles.title}
+            color={colors.text}
           >
             {t('auth.profilePhoto.title')}
           </AppText>
 
           {/* Subtitle */}
-          <AppText size={hp(1.8)} style={styles.subtitle}>
+          <AppText size={hp(1.8)} style={styles.subtitle} color={colors.text}>
             {t('auth.profilePhoto.subtitle')}
           </AppText>
 
@@ -231,7 +232,7 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
                   source={Images.app_logo}
                   style={styles.placeholderImage}
                 />
-                <AppText size={hp(1.6)} style={styles.placeholderText}>
+                <AppText size={hp(1.6)} style={styles.placeholderText} color={colors.text}>
                   {t('auth.profilePhoto.noPhoto')}
                 </AppText>
               </View>
@@ -267,7 +268,7 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
               style={styles.skipButton}
               disabled={loading}
             >
-              <AppText size={hp(1.8)} style={styles.skipText}>
+              <AppText size={hp(1.8)} style={styles.skipText} color={colors.text}>
                 {t('auth.profilePhoto.skip')}
               </AppText>
             </TouchableOpacity>
@@ -290,13 +291,11 @@ const styles = StyleSheet.create({
   title: {
     textAlign: 'center',
     marginBottom: hp(1),
-    color: '#FFFFFF',
   },
   subtitle: {
     textAlign: 'center',
     marginBottom: hp(4),
     opacity: 0.8,
-    color: '#FFFFFF',
   },
   imageContainer: {
     alignItems: 'center',
@@ -321,7 +320,6 @@ const styles = StyleSheet.create({
   },
   placeholderText: {
     opacity: 0.6,
-    color: '#FFFFFF',
   },
   buttonContainer: {
     marginVertical: hp(2),
@@ -344,7 +342,6 @@ const styles = StyleSheet.create({
     paddingVertical: hp(1),
   },
   skipText: {
-    color: '#FFFFFF',
     opacity: 0.7,
     textDecorationLine: 'underline',
   },

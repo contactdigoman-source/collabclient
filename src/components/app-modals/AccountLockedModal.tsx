@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, StyleSheet, Modal } from 'react-native';
+import { useTheme } from '@react-navigation/native';
 import { AppText, AppButton, AppImage } from '..';
 import { hp, wp, Icons } from '../../constants';
 import { useTranslation } from '../../hooks/useTranslation';
+import { APP_THEMES, DarkThemeColors } from '../../themes';
+import { useAppSelector } from '../../redux';
 
 interface AccountLockedModalProps {
   visible: boolean;
@@ -13,6 +16,8 @@ export default function AccountLockedModal({
   visible,
   onClose,
 }: AccountLockedModalProps): React.JSX.Element {
+  const { colors } = useTheme();
+  const { appTheme } = useAppSelector(state => state.appState);
   const { t } = useTranslation();
 
   return (
@@ -23,7 +28,20 @@ export default function AccountLockedModal({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View style={styles.modalContainer}>
+        <View style={[
+          styles.modalContainer,
+          {
+            backgroundColor: colors.background || '#333333',
+            borderColor: appTheme === APP_THEMES.light 
+              ? (colors as any).cardBorder || '#E0E0E0'
+              : '#686868',
+            shadowColor: appTheme === APP_THEMES.light ? colors.black_common : 'transparent',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: appTheme === APP_THEMES.light ? 0.2 : 0,
+            shadowRadius: appTheme === APP_THEMES.light ? 8 : 0,
+            elevation: appTheme === APP_THEMES.light ? 8 : 0,
+          }
+        ]}>
           {/* Icon Circle */}
           <View style={styles.iconContainer}>
             <View style={styles.iconCircle}>
@@ -32,7 +50,7 @@ export default function AccountLockedModal({
                 <AppImage
                   size={wp(15)}
                   source={Icons.lock}
-                  tintColor="#365E7D"
+                  tintColor={colors.text || '#365E7D'}
                 />
               ) : (
                 <View style={styles.lockIcon}>
@@ -44,7 +62,7 @@ export default function AccountLockedModal({
           </View>
 
           {/* Message */}
-          <AppText size={hp(1.9)} style={styles.message}>
+          <AppText size={hp(1.9)} color={colors.text || '#FFFFFF'} style={styles.message}>
             {t('auth.accountLocked.message', 'Your account has been temporarily locked due to multiple failed login attempts. Please contact your administrator to regain access.')}
           </AppText>
 
@@ -71,9 +89,7 @@ const styles = StyleSheet.create({
   modalContainer: {
     width: wp(90.67), // 340px equivalent
     height: hp(38.4), // 311.27px equivalent
-    backgroundColor: '#333333',
     borderWidth: 1,
-    borderColor: '#686868',
     borderRadius: wp(4.7), // 17.6121px equivalent
     alignItems: 'center',
     justifyContent: 'center',
@@ -124,7 +140,6 @@ const styles = StyleSheet.create({
     fontSize: hp(1.9), // 15px equivalent
     lineHeight: hp(2.5), // 20px equivalent
     textAlign: 'center',
-    color: '#FFFFFF',
     marginBottom: hp(3),
     paddingHorizontal: wp(2),
   },

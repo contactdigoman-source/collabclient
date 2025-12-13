@@ -11,7 +11,7 @@ import { useAppSelector } from '../../redux';
 import { hp, wp, FontTypes, Icons } from '../../constants';
 import { useTranslation } from '../../hooks/useTranslation';
 import { getDaysAttendance, AttendanceDay } from '../../services';
-import { DarkThemeColors } from '../../themes';
+import { DarkThemeColors, APP_THEMES } from '../../themes';
 
 interface GroupedAttendance {
   date: string;
@@ -31,6 +31,7 @@ interface GroupedAttendance {
 export default function DaysBottomTabScreen(): React.JSX.Element {
   const theme = useTheme();
   const colors = useMemo(() => theme?.colors || {}, [theme?.colors]);
+  const { appTheme } = useAppSelector(state => state.appState);
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const userLastAttendance = useAppSelector(
@@ -201,6 +202,25 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
     return selectedMonth.clone().add(1, 'month').format('MMMM');
   }, [selectedMonth]);
 
+  // Dynamic styles for theme-aware backgrounds and borders
+  const dynamicStyles = useMemo(() => ({
+    headerContainer: {
+      backgroundColor: colors.background || DarkThemeColors.black,
+      borderBottomWidth: appTheme === APP_THEMES.light ? 1 : 0,
+      borderBottomColor: appTheme === APP_THEMES.light ? (colors as any).cardBorder || '#E0E0E0' : 'transparent',
+      shadowColor: appTheme === APP_THEMES.light ? (colors as any).black_common || '#000000' : 'transparent',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: appTheme === APP_THEMES.light ? 0.1 : 0,
+      shadowRadius: appTheme === APP_THEMES.light ? 4 : 0,
+      elevation: appTheme === APP_THEMES.light ? 2 : 0,
+    },
+    topRow: {
+      borderBottomColor: appTheme === APP_THEMES.light 
+        ? (colors as any).cardBorder || '#E0E0E0'
+        : DarkThemeColors.white_common + '12',
+    },
+  }), [colors, appTheme]);
+
   return (
     <AppContainer>
       <HomeHeader
@@ -211,12 +231,12 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
       />
       
       {/* Month Switcher Header */}
-      <View style={[styles.headerContainer, { marginTop: headerHeight }]}>
+      <View style={[styles.headerContainer, dynamicStyles.headerContainer, { marginTop: headerHeight }]}>
         {/* Top Row: My Days and Logs */}
-        <View style={styles.topRow}>
+        <View style={[styles.topRow, dynamicStyles.topRow]}>
           {/* Left: My Days */}
           <View style={styles.leftSection}>
-            <AppText size={14} color="#626262" style={styles.myDaysText}>
+            <AppText size={14} color={colors.text || '#626262'} style={styles.myDaysText}>
               My Days
             </AppText>
           </View>
@@ -232,12 +252,12 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
                 {showLogs && (
                   <Image
                     source={Icons.tick}
-                    style={styles.logsCheckmarkIcon}
+                    style={[styles.logsCheckmarkIcon, { tintColor: colors.text || DarkThemeColors.white_common }]}
                     resizeMode="contain"
                   />
                 )}
               </View>
-              <AppText size={17} fontType={FontTypes.medium} color="#626262" style={styles.logsText}>
+              <AppText size={17} fontType={FontTypes.medium} color={colors.text || '#626262'} style={styles.logsText}>
                 Logs
               </AppText>
             </TouchableOpacity>
@@ -253,16 +273,20 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
           >
             <Image
               source={Icons.back_arrow}
-              style={[styles.arrowIcon, styles.leftArrow]}
+              tintColor={colors.text || '#626262'}
+              style={[
+                styles.arrowIcon,
+                styles.leftArrow,
+              ]}
               resizeMode="contain"
             />
-            <AppText size={17} fontType={FontTypes.medium} color="#626262" style={styles.monthNameText}>
+            <AppText size={14} fontType={FontTypes.medium} color={colors.text || '#626262'} style={styles.monthNameText}>
               {previousMonthName}
             </AppText>
           </TouchableOpacity>
 
           <View style={styles.currentMonthContainer}>
-            <AppText size={22} fontType={FontTypes.medium} color="#62C268">
+            <AppText size={22} fontType={FontTypes.medium} color={colors.primary || '#62C268'}>
               {currentMonthName}
             </AppText>
           </View>
@@ -272,12 +296,12 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
             style={styles.monthButton}
             activeOpacity={0.7}
           >
-            <AppText size={17} fontType={FontTypes.medium} color="#626262" style={styles.monthNameText}>
+            <AppText size={14} fontType={FontTypes.medium} color={colors.text || '#626262'} style={styles.monthNameText}>
               {nextMonthName}
             </AppText>
             <Image
               source={Icons.back_arrow}
-              style={[styles.arrowIcon, styles.rightArrow]}
+              style={[styles.arrowIcon, styles.rightArrow, { tintColor: colors.text || '#626262' }]}
               resizeMode="contain"
             />
           </TouchableOpacity>
@@ -286,7 +310,7 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={DarkThemeColors.primary} />
+          <ActivityIndicator size="large" color={colors.primary || DarkThemeColors.primary} />
         </View>
       ) : (
         <FlatList
@@ -299,13 +323,13 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={DarkThemeColors.primary}
-              colors={[DarkThemeColors.primary]}
+              tintColor={colors.primary || DarkThemeColors.primary}
+              colors={[colors.primary || DarkThemeColors.primary]}
             />
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <AppText size={hp(2)}>{t('attendance.noDataFound')}</AppText>
+              <AppText size={hp(2)} color={colors.text}>{t('attendance.noDataFound')}</AppText>
             </View>
           }
         />
@@ -328,7 +352,6 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
 
 const styles = StyleSheet.create({
   headerContainer: {
-    backgroundColor: DarkThemeColors.black,
     zIndex: 10,
     paddingBottom: hp(1),
   },
@@ -339,7 +362,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: wp(5),
     paddingVertical: hp(1.5),
     borderBottomWidth: 1,
-    borderBottomColor: DarkThemeColors.white_common + '12',
   },
   leftSection: {
     flex: 1,
@@ -351,7 +373,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 19,
     textAlign: 'left',
-    color: '#626262',
   },
   rightSection: {
     flexDirection: 'row',
@@ -377,14 +398,12 @@ const styles = StyleSheet.create({
   logsCheckmarkIcon: {
     width: 12,
     height: 12,
-    tintColor: DarkThemeColors.white_common,
   },
   logsText: {
     fontFamily: 'Noto Sans',
     fontWeight: '500',
     fontSize: 17,
     lineHeight: 23,
-    color: '#626262',
   },
   monthNavigation: {
     flexDirection: 'row',
@@ -403,7 +422,6 @@ const styles = StyleSheet.create({
   arrowIcon: {
     width: 16,
     height: 16,
-    tintColor: '#626262',
   },
   leftArrow: {
     transform: [{ rotate: '0deg' }],

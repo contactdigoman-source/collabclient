@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, StyleSheet, StatusBar, FlatList, Animated, RefreshControl, AppState, AppStateStatus } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useTheme } from '@react-navigation/native';
 import {
   AppContainer,
   AppIconButton,
@@ -58,6 +58,7 @@ interface GridItem {
 
 export default function HomeScreen(): React.JSX.Element {
   const { t } = useTranslation();
+  const { colors } = useTheme();
   const mapRef = useRef<MapView>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -405,11 +406,24 @@ export default function HomeScreen(): React.JSX.Element {
         </AppMap>
         {/* Break Status Banner */}
         {isOnBreak && breakStatusLabel && displayBreakStatus && (
-          <View style={styles.breakBanner}>
+          <View style={[
+            styles.breakBanner,
+            {
+              backgroundColor: colors.card || '#272727',
+              borderWidth: appTheme === APP_THEMES.light ? 1 : 0,
+              borderColor: appTheme === APP_THEMES.light ? colors.border : 'transparent',
+              shadowColor: '#000000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.2,
+              shadowRadius: 4,
+              elevation: 4,
+            }
+          ]}>
             <AppText
               size={hp(1.8)}
               fontType={FontTypes.medium}
               style={styles.breakText}
+              color={colors.text}
             >
               {breakStatusLabel}
               {breakStartTime && ` • Since ${breakStartTime}`}
@@ -509,7 +523,6 @@ export default function HomeScreen(): React.JSX.Element {
 const styles = StyleSheet.create({
   map: { height: hp('35%') },
   breakBanner: {
-    backgroundColor: '#272727',
     paddingVertical: hp(1.5),
     paddingHorizontal: wp(5),
     marginTop: hp(1),
@@ -519,7 +532,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   breakText: {
-    color: '#FFFFFF',
     textAlign: 'center',
   },
   mySpaceContainer: {

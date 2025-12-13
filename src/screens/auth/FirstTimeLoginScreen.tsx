@@ -9,7 +9,7 @@ import {
   ScrollView,
   TextInput,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useTheme } from '@react-navigation/native';
 
 import {
   AppButton,
@@ -19,15 +19,15 @@ import {
   AppInput,
 } from '../../components';
 import { NavigationProp } from '../../types/navigation';
-import { hp, wp, Icons, Images } from '../../constants';
+import { hp, Icons, Images } from '../../constants';
 import { useAppDispatch, setFirstTimeLoginData } from '../../redux';
 import { useTranslation } from '../../hooks/useTranslation';
 
 export default function FirstTimeLoginScreen(): React.JSX.Element {
   const navigation = useNavigation<NavigationProp>();
+  const { colors } = useTheme();
   const dispatch = useAppDispatch();
   const { t } = useTranslation();
- 
 
   // Refs for input focus management
   const lastNameRef = useRef<TextInput>(null);
@@ -190,107 +190,110 @@ export default function FirstTimeLoginScreen(): React.JSX.Element {
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.container}>
-              <AppImage
-                size={hp('15%')}
-                source={Images.app_logo}
-                style={styles.logo}
-              />
+              <View style={styles.formSection}>
+                <AppImage
+                  size={hp('15%')}
+                  source={Images.app_logo}
+                  style={styles.logo}
+                />
 
-              <AppText size={hp(2)} style={styles.title}>
-                {t('auth.firstTimeLogin.title')}
-              </AppText>
-
-          
-              <AppInput
-                icon={Icons.name}
-                placeholder={t('auth.firstTimeLogin.firstName')}
-                value={firstName}
-                onChangeText={(text: string) => {
-                  setFirstName(text);
-                  if (firstNameError) setFirstNameError(null);
-                }}
-                error={firstNameError}
-                autoCapitalize="words"
-                returnKeyType="next"
-                onSubmitEditing={() => lastNameRef.current?.focus()}
-              />
-
-              <AppInput
-                refName={lastNameRef}
-                icon={Icons.name}
-                placeholder={t('auth.firstTimeLogin.lastName')}
-                value={lastName}
-                onChangeText={(text: string) => {
-                  setLastName(text);
-                  if (lastNameError) setLastNameError(null);
-                }}
-                error={lastNameError}
-                autoCapitalize="words"
-                returnKeyType="next"
-                onSubmitEditing={() => newPasswordRef.current?.focus()}
-              />
-
-              <AppInput
-                refName={newPasswordRef}
-                icon={Icons.password}
-                placeholder={t('auth.firstTimeLogin.newPassword')}
-                value={newPassword}
-                onChangeText={(text: string) => {
-                  setNewPassword(text);
-                  if (newPasswordError) setNewPasswordError(null);
-                  // Clear confirm password error if passwords match now
-                  if (confirmPassword && text === confirmPassword) {
-                    setConfirmPasswordError(null);
-                  }
-                }}
-                error={newPasswordError}
-                secureTextEntry
-                returnKeyType="next"
-                onSubmitEditing={() => confirmPasswordRef.current?.focus()}
-              />
-
-              <AppInput
-                refName={confirmPasswordRef}
-                icon={Icons.password}
-                placeholder={t('auth.firstTimeLogin.confirmPassword')}
-                value={confirmPassword}
-                onChangeText={(text: string) => {
-                  setConfirmPassword(text);
-                  if (confirmPasswordError) setConfirmPasswordError(null);
-                }}
-                error={confirmPasswordError}
-                secureTextEntry
-                returnKeyType="done"
-                onSubmitEditing={handleContinue}
-              />
-
-              <AppButton
-                title={t('auth.firstTimeLogin.continue')}
-                style={styles.button}
-                onPress={handleContinue}
-              />
-
-              {/* Privacy Policy and Terms Agreement Text */}
-              <View style={styles.agreementContainer}>
-                <AppText size={hp(1.5)} style={styles.agreementText}>
-                  {t('auth.firstTimeLogin.agreementText')}{' '}
-                  <AppText
-                    size={hp(1.5)}
-                    style={styles.linkText}
-                    onPress={handlePrivacyPolicyPress}
-                  >
-                    {t('auth.firstTimeLogin.privacyPolicy')}
-                  </AppText>
-                  {' '}
-                  {t('auth.firstTimeLogin.and')}{' '}
-                  <AppText
-                    size={hp(1.5)}
-                    style={styles.linkText}
-                    onPress={handleTermsPress}
-                  >
-                    {t('auth.firstTimeLogin.termsAndConditions')}
-                  </AppText>
+                <AppText size={hp(2)} style={styles.title} color={colors.text}>
+                  {t('auth.firstTimeLogin.title')}
                 </AppText>
+
+                <AppInput
+                  icon={Icons.name}
+                  placeholder={t('auth.firstTimeLogin.firstName')}
+                  value={firstName}
+                  onChangeText={(text: string) => {
+                    setFirstName(text);
+                    if (firstNameError) setFirstNameError(null);
+                  }}
+                  error={firstNameError}
+                  autoCapitalize="words"
+                  returnKeyType="next"
+                  onSubmitEditing={() => lastNameRef.current?.focus()}
+                />
+
+                <AppInput
+                  refName={lastNameRef}
+                  icon={Icons.name}
+                  placeholder={t('auth.firstTimeLogin.lastName')}
+                  value={lastName}
+                  onChangeText={(text: string) => {
+                    setLastName(text);
+                    if (lastNameError) setLastNameError(null);
+                  }}
+                  error={lastNameError}
+                  autoCapitalize="words"
+                  returnKeyType="next"
+                  onSubmitEditing={() => newPasswordRef.current?.focus()}
+                />
+
+                <AppInput
+                  refName={newPasswordRef}
+                  icon={Icons.password}
+                  placeholder={t('auth.firstTimeLogin.newPassword')}
+                  value={newPassword}
+                  onChangeText={(text: string) => {
+                    setNewPassword(text);
+                    if (newPasswordError) setNewPasswordError(null);
+                    // Clear confirm password error if passwords match now
+                    if (confirmPassword && text === confirmPassword) {
+                      setConfirmPasswordError(null);
+                    }
+                  }}
+                  error={newPasswordError}
+                  secureTextEntry
+                  returnKeyType="next"
+                  onSubmitEditing={() => confirmPasswordRef.current?.focus()}
+                />
+
+                <AppInput
+                  refName={confirmPasswordRef}
+                  icon={Icons.password}
+                  placeholder={t('auth.firstTimeLogin.confirmPassword')}
+                  value={confirmPassword}
+                  onChangeText={(text: string) => {
+                    setConfirmPassword(text);
+                    if (confirmPasswordError) setConfirmPasswordError(null);
+                  }}
+                  error={confirmPasswordError}
+                  secureTextEntry
+                  returnKeyType="done"
+                  onSubmitEditing={handleContinue}
+                />
+              </View>
+
+              <View style={styles.bottomSection}>
+                <AppButton
+                  title={t('auth.firstTimeLogin.continue')}
+                  style={styles.button}
+                  onPress={handleContinue}
+                />
+
+                {/* Privacy Policy and Terms Agreement Text */}
+                <View style={styles.agreementContainer}>
+                  <AppText size={hp(1.5)} style={styles.agreementText} color={colors.text || '#FFFFFF'}>
+                    {t('auth.firstTimeLogin.agreementText')}{' '}
+                    <AppText
+                      size={hp(1.5)}
+                      style={styles.linkText}
+                      onPress={handlePrivacyPolicyPress}
+                    >
+                      {t('auth.firstTimeLogin.privacyPolicy')}
+                    </AppText>
+                    {' '}
+                    {t('auth.firstTimeLogin.and')}{' '}
+                    <AppText
+                      size={hp(1.5)}
+                      style={styles.linkText}
+                      onPress={handleTermsPress}
+                    >
+                      {t('auth.firstTimeLogin.termsAndConditions')}
+                    </AppText>
+                  </AppText>
+                </View>
               </View>
             </View>
           </ScrollView>
@@ -306,12 +309,17 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: hp(4),
   },
   container: {
     flex: 1,
-    justifyContent: 'center',
     padding: hp(4.35),
+    justifyContent: 'space-between',
+  },
+  formSection: {
+    flex: 1,
+  },
+  bottomSection: {
+    marginTop: hp(4),
   },
   logo: {
     alignSelf: 'center',
@@ -329,13 +337,10 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: hp(2),
+    marginBottom: hp(2),
   },
   agreementContainer: {
-    position: 'absolute',
-    width: wp(86.67), // 325px equivalent
-    height: hp(4), // 32px equivalent
-    left: wp(6.67), // 25px equivalent
-    top: hp(90.75), // 758px equivalent
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -346,7 +351,6 @@ const styles = StyleSheet.create({
     fontSize: hp(1.5), // 12px equivalent
     lineHeight: hp(2), // 16px equivalent
     textAlign: 'center',
-    color: '#FFFFFF', // White color for main text
   },
   linkText: {
     fontFamily: 'Noto Sans',

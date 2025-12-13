@@ -76,17 +76,17 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
           charsCount={2}
         />
         <Animated.View style={styles.middleSection}>
-          <Animated.Text style={{ color: textColor || colors.white }}>
+          <Animated.Text style={{ color: textColor || colors.text }}>
             {formattedDate}
           </Animated.Text>
-          <Animated.Text style={{ color: textColor || colors.white }}>
+          <Animated.Text style={{ color: textColor || colors.text }}>
             {formattedTime}
           </Animated.Text>
         </Animated.View>
         <Animated.Image
           style={styles.chatIcon}
           source={Icons.chat}
-          tintColor={textColor || colors.white}
+          tintColor={textColor || colors.text}
         />
       </Animated.View>
     </Animated.View>

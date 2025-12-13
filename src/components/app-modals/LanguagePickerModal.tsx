@@ -5,6 +5,8 @@ import { AppText } from '..';
 import { hp, wp } from '../../constants';
 import { useTranslation } from '../../hooks/useTranslation';
 import { changeLanguage } from '../../i18n';
+import { APP_THEMES } from '../../themes';
+import { useAppSelector } from '../../redux';
 
 interface LanguageOption {
   code: string;
@@ -23,6 +25,7 @@ export default function LanguagePickerModal({
 }: LanguagePickerModalProps): React.JSX.Element {
   const { t, currentLanguage } = useTranslation();
   const { colors } = useTheme();
+  const { appTheme } = useAppSelector(state => state.appState);
 
   const languageOptions: LanguageOption[] = useMemo(() => [
     { code: 'en', label: t('profile.language.english', 'English'), nativeName: 'English' },
@@ -51,7 +54,19 @@ export default function LanguagePickerModal({
         onPress={onClose}
       >
         <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
-          <View style={[styles.modalContainer, { backgroundColor: colors.card }]}>
+          <View style={[
+            styles.modalContainer,
+            {
+              backgroundColor: colors.card,
+              borderTopWidth: appTheme === APP_THEMES.light ? 1 : 0,
+              borderTopColor: appTheme === APP_THEMES.light ? (colors as any).cardBorder || '#E0E0E0' : 'transparent',
+              shadowColor: appTheme === APP_THEMES.light ? colors.black_common : 'transparent',
+              shadowOffset: { width: 0, height: -4 },
+              shadowOpacity: appTheme === APP_THEMES.light ? 0.2 : 0,
+              shadowRadius: appTheme === APP_THEMES.light ? 8 : 0,
+              elevation: appTheme === APP_THEMES.light ? 8 : 0,
+            }
+          ]}>
             {/* Header with title */}
             <View style={styles.header}>
               <AppText
@@ -73,6 +88,15 @@ export default function LanguagePickerModal({
                     style={[
                       styles.optionItem,
                       isSelected && { backgroundColor: colors.primary + '20' },
+                      {
+                        borderWidth: appTheme === APP_THEMES.light ? 1 : 0,
+                        borderColor: appTheme === APP_THEMES.light ? (colors as any).cardBorder || '#E0E0E0' : 'transparent',
+                        shadowColor: appTheme === APP_THEMES.light ? colors.black_common : 'transparent',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: appTheme === APP_THEMES.light ? 0.05 : 0,
+                        shadowRadius: appTheme === APP_THEMES.light ? 2 : 0,
+                        elevation: appTheme === APP_THEMES.light ? 1 : 0,
+                      }
                     ]}
                     onPress={() => handleLanguageSelect(option.code)}
                     activeOpacity={0.7}

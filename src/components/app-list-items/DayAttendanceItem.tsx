@@ -1,10 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { StyleSheet, View, TouchableOpacity, Image } from 'react-native';
+import { useTheme } from '@react-navigation/native';
 import moment from 'moment';
 
 import AppText from '../app-texts/AppText';
 import { hp, wp, Icons } from '../../constants';
-import { DarkThemeColors } from '../../themes';
+import { DarkThemeColors, APP_THEMES } from '../../themes';
+import { useAppSelector } from '../../redux';
 
 interface AttendanceRecord {
   Timestamp: string | number;
@@ -36,6 +38,9 @@ const DayAttendanceItem: React.FC<DayAttendanceItemProps> = ({
   totalDuration,
   breakDuration,
 }) => {
+  const theme = useTheme();
+  const colors = useMemo(() => theme?.colors || {}, [theme?.colors]);
+  const { appTheme } = useAppSelector(state => state.appState);
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Sort records by timestamp
@@ -185,10 +190,28 @@ const DayAttendanceItem: React.FC<DayAttendanceItemProps> = ({
   const borderColor = isValidAttendance ? '#62C268' : '#FF4444';
   const hasAttendance = !!firstCheckIn || !!lastCheckOut;
 
+  // Dynamic styles for theme-aware backgrounds and borders
+  const dynamicStyles = useMemo(() => ({
+    container: {
+      backgroundColor: (colors as any).cardBg || '#272727',
+      borderWidth: appTheme === APP_THEMES.light ? 1 : 0,
+      borderColor: appTheme === APP_THEMES.light ? (colors as any).cardBorder || '#E0E0E0' : 'transparent',
+      shadowColor: appTheme === APP_THEMES.light ? (colors as any).black_common || '#000000' : 'transparent',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: appTheme === APP_THEMES.light ? 0.1 : 0,
+      shadowRadius: appTheme === APP_THEMES.light ? 4 : 0,
+      elevation: appTheme === APP_THEMES.light ? 2 : 0,
+    },
+    divider: {
+      backgroundColor: (colors as any).separator || '#444444',
+    },
+  }), [colors, appTheme]);
+
   return (
     <TouchableOpacity
       style={[
         styles.container,
+        dynamicStyles.container,
         isExpanded && styles.containerExpanded,
       ]}
       onPress={handlePress}
@@ -202,21 +225,21 @@ const DayAttendanceItem: React.FC<DayAttendanceItemProps> = ({
         <View style={[styles.content, hasAttendance && styles.contentWithBar]}>
         {/* Left: Date Section */}
         <View style={styles.dateSection}>
-          <AppText size={22.7635} color={DarkThemeColors.white_common} style={styles.dateText}>
+          <AppText size={22.7635} color={colors.text || DarkThemeColors.white_common} style={styles.dateText}>
             {dateHeader}
           </AppText>
-          <AppText size={16.8252} color="#A5A5A5" style={styles.dayText}>
+          <AppText size={16.8252} color={colors.text || '#A5A5A5'} style={styles.dayText}>
             {dayOfWeek}
           </AppText>
           {isToday && (
-            <AppText size={16.8252} color="#62C268" style={styles.todayText}>
+            <AppText size={16.8252} color={colors.primary || '#62C268'} style={styles.todayText}>
               Today
             </AppText>
           )}
         </View>
 
         {/* Divider */}
-        <View style={styles.divider} />
+        <View style={[styles.divider, dynamicStyles.divider]} />
 
         {/* Right: Times and Info */}
         <View style={styles.infoSection}>
@@ -226,13 +249,13 @@ const DayAttendanceItem: React.FC<DayAttendanceItemProps> = ({
               <View style={styles.timeRow}>
                 <Image
                   source={Icons.clock}
-                  style={styles.clockIcon}
+                  style={[styles.clockIcon, { tintColor: colors.text || DarkThemeColors.white_common }]}
                   resizeMode="contain"
                 />
-                <AppText size={15} color={DarkThemeColors.white_common} style={styles.timeText}>
+                <AppText size={15} color={colors.text || DarkThemeColors.white_common} style={styles.timeText}>
                   {formatTimeIn(firstCheckIn.Timestamp)}
                 </AppText>
-                <AppText size={15} color={DarkThemeColors.white_common} style={styles.dateTextSmall}>
+                <AppText size={15} color={colors.text || DarkThemeColors.white_common} style={styles.dateTextSmall}>
                   {formatDateOnly(firstCheckIn.Timestamp)}
                 </AppText>
               </View>
@@ -240,10 +263,10 @@ const DayAttendanceItem: React.FC<DayAttendanceItemProps> = ({
               <View style={styles.timeRow}>
                 <Image
                   source={Icons.clock}
-                  style={styles.clockIcon}
+                  style={[styles.clockIcon, { tintColor: colors.text || DarkThemeColors.white_common }]}
                   resizeMode="contain"
                 />
-                <AppText size={15} color={DarkThemeColors.white_common} style={styles.missingText}>
+                <AppText size={15} color={colors.text || DarkThemeColors.white_common} style={styles.missingText}>
                   -- In
                 </AppText>
               </View>
@@ -253,10 +276,10 @@ const DayAttendanceItem: React.FC<DayAttendanceItemProps> = ({
               <View style={styles.timeRow}>
                 <Image
                   source={Icons.clock}
-                  style={styles.clockIcon}
+                  style={[styles.clockIcon, { tintColor: colors.text || DarkThemeColors.white_common }]}
                   resizeMode="contain"
                 />
-                <AppText size={15} color={DarkThemeColors.white_common} style={styles.timeText}>
+                <AppText size={15} color={colors.text || DarkThemeColors.white_common} style={styles.timeText}>
                   {formatTimeOut(lastCheckOut.Timestamp)}
                 </AppText>
               </View>
@@ -264,10 +287,10 @@ const DayAttendanceItem: React.FC<DayAttendanceItemProps> = ({
               <View style={styles.timeRow}>
                 <Image
                   source={Icons.clock}
-                  style={styles.clockIcon}
+                  style={[styles.clockIcon, { tintColor: colors.text || DarkThemeColors.white_common }]}
                   resizeMode="contain"
                 />
-                <AppText size={15} color={DarkThemeColors.white_common} style={styles.missingText}>
+                <AppText size={15} color={colors.text || DarkThemeColors.white_common} style={styles.missingText}>
                   -- Out
                 </AppText>
               </View>
@@ -277,15 +300,15 @@ const DayAttendanceItem: React.FC<DayAttendanceItemProps> = ({
           {/* Duration Info - always show if has both check-in and check-out */}
           {calculatedTotalDuration && (
             <View style={styles.durationInfo}>
-              <AppText size={15} color="#888888" style={styles.durationLabel}>
+              <AppText size={15} color={colors.text} style={styles.durationLabel}>
                 Total Duration:{' '}
-                <AppText size={15} color="#FFFFFF" style={styles.durationValue}>
+                <AppText size={15} color={colors.text} style={styles.durationValue}>
                   {calculatedTotalDuration}
                 </AppText>
               </AppText>
-              <AppText size={15} color="#888888" style={styles.breakLabel}>
+              <AppText size={15} color={colors.text} style={styles.breakLabel}>
                 Break:{' '}
-                <AppText size={15} color="#FFFFFF" style={styles.breakValue}>
+                <AppText size={15} color={colors.text} style={styles.breakValue}>
                   {calculatedBreakDuration}
                 </AppText>
               </AppText>
@@ -314,7 +337,7 @@ const DayAttendanceItem: React.FC<DayAttendanceItemProps> = ({
       {/* Expanded View - Show all records with clock icon */}
       {isExpanded && sortedRecords.length > 0 && (
         <>
-          <View style={styles.expandedDivider} />
+          <View style={[styles.expandedDivider, { backgroundColor: (colors as any).separator || '#444444' }]} />
           <View style={styles.expandedContainer}>
             {sortedRecords.map((record, index) => {
               // Get break label if it's a break
@@ -340,11 +363,11 @@ const DayAttendanceItem: React.FC<DayAttendanceItemProps> = ({
                 <View key={`${record.Timestamp}-${index}`} style={styles.expandedRecordItem}>
                   <Image
                     source={Icons.clock}
-                    style={styles.expandedClockIcon}
+                    style={[styles.expandedClockIcon, { tintColor: colors.text || DarkThemeColors.white_common }]}
                     resizeMode="contain"
                   />
                   <View style={styles.expandedTextContainer}>
-                    <AppText size={15} color={DarkThemeColors.white_common} style={styles.expandedTimeText}>
+                    <AppText size={15} color={colors.text} style={styles.expandedTimeText}>
                       {formatTimeOnly(record.Timestamp)} {record.PunchDirection === 'IN' ? 'In' : 'Out'} | {formatDateOnly(record.Timestamp)}
                     </AppText>
                   </View>
@@ -358,16 +381,16 @@ const DayAttendanceItem: React.FC<DayAttendanceItemProps> = ({
             })}
             {/* Total Duration and Break at the bottom of expanded section */}
             {calculatedTotalDuration && (
-              <View style={styles.expandedDurationContainer}>
-                <AppText size={15} color="#888888" style={styles.expandedDurationLabel}>
+              <View style={[styles.expandedDurationContainer, { borderTopColor: (colors as any).separator || '#444444' }]}>
+                <AppText size={15} color={colors.text} style={styles.expandedDurationLabel}>
                   Total Duration:{' '}
-                  <AppText size={15} color="#FFFFFF" style={styles.expandedDurationValue}>
+                  <AppText size={15} color={colors.text} style={styles.expandedDurationValue}>
                     {calculatedTotalDuration}
                   </AppText>
                 </AppText>
-                <AppText size={15} color="#888888" style={styles.expandedBreakLabel}>
+                <AppText size={15} color={colors.text} style={styles.expandedBreakLabel}>
                   Break:{' '}
-                  <AppText size={15} color="#FFFFFF" style={styles.expandedBreakValue}>
+                  <AppText size={15} color={colors.text} style={styles.expandedBreakValue}>
                     {calculatedBreakDuration}
                   </AppText>
                 </AppText>
@@ -386,7 +409,6 @@ const styles = StyleSheet.create({
     marginVertical: hp(1),
     marginHorizontal: wp(4.53), // Padding from screen edges (17px / 375px * 100)
     borderRadius: 10,
-    backgroundColor: '#272727',
     position: 'relative',
     overflow: 'hidden',
     alignSelf: 'stretch',
@@ -429,7 +451,6 @@ const styles = StyleSheet.create({
     fontSize: 22.7635,
     lineHeight: 31,
     textAlign: 'center',
-    color: '#FFFFFF',
   },
   dayText: {
     fontFamily: 'Noto Sans',
@@ -437,7 +458,6 @@ const styles = StyleSheet.create({
     fontSize: 16.8252,
     lineHeight: 23,
     textAlign: 'center',
-    color: '#A5A5A5',
     marginTop: hp(0.3),
   },
   todayText: {
@@ -446,13 +466,11 @@ const styles = StyleSheet.create({
     fontSize: 16.8252,
     lineHeight: 23,
     textAlign: 'center',
-    color: '#62C268',
     marginTop: hp(0.3),
   },
   divider: {
     width: 1,
     height: 53,
-    backgroundColor: '#444444',
     marginHorizontal: wp(2.67), // 10px
     alignSelf: 'center',
   },
@@ -473,14 +491,12 @@ const styles = StyleSheet.create({
   clockIcon: {
     width: 16,
     height: 16,
-    tintColor: DarkThemeColors.white_common,
   },
   timeText: {
     fontFamily: 'Noto Sans',
     fontWeight: '400',
     fontSize: 15,
     lineHeight: 20,
-    color: '#FFFFFF',
   },
   dateTextSmall: {
     fontFamily: 'Noto Sans',
@@ -505,33 +521,28 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     fontSize: 15,
     lineHeight: 20,
-    color: '#888888',
   },
   durationValue: {
     fontFamily: 'Noto Sans',
     fontWeight: '400',
     fontSize: 15,
     lineHeight: 20,
-    color: '#FFFFFF',
   },
   breakLabel: {
     fontFamily: 'Noto Sans',
     fontWeight: '400',
     fontSize: 15,
     lineHeight: 20,
-    color: '#888888',
   },
   breakValue: {
     fontFamily: 'Noto Sans',
     fontWeight: '400',
     fontSize: 15,
     lineHeight: 20,
-    color: '#FFFFFF',
   },
   expandedDivider: {
     width: '100%',
     height: 1,
-    backgroundColor: '#444444',
     marginVertical: hp(1),
   },
   expandedContainer: {
@@ -551,7 +562,6 @@ const styles = StyleSheet.create({
   expandedClockIcon: {
     width: 16,
     height: 16,
-    tintColor: DarkThemeColors.white_common,
   },
   expandedTextContainer: {
     flex: 1,
@@ -562,7 +572,6 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     fontSize: 15,
     lineHeight: 20,
-    color: '#FFFFFF',
     textAlign: 'left',
   },
   expandedBreakText: {
@@ -580,7 +589,6 @@ const styles = StyleSheet.create({
     paddingTop: hp(0.5),
     paddingBottom: hp(1.5), // Bottom padding after duration
     borderTopWidth: 1,
-    borderTopColor: '#444444',
     width: '100%',
     gap: hp(0.3),
   },
@@ -589,7 +597,6 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     fontSize: 15,
     lineHeight: 20,
-    color: '#888888',
     textAlign: 'left',
   },
   expandedDurationValue: {
@@ -597,14 +604,12 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     fontSize: 15,
     lineHeight: 20,
-    color: '#FFFFFF',
   },
   expandedBreakLabel: {
     fontFamily: 'Noto Sans',
     fontWeight: '400',
     fontSize: 15,
     lineHeight: 20,
-    color: '#888888',
     textAlign: 'left',
   },
   expandedBreakValue: {
@@ -612,7 +617,6 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     fontSize: 15,
     lineHeight: 20,
-    color: '#FFFFFF',
   },
   mapPinButton: {
     position: 'absolute',

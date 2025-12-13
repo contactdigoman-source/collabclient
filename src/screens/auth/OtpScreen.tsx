@@ -94,8 +94,12 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
   const emailMessage = useMemo(() => {
     if (!emailID) return '';
     try {
-      const message = t('auth.otp.emailMessage');
-      return message && message !== 'auth.otp.emailMessage' ? `${message} ${emailID}` : `Enter the OTP sent to ${emailID}`;
+      const message = t('auth.otp.emailMessage', { email: emailID });
+      // Replace {{email}} with actual email if interpolation didn't work
+      const finalMessage = message && message !== 'auth.otp.emailMessage' 
+        ? message.replace(/\{\{email\}\}/g, emailID)
+        : `Enter the OTP sent to ${emailID}`;
+      return finalMessage;
     } catch (error) {
       return `Enter the OTP sent to ${emailID}`;
     }
@@ -342,9 +346,9 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
 
   const otpTextProps = useMemo(
     () => ({
-      style: { color: themeColors.white_common, fontSize: hp(2.2) },
+      style: { color: colors.text || themeColors.white_common, fontSize: hp(2.2) },
     }),
-    [themeColors],
+    [colors.text, themeColors.white_common],
   );
 
   return (
@@ -362,7 +366,7 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
                 source={Images.forgot_pass_image}
                 style={styles.image}
               />
-              <AppText size={hp(2.5)} fontType={FontTypes.medium}>
+              <AppText size={hp(2.5)} fontType={FontTypes.medium} color={colors.text || themeColors.white_common}>
                 {(() => {
                   try {
                     if (isPasswordReset) {
@@ -377,7 +381,7 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
                   }
                 })()}
               </AppText>
-              <AppText style={styles.description}>
+              <AppText style={styles.description} color={colors.text || themeColors.white_common}>
                 {(() => {
                   try {
                     if (isPasswordReset) {
@@ -431,7 +435,7 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
             />
 
             <View style={styles.resendContainer}>
-              <AppText>{t('auth.otp.didntReceive')} </AppText>
+              <AppText color={colors.text || themeColors.white_common}>{t('auth.otp.didntReceive')} </AppText>
               <TouchableOpacity
                 onPress={handleResend}
                 disabled={!resendActive}
@@ -439,7 +443,7 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
                 activeOpacity={0.7}
               >
                 <AppText
-                  color={resendActive ? colors.primary : themeColors.white_common}
+                  color={resendActive ? colors.primary : (colors.text || themeColors.white_common)}
                   style={styles.resendText}
                 >
                   {t('auth.otp.resend')}
@@ -497,7 +501,9 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     marginVertical: hp(2),
+    width: '100%',
   },
   resendButton: {
     paddingEnd: wp(2),

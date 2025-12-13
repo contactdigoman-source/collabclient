@@ -1,9 +1,11 @@
 import React from 'react';
 import { View, StyleSheet, Modal, TouchableOpacity } from 'react-native';
+import { useTheme } from '@react-navigation/native';
 import { AppText, AppButton } from '..';
 import { hp, wp } from '../../constants';
 import { useTranslation } from '../../hooks/useTranslation';
-import { DarkThemeColors } from '../../themes';
+import { DarkThemeColors, APP_THEMES } from '../../themes';
+import { useAppSelector } from '../../redux';
 
 interface PasswordExpiryModalProps {
   visible: boolean;
@@ -16,6 +18,8 @@ export default function PasswordExpiryModal({
   onReset,
   onDismiss,
 }: PasswordExpiryModalProps): React.JSX.Element {
+  const { colors } = useTheme();
+  const { appTheme } = useAppSelector(state => state.appState);
   const { t } = useTranslation();
 
   return (
@@ -26,9 +30,22 @@ export default function PasswordExpiryModal({
       onRequestClose={onDismiss}
     >
       <View style={styles.overlay}>
-        <View style={styles.modalContainer}>
+        <View style={[
+          styles.modalContainer,
+          {
+            backgroundColor: colors.background || '#333333',
+            borderColor: appTheme === APP_THEMES.light 
+              ? (colors as any).cardBorder || '#E0E0E0'
+              : '#686868',
+            shadowColor: appTheme === APP_THEMES.light ? colors.black_common : 'transparent',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: appTheme === APP_THEMES.light ? 0.2 : 0,
+            shadowRadius: appTheme === APP_THEMES.light ? 8 : 0,
+            elevation: appTheme === APP_THEMES.light ? 8 : 0,
+          }
+        ]}>
           {/* Message */}
-          <AppText size={hp(1.9)} style={styles.message}>
+          <AppText size={hp(1.9)} color={colors.text || '#FFFFFF'} style={styles.message}>
             {t(
               'auth.passwordExpiry.message',
               'Your Colab Password will get expired within next 7 days. Please re-set your password to prevent force log out.',
@@ -58,9 +75,7 @@ const styles = StyleSheet.create({
   modalContainer: {
     width: wp(90.67), // 340px equivalent
     minHeight: hp(20), // Minimum height
-    backgroundColor: '#333333',
     borderWidth: 1,
-    borderColor: '#686868',
     borderRadius: wp(4.7), // 17.6121px equivalent
     alignItems: 'center',
     justifyContent: 'center',
@@ -74,7 +89,6 @@ const styles = StyleSheet.create({
     fontSize: hp(1.9), // 15px equivalent
     lineHeight: hp(2.5), // 20px equivalent
     textAlign: 'center',
-    color: '#FFFFFF',
     marginBottom: hp(3),
     paddingHorizontal: wp(2),
   },

@@ -1,12 +1,14 @@
 import React, { useMemo, useEffect } from 'react';
 import { View, StyleSheet, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '@react-navigation/native';
 import moment from 'moment';
 import { Marker, Region } from 'react-native-maps';
 
 import { AppText, AppMap } from '..';
 import { hp, wp, FontTypes } from '../../constants';
-import { DarkThemeColors } from '../../themes';
+import { DarkThemeColors, APP_THEMES } from '../../themes';
+import { useAppSelector } from '../../redux';
 
 interface AttendanceRecord {
   Timestamp: string | number;
@@ -32,6 +34,9 @@ export default function AttendanceDetailModal({
   onClose,
 }: AttendanceDetailModalProps): React.JSX.Element {
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
+  const colors = useMemo(() => theme?.colors || {}, [theme?.colors]);
+  const { appTheme } = useAppSelector(state => state.appState);
 
   // Debug logging
   useEffect(() => {
@@ -178,6 +183,17 @@ export default function AttendanceDetailModal({
         <View
           style={[
             styles.drawerContainer,
+            {
+              backgroundColor: colors.background || DarkThemeColors.black,
+              borderWidth: appTheme === APP_THEMES.light ? 1 : 0,
+              borderColor: appTheme === APP_THEMES.light ? (colors as any).cardBorder || '#E0E0E0' : 'transparent',
+              borderTopWidth: appTheme === APP_THEMES.light ? 1 : 0,
+              shadowColor: appTheme === APP_THEMES.light ? (colors as any).black_common || '#000000' : 'transparent',
+              shadowOffset: { width: 0, height: -4 },
+              shadowOpacity: appTheme === APP_THEMES.light ? 0.2 : 0,
+              shadowRadius: appTheme === APP_THEMES.light ? 8 : 0,
+              elevation: appTheme === APP_THEMES.light ? 8 : 0,
+            },
             { 
               paddingTop: insets.top + hp(1),
               paddingBottom: insets.bottom + hp(2),
@@ -185,11 +201,17 @@ export default function AttendanceDetailModal({
           ]}
         >
           {/* Drawer Handle - Top */}
-          <View style={styles.drawerHandle} />
+          <View style={[
+            styles.drawerHandle,
+            { backgroundColor: (colors as any).separator || DarkThemeColors.white_common + '40' }
+          ]} />
 
           {/* Header - Fixed at top after handle */}
-          <View style={styles.header}>
-            <AppText size={hp(2.5)} fontType={FontTypes.bold} color={DarkThemeColors.white_common}>
+          <View style={[
+            styles.header,
+            { borderBottomColor: (colors as any).separator || DarkThemeColors.white_common + '20' }
+          ]}>
+            <AppText size={hp(2.5)} fontType={FontTypes.bold} color={colors.text || DarkThemeColors.white_common}>
               {moment(date, 'YYYY-MM-DD').format('D MMM YYYY')}
             </AppText>
             <TouchableOpacity
@@ -198,7 +220,7 @@ export default function AttendanceDetailModal({
               accessibilityRole="button"
               accessibilityLabel="Close"
             >
-              <AppText style={styles.closeIcon} color={DarkThemeColors.white_common}>
+              <AppText style={styles.closeIcon} color={colors.text || DarkThemeColors.white_common}>
                 ✕
               </AppText>
             </TouchableOpacity>
@@ -228,7 +250,7 @@ export default function AttendanceDetailModal({
                   <AppText
                     size={hp(2)}
                     fontType={FontTypes.medium}
-                    color={DarkThemeColors.white_common}
+                    color={colors.text || DarkThemeColors.white_common}
                     style={styles.directionText}
                   >
                     {record.PunchDirection === 'IN' ? 'In' : 'Out'}: {formatTime(record.Timestamp)}
@@ -238,14 +260,21 @@ export default function AttendanceDetailModal({
                   {/* Date */}
                   <AppText
                     size={hp(1.8)}
-                    color={DarkThemeColors.white_common}
+                    color={colors.text || DarkThemeColors.white_common}
                     style={styles.dateText}
                   >
                     {formatDateWithYear(record.Timestamp)}
                   </AppText>
 
                   {/* Map - Always show a map for each record, non-scrollable */}
-                  <View style={styles.mapContainer} key={`map-${record.Timestamp}-${index}`}>
+                  <View style={[
+                    styles.mapContainer,
+                    {
+                      backgroundColor: colors.background || DarkThemeColors.black,
+                      borderWidth: appTheme === APP_THEMES.light ? 1 : 0,
+                      borderColor: appTheme === APP_THEMES.light ? (colors as any).cardBorder || '#E0E0E0' : 'transparent',
+                    }
+                  ]} key={`map-${record.Timestamp}-${index}`}>
                     <AppMap
                       style={styles.map}
                       region={mapRegion}
@@ -268,7 +297,7 @@ export default function AttendanceDetailModal({
                   {/* Address */}
                   <AppText
                     size={hp(1.6)}
-                    color={DarkThemeColors.white_common + 'CC'}
+                    color={(colors.text || DarkThemeColors.white_common) + 'CC'}
                     style={styles.addressText}
                   >
                     {getAddress(record)}
@@ -276,7 +305,10 @@ export default function AttendanceDetailModal({
 
                   {/* Divider (except last item) */}
                   {index < sortedRecords.length - 1 && (
-                    <View style={styles.divider} />
+                    <View style={[
+                      styles.divider,
+                      { backgroundColor: (colors as any).separator || DarkThemeColors.white_common + '20' }
+                    ]} />
                   )}
                 </View>
               );
@@ -284,10 +316,10 @@ export default function AttendanceDetailModal({
 
             {sortedRecords.length === 0 && (
               <View style={styles.emptyContainer}>
-                <AppText size={hp(2)} color={DarkThemeColors.white_common + '80'}>
+                <AppText size={hp(2)} color={(colors.text || DarkThemeColors.white_common) + '80'}>
                   No attendance records available for this date
                 </AppText>
-                <AppText size={hp(1.5)} color={DarkThemeColors.white_common + '60'} style={{ marginTop: hp(1) }}>
+                <AppText size={hp(1.5)} color={(colors.text || DarkThemeColors.white_common) + '60'} style={{ marginTop: hp(1) }}>
                   Date: {moment(date, 'YYYY-MM-DD').format('D MMM YYYY')}
                 </AppText>
               </View>
@@ -314,7 +346,6 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   drawerContainer: {
-    backgroundColor: DarkThemeColors.black,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     height: '90%',
@@ -324,7 +355,6 @@ const styles = StyleSheet.create({
   drawerHandle: {
     width: wp(15),
     height: 4,
-    backgroundColor: DarkThemeColors.white_common + '40',
     borderRadius: 2,
     alignSelf: 'center',
     marginTop: hp(1),
@@ -338,7 +368,6 @@ const styles = StyleSheet.create({
     paddingTop: hp(1),
     paddingBottom: hp(2),
     borderBottomWidth: 1,
-    borderBottomColor: DarkThemeColors.white_common + '20',
     width: '100%',
     zIndex: 10,
   },
@@ -363,18 +392,19 @@ const styles = StyleSheet.create({
   },
   recordCard: {
     paddingVertical: hp(2),
+    marginBottom: hp(1),
+    borderRadius: 8,
+    paddingHorizontal: wp(2),
   },
   directionText: {
     fontFamily: 'Noto Sans',
     fontWeight: '500',
     marginBottom: hp(0.5),
-    color: DarkThemeColors.white_common,
   },
   dateText: {
     fontFamily: 'Noto Sans',
     fontWeight: '400',
     marginBottom: hp(1),
-    color: DarkThemeColors.white_common,
   },
   mapContainer: {
     width: '100%',
@@ -382,7 +412,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: 'hidden',
     marginBottom: hp(1),
-    backgroundColor: DarkThemeColors.black,
   },
   map: {
     width: '100%',
@@ -392,12 +421,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Noto Sans',
     fontWeight: '400',
     lineHeight: hp(2.2),
-    color: DarkThemeColors.white_common + 'CC',
   },
   divider: {
     width: '100%',
     height: 1,
-    backgroundColor: DarkThemeColors.white_common + '20',
     marginTop: hp(2),
   },
   emptyContainer: {

@@ -1,9 +1,11 @@
 import React from 'react';
 import { View, StyleSheet, Modal, TouchableOpacity, Linking, Platform } from 'react-native';
+import { useTheme } from '@react-navigation/native';
 import { AppText } from '..';
 import { hp, wp } from '../../constants';
 import { useTranslation } from '../../hooks/useTranslation';
-import { DarkThemeColors } from '../../themes';
+import { DarkThemeColors, APP_THEMES } from '../../themes';
+import { useAppSelector } from '../../redux';
 
 interface FaceRDNotInstalledModalProps {
   visible: boolean;
@@ -17,6 +19,8 @@ export default function FaceRDNotInstalledModal({
   visible,
   onClose,
 }: FaceRDNotInstalledModalProps): React.JSX.Element {
+  const { colors } = useTheme();
+  const { appTheme } = useAppSelector(state => state.appState);
   const { t } = useTranslation();
 
   const handleDownload = async () => {
@@ -49,7 +53,19 @@ export default function FaceRDNotInstalledModal({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View style={styles.modalContainer}>
+        <View style={[
+          styles.modalContainer,
+          {
+            backgroundColor: colors.background || DarkThemeColors.black,
+            borderWidth: appTheme === APP_THEMES.light ? 1 : 0,
+            borderColor: appTheme === APP_THEMES.light ? (colors as any).cardBorder || '#E0E0E0' : 'transparent',
+            shadowColor: appTheme === APP_THEMES.light ? colors.black_common : 'transparent',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: appTheme === APP_THEMES.light ? 0.2 : 0,
+            shadowRadius: appTheme === APP_THEMES.light ? 8 : 0,
+            elevation: appTheme === APP_THEMES.light ? 8 : 0,
+          }
+        ]}>
           {/* Icon/Logo - Install FaceRD Icon */}
           <View style={styles.iconContainer}>
             {/* Main circular background (Vector) */}
@@ -64,7 +80,7 @@ export default function FaceRDNotInstalledModal({
           {/* Message */}
           <AppText
             size={15}
-            color={DarkThemeColors.white_common}
+            color={colors.text || DarkThemeColors.white_common}
             style={styles.message}
           >
             {t('faceRD.notInstalled', 'Download and install Aadhaar FaceRD for successful attendance.')}
@@ -78,7 +94,7 @@ export default function FaceRDNotInstalledModal({
           >
             <AppText
               size={15}
-              color={DarkThemeColors.white_common}
+              color={colors.text || DarkThemeColors.white_common}
               style={styles.downloadButtonText}
             >
               {t('faceRD.downloadHere', 'Download Here')}
@@ -99,7 +115,6 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     width: wp(75), // ~280px
-    backgroundColor: DarkThemeColors.black,
     borderRadius: 15,
     padding: hp(3),
     alignItems: 'center',

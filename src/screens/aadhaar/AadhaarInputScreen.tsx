@@ -12,7 +12,6 @@ import {
 } from '../../components';
 import { hp, wp, Images } from '../../constants';
 import { useAppDispatch, useAppSelector, store } from '../../redux';
-import { DarkThemeColors, LightThemeColors } from '../../themes';
 import {
   getRawAadhaarNumber,
   startFaceAuth,
@@ -39,8 +38,6 @@ export default function AadhaarInputScreen(): React.JSX.Element {
   const dispatch = useAppDispatch();
   const { t } = useTranslation();
 
-  const { appTheme } = useAppSelector(state => state.appState);
-  const themeColors = appTheme === 'dark' ? DarkThemeColors : LightThemeColors;
 
   const { isAuthenticatingFace, isAadhaarFaceValidated } = useAppSelector(
     state => ({
@@ -223,7 +220,7 @@ export default function AadhaarInputScreen(): React.JSX.Element {
               source={Images.aadhaar_logo}
               style={styles.logo}
             />
-            <AppText size={hp(2.5)} style={styles.centerText}>
+            <AppText size={hp(2.5)} style={styles.centerText} color={colors.text}>
               {t('aadhaar.title')}
             </AppText>
 
@@ -233,7 +230,7 @@ export default function AadhaarInputScreen(): React.JSX.Element {
               style={styles.verifiedLogo}
             />
 
-            <AppText size={hp(2)} style={styles.centerText}>
+            <AppText size={hp(2)} style={styles.centerText} color={colors.text}>
               {t('aadhaar.verified')}
             </AppText>
 
@@ -284,14 +281,14 @@ export default function AadhaarInputScreen(): React.JSX.Element {
                 ]}
               >
                 {aadhaarNotAvailable && (
-                  <AppText size={hp(1.5)} color={themeColors.white_common}>
+                  <AppText size={hp(1.5)} color={colors.text}>
                     ✓
                   </AppText>
                 )}
               </View>
               <AppText
                 size={hp('1.5%')}
-                color={themeColors.white_common}
+                color={colors.text}
                 style={styles.checkboxLabel}
               >
                 Aadhaar not available
@@ -309,7 +306,7 @@ export default function AadhaarInputScreen(): React.JSX.Element {
             <View style={styles.policyContainer}>
               <AppText
                 size={hp('1.5%')}
-                color={themeColors.white_common}
+                color={colors.text}
                 style={styles.policyText}
               >
                 {t('aadhaar.authorize')}{' '}

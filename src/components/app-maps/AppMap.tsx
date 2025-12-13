@@ -84,7 +84,7 @@ const AppMap = forwardRef<MapView, AppMapProps>(({
           <AppImage
             size={hp('2.5%')}
             source={Icons.location_reset}
-            tintColor={colors.black_common}
+            tintColor={colors.text}
           />
         </RippleButton>
       )}
