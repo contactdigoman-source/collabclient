@@ -492,13 +492,14 @@ export default function HomeScreen(): React.JSX.Element {
             styles.breakBanner,
             {
               backgroundColor: colors.card || '#272727',
-              borderWidth: appTheme === APP_THEMES.light ? 1 : 0,
-              borderColor: appTheme === APP_THEMES.light ? colors.border : 'transparent',
+              borderWidth: 1,
+              borderColor: colors.border || (appTheme === APP_THEMES.dark ? '#444444' : '#E0E0E0'),
+              borderRadius: 12,
               shadowColor: '#000000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.2,
-              shadowRadius: 4,
-              elevation: 4,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: appTheme === APP_THEMES.dark ? 0.4 : 0.2,
+              shadowRadius: 6,
+              elevation: 6,
             }
           ]}>
             <AppText
@@ -614,7 +615,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: wp(5),
     marginTop: hp(1),
     marginHorizontal: wp(5),
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -180,7 +180,7 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
               <UserImage
                 size={hp(15.6)} // 127px equivalent
                 source={profilePhoto ? { uri: profilePhoto } : null}
-                userName={profilePhoto ? undefined : `${userData?.firstName || ''} ${userData?.lastName || ''}`.trim() || 'User'}
+                userName={`${userData?.firstName || ''} ${userData?.lastName || ''}`.trim() || undefined}
                 isAttendanceStatusVisible={false}
                 charsCount={2}
               />

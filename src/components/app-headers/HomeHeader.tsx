@@ -110,7 +110,7 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
       <Animated.View style={headerContainerStyle}>
         <UserImage
           source={profilePhoto ? { uri: profilePhoto } : null}
-          userName={profilePhoto ? undefined : (userName || `${userData?.firstName || ''} ${userData?.lastName || ''}`.trim() || 'User')}
+          userName={userName || `${userData?.firstName || ''} ${userData?.lastName || ''}`.trim() || undefined}
           size={wp('10%')}
           isClickable
           punchDirection={punchDirection}

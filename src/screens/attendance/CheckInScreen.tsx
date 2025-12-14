@@ -31,6 +31,7 @@ import { insertAttendancePunchRecord } from '../../services';
 import moment from 'moment';
 import { PUNCH_DIRECTIONS } from '../../constants/location';
 import { useTranslation } from '../../hooks/useTranslation';
+import { APP_THEMES, DarkThemeColors, LightThemeColors } from '../../themes';
 
 interface Coordinates {
   latitude: number;
@@ -459,6 +460,8 @@ export default function CheckInScreen(): React.JSX.Element {
     navigation.goBack();
   }, [navigation]);
 
+  const appTheme = useAppSelector(state => state.appState.appTheme);
+
   // Button styles based on check-in/check-out state
   const buttonStyle = useMemo<{
     backgroundColor: string;
@@ -472,9 +475,9 @@ export default function CheckInScreen(): React.JSX.Element {
     elevation?: number;
   }>(() => {
     if (isUserCheckedIn) {
-      // Check-out: Use theme card background with theme text, rounded corners, border, shadow, and glossy feel
+      // Check-out button: white background in dark mode, theme card in light mode
       return {
-        backgroundColor: colors.card || '#FFFFFF',
+        backgroundColor: appTheme === APP_THEMES.dark ? DarkThemeColors.white_common : (colors.card || LightThemeColors.white_common),
         borderRadius: 7,
         borderWidth: 1,
         borderColor: colors.border || colors.text,
@@ -496,11 +499,16 @@ export default function CheckInScreen(): React.JSX.Element {
         elevation: 10,
       };
     }
-  }, [isUserCheckedIn, colors.card, colors.border, colors.text]);
+  }, [isUserCheckedIn, colors.card, colors.border, colors.text, appTheme]);
 
   const buttonTextColor = useMemo(() => {
-    return isUserCheckedIn ? colors.text : '#FFFFFF';
-  }, [isUserCheckedIn, colors.text]);
+    if (isUserCheckedIn) {
+      // Check-out button: dark text in dark mode (white background), dark text in light mode
+      return '#000000';
+    }
+    // Check-in: always white text
+    return '#FFFFFF';
+  }, [isUserCheckedIn]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

@@ -49,10 +49,10 @@ export default function UserImage(props: UserImageProps): React.JSX.Element {
       // Split by spaces to get first and last name
       const parts = stringValue_trimmed.split(/\s+/).filter(part => part.length > 0);
       if (parts.length >= 2) {
-        // If we have at least first and last name, show lastname first, then firstname
-        const lastName = parts[parts.length - 1]; // Last part is lastname
+        // If we have at least first and last name, show firstname first, then lastname
         const firstName = parts[0]; // First part is firstname
-        const initials = (lastName.charAt(0) + firstName.charAt(0)).toUpperCase();
+        const lastName = parts[parts.length - 1]; // Last part is lastname
+        const initials = (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
         return initials.substring(0, charsCount);
       } else if (parts.length === 1) {
         // If only one name, show first char

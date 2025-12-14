@@ -7,7 +7,6 @@ export type RootStackParamList = {
   DashboardScreen: undefined;
   ForgotPasswordScreen: { emailID?: string };
   CheckInScreen: undefined;
-  ConfirmPunchScreen: undefined;
   ProfileDrawerScreen: undefined;
   AttendanceLogsScreen: undefined;
   ViewProfileScreen: undefined;

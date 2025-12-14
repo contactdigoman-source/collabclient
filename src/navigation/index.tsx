@@ -12,7 +12,6 @@ import {
   ChangeForgottenPassword,
   ChangePasswordScreen,
   CheckInScreen,
-  ConfirmPunchScreen,
   FirstTimeLoginScreen,
   ForgotPasswordScreen,
   LoginScreen,
@@ -224,10 +223,6 @@ export default function AppNavigation(): React.JSX.Element {
             component={ForgotPasswordScreen}
           />
           <Stack.Screen name="CheckInScreen" component={CheckInScreen} />
-          <Stack.Screen
-            name="ConfirmPunchScreen"
-            component={ConfirmPunchScreen}
-          />
           <Stack.Screen
             name="ProfileDrawerScreen"
             component={ProfileDrawerScreen}

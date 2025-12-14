@@ -5,7 +5,6 @@ import AttendanceLogsScreen from './attendance/AttendanceLogsScreen';
 import ChangeForgottenPassword from './auth/ChangeForgottenPassword';
 import ChangePasswordScreen from './auth/ChangePasswordScreen';
 import CheckInScreen from './attendance/CheckInScreen';
-import ConfirmPunchScreen from './attendance/ConfirmPunchScreen';
 import DaysBottomTabScreen from './attendance/DaysBottomTabScreen';
 import ForgotPasswordScreen from './auth/ForgotPasswordScreen';
 import HomeScreen from './home/HomeScreen';
@@ -28,7 +27,6 @@ export {
   ForgotPasswordScreen,
   DaysBottomTabScreen,
   CheckInScreen,
-  ConfirmPunchScreen,
   ProfileDrawerScreen,
   AttendanceLogsScreen,
   ViewProfileScreen,
