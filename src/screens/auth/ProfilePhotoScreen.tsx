@@ -1,10 +1,11 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   StyleSheet,
   Alert,
   Image,
   TouchableOpacity,
+  ScrollView,
 } from 'react-native';
 import { useNavigation, useTheme } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +15,7 @@ import { hp, wp, FontTypes, Images } from '../../constants';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useAppDispatch, useAppSelector, setUserData, setFirstTimeLoginData } from '../../redux';
 import { submitFirstTimeLogin } from '../../services/auth/first-time-login-service';
+import { profileSyncService } from '../../services/sync/profile-sync-service';
 
 // Try to import ImagePicker, fallback if not available
 let ImagePicker: any = null;
@@ -32,6 +34,35 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
   const { userData, firstTimeLoginData } = useAppSelector(state => state.userState);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+
+  // Load profile photo from SQLite on mount
+  useEffect(() => {
+    const loadProfilePhoto = async () => {
+      if (!userData?.email) return;
+
+      try {
+        // Try to load from SQLite first
+        const dbProfile = await profileSyncService.loadProfileFromDB(userData.email);
+        if (dbProfile?.profilePhoto) {
+          setProfileImage(dbProfile.profilePhoto);
+          return;
+        }
+
+        // Fallback to Redux state
+        if (userData.profilePhoto || userData.profilePhotoUrl) {
+          setProfileImage(userData.profilePhoto || userData.profilePhotoUrl || null);
+        }
+      } catch (error) {
+        console.log('Error loading profile photo from DB:', error);
+        // Fallback to Redux state
+        if (userData?.profilePhoto || userData?.profilePhotoUrl) {
+          setProfileImage(userData.profilePhoto || userData.profilePhotoUrl || null);
+        }
+      }
+    };
+
+    loadProfilePhoto();
+  }, [userData?.email]);
 
   const handleCapturePhoto = useCallback((): void => {
     if (!ImagePicker) {
@@ -165,7 +196,8 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
           profilePhoto: profileImage, // Include profile photo in API call
         });
         
-        // Save profile photo to Redux after successful API call
+        // Profile photo is already saved to SQLite in submitFirstTimeLogin
+        // Update Redux with the photo
         if (userData) {
           const updatedUser = { ...userData, profilePhoto: profileImage };
           dispatch(setUserData(updatedUser));
@@ -174,7 +206,15 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
         // Clear temporary first-time login data
         dispatch(setFirstTimeLoginData(null));
       } else {
-        // No first-time login data, just save photo to Redux
+        // No first-time login data, save photo to SQLite and Redux
+        if (userData?.email && profileImage) {
+          try {
+            await profileSyncService.saveProfileProperty(userData.email, 'profilePhoto', profileImage);
+          } catch (dbError) {
+            console.log('Error saving profile photo to SQLite:', dbError);
+          }
+        }
+        
         if (userData) {
           const updatedUser = { ...userData, profilePhoto: profileImage };
           dispatch(setUserData(updatedUser));
@@ -205,7 +245,14 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
           }
         />
 
-        <View style={[styles.content, { paddingTop: insets.top + hp(2) }]}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.content,
+            { paddingTop: insets.top + hp(1), paddingBottom: insets.bottom + hp(1) },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
           {/* Title */}
           <AppText
             size={hp(2.5)}
@@ -267,13 +314,14 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
               onPress={handleSkip}
               style={styles.skipButton}
               disabled={loading}
+              activeOpacity={0.7}
             >
-              <AppText size={hp(1.8)} style={styles.skipText} color={colors.text}>
+              <AppText size={hp(1.8)} fontType={FontTypes.medium} style={styles.skipText} color={colors.text}>
                 {t('auth.profilePhoto.skip')}
               </AppText>
             </TouchableOpacity>
           </View>
-        </View>
+        </ScrollView>
       </View>
     </AppContainer>
   );
@@ -283,25 +331,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
+  scrollView: {
     flex: 1,
+  },
+  content: {
     paddingHorizontal: wp(5),
-    paddingBottom: hp(4),
+    flexGrow: 1,
   },
   title: {
     textAlign: 'center',
-    marginBottom: hp(1),
+    marginBottom: hp(0.5),
   },
   subtitle: {
     textAlign: 'center',
-    marginBottom: hp(4),
+    marginBottom: hp(2),
     opacity: 0.8,
   },
   imageContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: hp(4),
-    minHeight: hp(25),
+    marginVertical: hp(2),
+    minHeight: hp(20),
   },
   profileImage: {
     width: hp(20),
@@ -322,27 +372,29 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonContainer: {
-    marginVertical: hp(2),
+    marginVertical: hp(1.5),
   },
   actionButton: {
-    marginBottom: hp(2),
+    marginBottom: hp(1.5),
   },
   galleryButton: {
     backgroundColor: '#333333',
-    marginBottom: hp(2),
+    marginBottom: hp(1.5),
   },
   footerButtons: {
-    marginTop: hp(4),
+    marginTop: hp(2),
+    marginBottom: hp(1),
   },
   continueButton: {
-    marginBottom: hp(2),
+    marginBottom: hp(1),
   },
   skipButton: {
     alignItems: 'center',
-    paddingVertical: hp(1),
+    paddingVertical: hp(1.5),
+    marginTop: hp(1),
   },
   skipText: {
-    opacity: 0.7,
+    opacity: 0.8,
     textDecorationLine: 'underline',
   },
 });

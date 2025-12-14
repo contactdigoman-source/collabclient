@@ -28,6 +28,7 @@ export type RootStackParamList = {
   TermsAndConditionsScreen: undefined;
   ProfilePhotoScreen: undefined;
   UsbDebuggingBlockScreen: undefined;
+  DatabaseViewerScreen: undefined;
 };
 
 export type NavigationProp = NativeStackNavigationProp<RootStackParamList>;

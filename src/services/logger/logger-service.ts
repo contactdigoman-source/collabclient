@@ -7,7 +7,7 @@ import { LogLevel, ErrorCategory, LogEntry } from './logger-types';
 const API_BASE_URL = Configs.apiBaseUrl;
 
 // Re-export types for convenience
-export { LogLevel, ErrorCategory, LogEntry } from './logger-types';
+export type { LogLevel, ErrorCategory, LogEntry } from './logger-types';
 
 /**
  * Get correlation ID from Redux store
@@ -86,18 +86,53 @@ const getDeviceInfo = (): { platform?: string; version?: string } => {
 };
 
 /**
- * Extract file name from stack trace or error
+ * Extract calling context from stack trace
+ * Returns { service, fileName, methodName } from the caller
+ */
+const getCallingContext = (): { service: string; fileName: string; methodName: string } => {
+  try {
+    const stack = new Error().stack;
+    if (!stack) {
+      return { service: 'unknown', fileName: 'unknown', methodName: 'unknown' };
+    }
+
+    const stackLines = stack.split('\n');
+    
+    // Skip the first line (Error message) and the second line (this function)
+    // The third line should be the logger method (info/warn/error)
+    // The fourth line should be the actual caller
+    let callerLine = stackLines[3] || stackLines[2] || '';
+    
+    
+    // Extract service name from file path (e.g., /services/auth/login-service.ts -> auth)
+    const serviceMatch = callerLine.match(/services\/([^/]+)\//);
+    const service = serviceMatch ? serviceMatch[1] : 'unknown';
+    
+    // Extract file name (e.g., login-service.ts)
+    const fileMatch = callerLine.match(/([^/\\]+\.(ts|tsx|js|jsx))(?::\d+)?/);
+    const fileName = fileMatch ? fileMatch[1] : 'unknown';
+    
+    // Extract method name (e.g., at loginUser or at Object.loginUser)
+    const methodMatch = callerLine.match(/at\s+(?:Object\.)?(\w+)/);
+    const methodName = methodMatch ? methodMatch[1] : 'unknown';
+    
+    return { service, fileName, methodName };
+  } catch (error) {
+    return { service: 'unknown', fileName: 'unknown', methodName: 'unknown' };
+  }
+};
+
+/**
+ * Extract file name from stack trace or error (for backward compatibility)
  */
 const extractFileName = (error?: Error, caller?: string): string => {
   if (caller) {
-    // Try to extract from caller string
     const match = caller.match(/([^/\\]+\.(ts|tsx|js|jsx)):/);
     if (match) return match[1];
   }
   
   if (error?.stack) {
     const stackLines = error.stack.split('\n');
-    // Look for file references in stack trace
     for (const line of stackLines) {
       const match = line.match(/([^/\\]+\.(ts|tsx|js|jsx))/);
       if (match) return match[1];
@@ -108,7 +143,7 @@ const extractFileName = (error?: Error, caller?: string): string => {
 };
 
 /**
- * Extract method name from stack trace or caller
+ * Extract method name from stack trace or caller (for backward compatibility)
  */
 const extractMethodName = (error?: Error, caller?: string, methodName?: string): string => {
   if (methodName) return methodName;
@@ -157,9 +192,14 @@ const determineErrorCategory = (error: any): ErrorCategory => {
 };
 
 /**
- * Log entry to console (for debugging)
+ * Log entry to console (only in dev mode)
  */
 const logToConsole = (entry: LogEntry): void => {
+  // Only log to console in dev mode
+  if (!__DEV__) {
+    return;
+  }
+
   const logMessage = `[${entry.level}] [${entry.category}] ${entry.service}/${entry.fileName}:${entry.methodName} - ${entry.message}`;
   
   switch (entry.level) {
@@ -204,7 +244,7 @@ const sendLogToAPI = async (entry: LogEntry): Promise<void> => {
 /**
  * Main logging function
  */
-export const log = async (params: {
+export const logEntry = async (params: {
   level: LogLevel;
   service: string;
   fileName: string;
@@ -236,7 +276,7 @@ export const log = async (params: {
       }
     : undefined;
   
-  const logEntry: LogEntry = {
+  const entry: LogEntry = {
     correlationId,
     timestamp: new Date().toISOString(),
     level: params.level,
@@ -252,13 +292,13 @@ export const log = async (params: {
     metadata: params.metadata,
   };
   
-  // Always log to console
-  logToConsole(logEntry);
+  // Always log to console (only in dev mode)
+  logToConsole(entry);
   
-  // Send to API for ERROR and FATAL levels, or if explicitly requested
-  if (params.level === LogLevel.ERROR || params.level === LogLevel.FATAL) {
+  // Send to API only for FATAL level
+  if (params.level === LogLevel.FATAL) {
     // Don't await - send async to not block execution
-    sendLogToAPI(logEntry).catch(() => {
+    sendLogToAPI(entry).catch(() => {
       // Silently handle API logging failures
     });
   }
@@ -266,17 +306,20 @@ export const log = async (params: {
 
 /**
  * Convenience methods for different log levels
+ * These methods automatically extract calling context from stack trace
  */
 export const logger = {
   /**
    * Log debug message
+   * Usage: logger.debug('Debug message', { key: 'value' })
    */
-  debug: (service: string, fileName: string, methodName: string, message: string, metadata?: Record<string, any>) => {
-    return log({
+  debug: (message: string, metadata?: Record<string, any>) => {
+    const context = getCallingContext();
+    return logEntry({
       level: LogLevel.DEBUG,
-      service,
-      fileName,
-      methodName,
+      service: context.service,
+      fileName: context.fileName,
+      methodName: context.methodName,
       message,
       metadata,
     });
@@ -284,13 +327,15 @@ export const logger = {
   
   /**
    * Log info message
+   * Usage: logger.info('Info message', { key: 'value' })
    */
-  info: (service: string, fileName: string, methodName: string, message: string, metadata?: Record<string, any>) => {
-    return log({
+  info: (message: string, metadata?: Record<string, any>) => {
+    const context = getCallingContext();
+    return logEntry({
       level: LogLevel.INFO,
-      service,
-      fileName,
-      methodName,
+      service: context.service,
+      fileName: context.fileName,
+      methodName: context.methodName,
       message,
       metadata,
     });
@@ -298,13 +343,16 @@ export const logger = {
   
   /**
    * Log warning message
+   * Usage: logger.warn('Warning message', error, { key: 'value' })
+   * If error is provided, automatically determines it's a warning and logs internally
    */
-  warn: (service: string, fileName: string, methodName: string, message: string, error?: Error, metadata?: Record<string, any>) => {
-    return log({
+  warn: (message: string, error?: Error | any, metadata?: Record<string, any>) => {
+    const context = getCallingContext();
+    return logEntry({
       level: LogLevel.WARN,
-      service,
-      fileName,
-      methodName,
+      service: context.service,
+      fileName: context.fileName,
+      methodName: context.methodName,
       message,
       error,
       metadata,
@@ -313,11 +361,10 @@ export const logger = {
   
   /**
    * Log error message
+   * Usage: logger.error('Error message', error, request, { key: 'value' })
+   * If error is provided, automatically determines it's an error and logs internally
    */
   error: (
-    service: string,
-    fileName: string,
-    methodName: string,
     message: string,
     error?: Error | any,
     request?: {
@@ -329,11 +376,12 @@ export const logger = {
     },
     metadata?: Record<string, any>
   ) => {
-    return log({
+    const context = getCallingContext();
+    return logEntry({
       level: LogLevel.ERROR,
-      service,
-      fileName,
-      methodName,
+      service: context.service,
+      fileName: context.fileName,
+      methodName: context.methodName,
       message,
       error,
       request,
@@ -343,11 +391,11 @@ export const logger = {
   
   /**
    * Log fatal error message
+   * Usage: logger.fatal('Fatal error message', error, request, { key: 'value' })
+   * If error is provided, automatically determines it's fatal and logs internally
+   * Fatal errors are always sent to the logging API service
    */
   fatal: (
-    service: string,
-    fileName: string,
-    methodName: string,
     message: string,
     error?: Error | any,
     request?: {
@@ -359,11 +407,12 @@ export const logger = {
     },
     metadata?: Record<string, any>
   ) => {
-    return log({
+    const context = getCallingContext();
+    return logEntry({
       level: LogLevel.FATAL,
-      service,
-      fileName,
-      methodName,
+      service: context.service,
+      fileName: context.fileName,
+      methodName: context.methodName,
       message,
       error,
       request,
@@ -372,36 +421,5 @@ export const logger = {
   },
 };
 
-/**
- * Wrapper function to automatically capture error context
- * Usage: logServiceError('auth', 'login-service.ts', 'loginUser', error, { email: 'user@example.com' })
- */
-export const logServiceError = (
-  service: string,
-  fileName: string,
-  methodName: string,
-  error: Error | any,
-  context?: {
-    request?: {
-      url?: string;
-      method?: string;
-      statusCode?: number;
-      requestBody?: any;
-      responseBody?: any;
-    };
-    metadata?: Record<string, any>;
-  }
-): void => {
-  const errorMessage = error?.message || String(error);
-  
-  logger.error(
-    service,
-    fileName,
-    methodName,
-    `Service error in ${methodName}: ${errorMessage}`,
-    error,
-    context?.request,
-    context?.metadata
-  );
-};
+
 

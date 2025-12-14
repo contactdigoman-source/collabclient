@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Configs } from '../../constants/configs';
 import { store, persistor } from '../../redux';
 import { resetUserState } from '../../redux/reducers/userReducer';
-import { logServiceError, resetCorrelationId } from '../logger';
+import { logger, resetCorrelationId } from '../logger';
 
 const API_BASE_URL = Configs.apiBaseUrl;
 
@@ -68,25 +68,16 @@ export const loginUser = async (credentials: LoginRequest): Promise<LoginRespons
     return response.data;
   } catch (error: any) {
     // Log service error with context
-    logServiceError(
-      'auth',
-      'login-service.ts',
-      'loginUser',
-      error,
-      {
-        request: {
-          url: `${API_BASE_URL}/api/auth/login`,
-          method: 'POST',
-          statusCode: error.response?.status,
-          requestBody: { email: credentials.email },
-          responseBody: error.response?.data,
-        },
-        metadata: {
-          hasResponse: !!error.response,
-          hasRequest: !!error.request,
-        },
-      }
-    );
+    logger.error('Failed to login', error, {
+      url: `${API_BASE_URL}/api/auth/login`,
+      method: 'POST',
+      statusCode: error.response?.status,
+      requestBody: { email: credentials.email },
+      responseBody: error.response?.data,
+    }, {
+      hasResponse: !!error.response,
+      hasRequest: !!error.request,
+    });
     
     if (error.response) {
       // Server responded with error
@@ -111,17 +102,11 @@ export const storeJWTToken = async (token: string, email: string): Promise<void>
       service: `jwt_${email}`,
       accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED,
     });
-    console.log('JWT token stored securely');
+    logger.info('JWT token stored securely');
   } catch (error) {
-    logServiceError(
-      'auth',
-      'login-service.ts',
-      'storeJWTToken',
-      error as Error,
-      {
-        metadata: { email },
-      }
-    );
+    logger.error('Failed to store JWT token', error as Error, undefined, {
+      email,
+    });
     throw new Error('Failed to store authentication token');
   }
 };
@@ -136,15 +121,9 @@ export const getJWTToken = async (email: string): Promise<string | null> => {
     });
     return credentials ? credentials.password : null;
   } catch (error) {
-    logServiceError(
-      'auth',
-      'login-service.ts',
-      'getJWTToken',
-      error as Error,
-      {
-        metadata: { email },
-      }
-    );
+    logger.error('Failed to get JWT token', error as Error, undefined, {
+      email,
+    });
     return null;
   }
 };
@@ -158,7 +137,7 @@ export const clearJWTToken = async (email: string): Promise<void> => {
       service: `jwt_${email}`,
     });
   } catch (error) {
-    console.error('Error clearing JWT token:', error);
+    logger.error('Error clearing JWT token', error);
   }
 };
 
@@ -175,15 +154,9 @@ export const logoutUser = async (): Promise<void> => {
         service: userData.email,
       });
     } catch (error) {
-      logServiceError(
-        'auth',
-        'login-service.ts',
-        'logoutUser',
-        error as Error,
-        {
-          metadata: { email: userData.email },
-        }
-      );
+      logger.error('Failed to clear JWT token during logout', error as Error, undefined, {
+        email: userData.email,
+      });
     }
   }
 

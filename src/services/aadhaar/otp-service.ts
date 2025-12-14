@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { Configs } from '../../constants/configs';
-import { logServiceError } from '../logger';
+import { logger } from '../logger';
 
 const API_BASE_URL = Configs.apiBaseUrl;
 
@@ -37,25 +37,16 @@ export const requestAadhaarOTP = async (params: RequestOTPParams): Promise<boole
     
     return response.data?.success === true;
   } catch (error: any) {
-    logServiceError(
-      'aadhaar',
-      'otp-service.ts',
-      'requestAadhaarOTP',
-      error,
-      {
-        request: {
-          url: `${API_BASE_URL}/api/aadhaar/request-otp`,
-          method: 'POST',
-          statusCode: error.response?.status,
-          requestBody: { aadhaarNumber: params.aadhaarNumber, emailID: params.emailID },
-          responseBody: error.response?.data,
-        },
-        metadata: {
-          aadhaarNumber: params.aadhaarNumber ? `${params.aadhaarNumber.substring(0, 4)}****${params.aadhaarNumber.substring(8)}` : undefined,
-          emailID: params.emailID,
-        },
-      }
-    );
+    logger.error('Failed to request Aadhaar OTP', error, {
+      url: `${API_BASE_URL}/api/aadhaar/request-otp`,
+      method: 'POST',
+      statusCode: error.response?.status,
+      requestBody: { aadhaarNumber: params.aadhaarNumber, emailID: params.emailID },
+      responseBody: error.response?.data,
+    }, {
+      aadhaarNumber: params.aadhaarNumber ? `${params.aadhaarNumber.substring(0, 4)}****${params.aadhaarNumber.substring(8)}` : undefined,
+      emailID: params.emailID,
+    });
     
     if (error.response) {
       // Server responded with error
@@ -93,25 +84,16 @@ export const verifyAadhaarOTP = async (params: VerifyOTPParams): Promise<boolean
     
     return response.data?.verified === true && response.data?.success === true;
   } catch (error: any) {
-    logServiceError(
-      'aadhaar',
-      'otp-service.ts',
-      'verifyAadhaarOTP',
-      error,
-      {
-        request: {
-          url: `${API_BASE_URL}/api/aadhaar/verify-otp`,
-          method: 'POST',
-          statusCode: error.response?.status,
-          requestBody: { aadhaarNumber: params.aadhaarNumber, emailID: params.emailID },
-          responseBody: error.response?.data,
-        },
-        metadata: {
-          aadhaarNumber: params.aadhaarNumber ? `${params.aadhaarNumber.substring(0, 4)}****${params.aadhaarNumber.substring(8)}` : undefined,
-          emailID: params.emailID,
-        },
-      }
-    );
+    logger.error('Failed to verify Aadhaar OTP', error, {
+      url: `${API_BASE_URL}/api/aadhaar/verify-otp`,
+      method: 'POST',
+      statusCode: error.response?.status,
+      requestBody: { aadhaarNumber: params.aadhaarNumber, emailID: params.emailID },
+      responseBody: error.response?.data,
+    }, {
+      aadhaarNumber: params.aadhaarNumber ? `${params.aadhaarNumber.substring(0, 4)}****${params.aadhaarNumber.substring(8)}` : undefined,
+      emailID: params.emailID,
+    });
     
     if (error.response) {
       // Server responded with error

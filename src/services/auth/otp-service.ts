@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { Configs } from '../../constants/configs';
-import { logServiceError } from '../logger/logger-service';
+import { logger } from '../logger';
 
 const API_BASE_URL = Configs.apiBaseUrl;
 
@@ -85,29 +85,19 @@ export const verifyOTP = async (params: VerifyOTPRequest): Promise<VerifyOTPResp
     return responseData;
   } catch (error: any) {
     // Log service error with context
-    logServiceError(
-      'auth',
-      'otp-service.ts',
-      'verifyOTP',
-      error,
-      {
-        request: {
-          url: `${API_BASE_URL}/api/auth/verify-otp`,
-          method: 'POST',
-          statusCode: error.response?.status,
-          requestBody: {
-            email: params.email,
-            flowType: params.flowType,
-            // Don't log OTP value for security
-            otp: '***',
-          },
-          responseBody: error.response?.data,
-        },
-        metadata: {
-          flowType: params.flowType,
-        },
-      }
-    );
+    logger.error('Failed to verify OTP', error, {
+      url: `${API_BASE_URL}/api/auth/verify-otp`,
+      method: 'POST',
+      statusCode: error.response?.status,
+      requestBody: {
+        email: params.email,
+        flowType: params.flowType,
+        otp: '***', // Don't log OTP value for security
+      },
+      responseBody: error.response?.data,
+    }, {
+      flowType: params.flowType,
+    });
 
     if (error.response) {
       // Server responded with error
@@ -145,27 +135,18 @@ export const resendOTP = async (params: ResendOTPRequest): Promise<ResendOTPResp
     return response.data;
   } catch (error: any) {
     // Log service error with context
-    logServiceError(
-      'auth',
-      'otp-service.ts',
-      'resendOTP',
-      error,
-      {
-        request: {
-          url: `${API_BASE_URL}/api/auth/resend-email-otp`,
-          method: 'POST',
-          statusCode: error.response?.status,
-          requestBody: {
-            email: params.email,
-            flowType: params.flowType,
-          },
-          responseBody: error.response?.data,
-        },
-        metadata: {
-          flowType: params.flowType,
-        },
-      }
-    );
+    logger.error('Failed to resend OTP', error, {
+      url: `${API_BASE_URL}/api/auth/resend-email-otp`,
+      method: 'POST',
+      statusCode: error.response?.status,
+      requestBody: {
+        email: params.email,
+        flowType: params.flowType,
+      },
+      responseBody: error.response?.data,
+    }, {
+      flowType: params.flowType,
+    });
 
     if (error.response) {
       // Server responded with error

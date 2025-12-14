@@ -15,6 +15,7 @@
     "build:android:install": "bash scripts/install-android-apk.sh",
     "build:ios:ipa": "bash scripts/build-ios-ipa.sh",
     "wiremock:start": "bash scripts/start-wiremock.sh",
+    "wiremock:start:npm": "cd wiremock && npm start",
     "wiremock:stop": "cd wiremock && docker-compose down",
     "wiremock:logs": "cd wiremock && docker-compose logs -f",
     "wiremock:list": "bash scripts/list-wiremock-endpoints.sh",
@@ -25,6 +26,7 @@
   "dependencies": {
     "@notifee/react-native": "^9.1.8",
     "@react-native-community/geolocation": "^3.4.0",
+    "@react-native-community/netinfo": "^11.4.1",
     "@react-native/new-app-screen": "^0.80.1",
     "@react-navigation/bottom-tabs": "^7.8.5",
     "@react-navigation/elements": "^2.8.2",

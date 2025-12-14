@@ -25,6 +25,7 @@ import {
   ProfileDrawerScreen,
   UsbDebuggingBlockScreen,
   ViewProfileScreen,
+  DatabaseViewerScreen,
 } from '../screens';
 import {
   APP_THEMES,
@@ -238,6 +239,10 @@ export default function AppNavigation(): React.JSX.Element {
           <Stack.Screen
             name="ViewProfileScreen"
             component={ViewProfileScreen}
+          />
+          <Stack.Screen
+            name="DatabaseViewerScreen"
+            component={DatabaseViewerScreen}
           />
           <Stack.Screen name="OtpScreen" component={OtpScreen} />
           <Stack.Screen

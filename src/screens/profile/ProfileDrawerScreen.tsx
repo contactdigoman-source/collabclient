@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect } from 'react';
-import { StyleSheet, View, Alert, ScrollView } from 'react-native';
+import { StyleSheet, View, Alert, ScrollView, RefreshControl } from 'react-native';
 import { useNavigation, useTheme } from '@react-navigation/native';
 
 import {
@@ -16,6 +16,7 @@ import { useAppDispatch, useAppSelector, setDisplayBreakStatus } from '../../red
 import { setAppTheme } from '../../redux';
 import { APP_THEMES, DarkThemeColors } from '../../themes';
 import { logoutUser, getProfile } from '../../services';
+import { profileSyncService } from '../../services/sync/profile-sync-service';
 import { NavigationProp } from '../../types/navigation';
 import { useTranslation } from '../../hooks/useTranslation';
 
@@ -29,24 +30,59 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
   const { userData, displayBreakStatus } = useAppSelector(state => state.userState);
 
   const [isLanguageModalVisible, setIsLanguageModalVisible] = useState<boolean>(false);
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Load profile data on mount - gracefully handle service unavailability
-  useEffect(() => {
-    const loadProfile = async () => {
-      if (!userData?.email) return;
-      
+  // Load profile data from DB
+  const loadProfileFromDB = useCallback(async () => {
+    if (!userData?.email) return;
+    
       try {
-        await getProfile();
-      } catch (error: any) {
-        // Silently fail - app should work even if profile service is down
-        // User can still use the app with cached data from Redux
-        console.warn('[ProfileDrawer] Failed to load profile (service may be down):', error.message);
-        // Don't show error to user - app should continue working
+        // Load profile from SQLite (offline-first)
+        const dbProfile = await profileSyncService.loadProfileFromDB(userData.email);
+        if (dbProfile) {
+          // Load all profile data from DB
+          setProfilePhoto(dbProfile.profilePhotoUrl || null);
+      } else {
+        // Fallback to Redux if DB is empty
+        setProfilePhoto(userData?.profilePhotoUrl || userData?.profilePhoto || null);
       }
-    };
+    } catch (dbError) {
+      console.log('Error loading profile from DB:', dbError);
+      // Fallback to Redux
+      setProfilePhoto(userData?.profilePhotoUrl || userData?.profilePhoto || null);
+    }
+  }, [userData?.email, userData?.profilePhoto, userData?.profilePhotoUrl]);
 
-    loadProfile();
-  }, [userData?.email]); // Run when email changes
+  // Load profile data on mount - load from DB
+  useEffect(() => {
+    loadProfileFromDB();
+  }, [loadProfileFromDB]);
+
+  // Handle pull-to-refresh - sync profile from server
+  const onRefresh = useCallback(async () => {
+    if (!userData?.email) {
+      setRefreshing(false);
+      return;
+    }
+    
+    setRefreshing(true);
+    
+    try {
+      // Call getProfile() to sync from server (only updates DB if server.lastSyncedAt >= local.lastUpdatedAt)
+      await getProfile();
+      
+      // Reload from DB after sync
+      await loadProfileFromDB();
+    } catch (error: any) {
+      // Silently fail - app should work even if profile service is down
+      console.warn('[ProfileDrawer] Failed to sync profile (service may be down):', error.message);
+      // Still reload from DB in case there's cached data
+      await loadProfileFromDB();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [userData?.email, loadProfileFromDB]);
   
   const getLanguageDisplayName = (code: string): string => {
     const languages: Record<string, string> = {
@@ -78,6 +114,10 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
 
   const onViewProfilePress = useCallback((): void => {
     navigation.navigate('ViewProfileScreen');
+  }, [navigation]);
+
+  const onDatabaseViewerPress = useCallback((): void => {
+    navigation.navigate('DatabaseViewerScreen');
   }, [navigation]);
 
 
@@ -123,14 +163,24 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
   return (
     <AppContainer>
       <BackHeader />
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
+        }
+      >
         <View style={styles.profileContainer}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatarBorder}>
               <UserImage
                 size={hp(15.6)} // 127px equivalent
-                source={userData?.profilePhoto ? { uri: userData.profilePhoto } : null}
-                userName={userData?.profilePhoto ? undefined : `${userData?.firstName || ''} ${userData?.lastName || ''}`}
+                source={profilePhoto ? { uri: profilePhoto } : null}
+                userName={profilePhoto ? undefined : `${userData?.firstName || ''} ${userData?.lastName || ''}`.trim() || 'User'}
                 isAttendanceStatusVisible={false}
                 charsCount={2}
               />
@@ -206,6 +256,16 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
           iconColor={colors.text}
           onPress={onViewProfilePress}
         />
+
+        {/* Database Viewer (Debug - Dev Mode Only) */}
+        {__DEV__ && (
+          <ProfileDrawerItem
+            title="Database Viewer"
+            icon={Icons.profile_circle}
+            iconColor={colors.text}
+            onPress={onDatabaseViewerPress}
+          />
+        )}
 
         {/* Geo-locations */}
         <ProfileDrawerItem

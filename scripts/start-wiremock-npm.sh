@@ -11,7 +11,9 @@ WIREMOCK_DIR="$PROJECT_ROOT/wiremock"
 
 echo "🚀 Starting WireMock with npm..."
 echo "📁 Using mappings from: $WIREMOCK_DIR/mappings"
-echo "🌐 WireMock will be available at: http://localhost:8080"
+echo "🌐 WireMock will be available at:"
+echo "   - Local: http://localhost:8080"
+echo "   - Network: http://192.168.1.8:8080"
 echo ""
 
 cd "$WIREMOCK_DIR"
@@ -29,6 +31,6 @@ if lsof -Pi :8080 -sTCP:LISTEN -t >/dev/null 2>&1 ; then
 fi
 
 # Start WireMock
-echo "🌐 Starting WireMock on port 8080..."
-wiremock --port 8080 --root-dir ./mappings --global-response-templating --verbose
+echo "🌐 Starting WireMock on port 8080 (binding to all interfaces)..."
+wiremock --port 8080 --root-dir ./mappings --global-response-templating --verbose --bind-address 0.0.0.0
 

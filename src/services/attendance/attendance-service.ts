@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { Configs } from '../../constants/configs';
 import { getJWTToken } from '../auth/login-service';
-import { logServiceError } from '../logger';
+import { logger } from '../logger';
 
 const API_BASE_URL = Configs.apiBaseUrl;
 
@@ -68,24 +68,15 @@ export const getDaysAttendance = async (): Promise<AttendanceDay[]> => {
     }));
   } catch (error: any) {
     // Log service error with context
-    logServiceError(
-      'attendance',
-      'attendance-service.ts',
-      'getDaysAttendance',
-      error,
-      {
-        request: {
-          url: `${API_BASE_URL}/api/attendance/days`,
-          method: 'GET',
-          statusCode: error.response?.status,
-          responseBody: error.response?.data,
-        },
-        metadata: {
-          hasResponse: !!error.response,
-          hasRequest: !!error.request,
-        },
-      }
-    );
+    logger.error('Failed to get days attendance', error, {
+      url: `${API_BASE_URL}/api/attendance/days`,
+      method: 'GET',
+      statusCode: error.response?.status,
+      responseBody: error.response?.data,
+    }, {
+      hasResponse: !!error.response,
+      hasRequest: !!error.request,
+    });
 
     // Return empty array on error - treat as no data available
     return [];

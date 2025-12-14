@@ -44,7 +44,8 @@
       "requiresPasswordChange": false,
       "roles": [
         "ORGUSER"
-      ]
+      ],
+      "lastSyncedAt": "2024-12-11T10:30:00Z"
     }
   }
 }

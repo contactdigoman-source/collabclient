@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, Alert, TouchableOpacity, Image, Modal, Platform } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { View, StyleSheet, ScrollView, Alert, TouchableOpacity, Image, Modal } from 'react-native';
 import { useTheme } from '@react-navigation/native';
 import ImagePicker, { ImageOrVideo } from 'react-native-image-crop-picker';
 
@@ -8,28 +8,26 @@ import {
   AppInput,
   AppText,
   BackHeader,
-  AppButton,
   UserImage,
 } from '../../components';
-import { useAppDispatch, useAppSelector } from '../../redux';
+import { useAppSelector } from '../../redux';
 import { hp, wp, Icons, FontTypes } from '../../constants';
 import { DarkThemeColors, APP_THEMES } from '../../themes';
 import { useTranslation } from '../../hooks/useTranslation';
 import { getProfile, updateProfile, uploadProfilePhoto } from '../../services';
+import { profileSyncService } from '../../services/sync/profile-sync-service';
 
 const DEFAULT_VALUE = 'None';
 
 export default function ViewProfileScreen(): React.JSX.Element {
   const theme = useTheme();
-  const colors = theme?.colors || {};
+  const colors = useMemo(() => (theme?.colors || {}) as any, [theme?.colors]);
   const { appTheme } = useAppSelector(state => state.appState);
   const { t } = useTranslation();
-  const dispatch = useAppDispatch();
   const { userData } = useAppSelector(state => state.userState);
 
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isLoadingProfile, setIsLoadingProfile] = useState<boolean>(false);
   const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
   const [tempDate, setTempDate] = useState<Date>(new Date());
   
@@ -44,32 +42,67 @@ export default function ViewProfileScreen(): React.JSX.Element {
   // Load profile data on mount
   useEffect(() => {
     const loadProfile = async () => {
+      if (!userData?.email) return;
+
       try {
-        setIsLoadingProfile(true);
-        const profile = await getProfile();
-        setFirstName(profile.firstName || '');
-        setLastName(profile.lastName || '');
-        setEmploymentType(profile.employmentType || '');
-        setDesignation(profile.designation || '');
-        setProfilePhoto(profile.profilePhotoUrl || userData?.profilePhoto || null);
+        // First, call getProfile() which will merge server and local data into DB
+        // getProfile() only overwrites local if server.lastSyncedAt >= local.lastUpdatedAt
+        await getProfile();
         
-        // Parse date of birth to YYYY-MM-DD format
-        if (profile.dateOfBirth) {
-          try {
-            const date = new Date(profile.dateOfBirth);
-            if (!isNaN(date.getTime())) {
-              const year = date.getFullYear();
-              const month = String(date.getMonth() + 1).padStart(2, '0');
-              const day = String(date.getDate()).padStart(2, '0');
-              setDateOfBirth(`${year}-${month}-${day}`);
-            } else {
+        // Then load from DB (which now has the latest merged data)
+        const dbProfile = await profileSyncService.loadProfileFromDB(userData.email);
+        
+        if (dbProfile) {
+          // Load all data from DB
+          setFirstName(dbProfile.firstName || '');
+          setLastName(dbProfile.lastName || '');
+          setEmploymentType(dbProfile.employmentType || '');
+          setDesignation(dbProfile.designation || '');
+          setProfilePhoto(dbProfile.profilePhotoUrl || null);
+          
+          // Parse date of birth to YYYY-MM-DD format
+          if (dbProfile.dateOfBirth) {
+            try {
+              const date = new Date(dbProfile.dateOfBirth);
+              if (!isNaN(date.getTime())) {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                setDateOfBirth(`${year}-${month}-${day}`);
+              } else {
+                setDateOfBirth('');
+              }
+            } catch {
               setDateOfBirth('');
             }
-          } catch {
+          } else {
             setDateOfBirth('');
           }
         } else {
-          setDateOfBirth('');
+          // Fallback to Redux if DB is empty
+          setFirstName(userData?.firstName || '');
+          setLastName(userData?.lastName || '');
+          setEmploymentType(userData?.employmentType || '');
+          setDesignation(userData?.designation || '');
+          setProfilePhoto(userData?.profilePhotoUrl || userData?.profilePhoto || null);
+          
+          if (userData?.dateOfBirth) {
+            try {
+              const date = new Date(userData.dateOfBirth);
+              if (!isNaN(date.getTime())) {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                setDateOfBirth(`${year}-${month}-${day}`);
+              } else {
+                setDateOfBirth('');
+              }
+            } catch {
+              setDateOfBirth('');
+            }
+          } else {
+            setDateOfBirth('');
+          }
         }
       } catch (error: any) {
         // Silently fail - app should work even if profile service is down
@@ -80,7 +113,7 @@ export default function ViewProfileScreen(): React.JSX.Element {
           setLastName(userData.lastName || '');
           setEmploymentType(userData.employmentType || '');
           setDesignation(userData.designation || '');
-          setProfilePhoto(userData.profilePhoto || null);
+          setProfilePhoto(userData.profilePhotoUrl || userData.profilePhoto || null);
           
           if (userData.dateOfBirth) {
             try {
@@ -100,13 +133,33 @@ export default function ViewProfileScreen(): React.JSX.Element {
             setDateOfBirth('');
           }
         }
-      } finally {
-        setIsLoadingProfile(false);
       }
     };
 
     loadProfile();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userData?.email]);
+
+  // Memoize dynamic styles
+  const dateInputStyle = useMemo(() => ({
+    backgroundColor: (colors as any).cardBg || DarkThemeColors.black + '20',
+    borderColor: appTheme === APP_THEMES.light 
+      ? (colors as any).cardBorder || '#E0E0E0'
+      : DarkThemeColors.white_common + '40',
+    shadowColor: appTheme === APP_THEMES.light ? (colors as any).black_common || '#000000' : 'transparent',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: appTheme === APP_THEMES.light ? 0.05 : 0,
+    shadowRadius: appTheme === APP_THEMES.light ? 2 : 0,
+    elevation: appTheme === APP_THEMES.light ? 1 : 0,
+  }), [appTheme, colors]);
+
+  const cancelModalButtonStyle = useMemo(() => ({
+    backgroundColor: appTheme === APP_THEMES.light 
+      ? (colors as any).cardBg || '#F6F6F6'
+      : DarkThemeColors.white_common + '20',
+    borderWidth: appTheme === APP_THEMES.light ? 1 : 0,
+    borderColor: appTheme === APP_THEMES.light ? (colors as any).cardBorder || '#E0E0E0' : 'transparent',
+  }), [appTheme, colors]);
 
   // Update local state when userData changes
   useEffect(() => {
@@ -115,7 +168,8 @@ export default function ViewProfileScreen(): React.JSX.Element {
       setLastName(userData.lastName || '');
       setEmploymentType(userData.employmentType || '');
       setDesignation(userData.designation || '');
-      setProfilePhoto(userData.profilePhoto || null);
+      // Use profilePhotoUrl if available, otherwise fallback to profilePhoto
+      setProfilePhoto(userData.profilePhotoUrl || userData.profilePhoto || null);
       
       if (userData.dateOfBirth) {
         try {
@@ -244,18 +298,32 @@ export default function ViewProfileScreen(): React.JSX.Element {
     try {
       setIsLoading(true);
 
-      // Upload photo if changed
+      let photoUrl: string | undefined;
+
+      // Upload photo first if changed (local file path)
       if (profilePhoto && (profilePhoto.startsWith('/') || profilePhoto.startsWith('file://'))) {
         try {
-          await uploadProfilePhoto(profilePhoto);
+          const uploadResponse = await uploadProfilePhoto(profilePhoto);
+          if (uploadResponse.success && uploadResponse.profilePhotoUrl) {
+            photoUrl = uploadResponse.profilePhotoUrl;
+            // // Update local state immediately with the server URL so it shows right away
+            // setProfilePhoto(photoUrl);
+            // // Also update Redux is already done in uploadProfilePhoto, but ensure it's reflected
+          } else {
+            throw new Error('Photo upload succeeded but no URL returned');
+          }
         } catch (error: any) {
           console.error('Failed to upload photo:', error.message);
-          // Continue with profile update even if photo upload fails
+          Alert.alert(t('common.error'), `Failed to upload photo: ${error.message}`);
+          return; // Don't continue if photo upload fails
         }
+      } else if (profilePhoto && (profilePhoto.startsWith('http://') || profilePhoto.startsWith('https://'))) {
+        // Already a URL, use it directly
+        photoUrl = profilePhoto;
       }
 
       // Validate date of birth format (YYYY-MM-DD)
-      let dobISO: string | undefined = undefined;
+      let dobISO: string | undefined;
       if (dateOfBirth.trim()) {
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
         if (dateRegex.test(dateOfBirth.trim())) {
@@ -273,14 +341,56 @@ export default function ViewProfileScreen(): React.JSX.Element {
         }
       }
 
-      // Update profile
+      // Update profile with photo URL (if uploaded)
       await updateProfile({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         dateOfBirth: dobISO,
         employmentType: employmentType.trim() || undefined,
         designation: designation.trim() || undefined,
+        profilePhotoUrl: photoUrl, // Include photo URL from upload
       });
+
+      // Call getProfile() to refresh DB from server (only overwrites if server.lastSyncedAt >= local.lastUpdatedAt)
+      // This ensures DB has the latest merged data from server
+      await getProfile();
+
+      // Reload profile data from DB (which now has the latest merged data from getProfile)
+      if (userData?.email) {
+        try {
+          const dbProfile = await profileSyncService.loadProfileFromDB(userData.email);
+          if (dbProfile) {
+            // Reload all fields from DB
+            setFirstName(dbProfile.firstName || '');
+            setLastName(dbProfile.lastName || '');
+            setEmploymentType(dbProfile.employmentType || '');
+            setDesignation(dbProfile.designation || '');
+            setProfilePhoto(dbProfile.profilePhotoUrl || null);
+            
+            // Parse date of birth
+            if (dbProfile.dateOfBirth) {
+              try {
+                const date = new Date(dbProfile.dateOfBirth);
+                if (!isNaN(date.getTime())) {
+                  const year = date.getFullYear();
+                  const month = String(date.getMonth() + 1).padStart(2, '0');
+                  const day = String(date.getDate()).padStart(2, '0');
+                  setDateOfBirth(`${year}-${month}-${day}`);
+                } else {
+                  setDateOfBirth('');
+                }
+              } catch {
+                setDateOfBirth('');
+              }
+            } else {
+              setDateOfBirth('');
+            }
+          }
+        } catch (error) {
+          console.log('Error reloading profile from DB after update:', error);
+          // Continue even if reload fails
+        }
+      }
 
       Alert.alert(t('common.success'), t('common.save', 'Profile updated successfully'));
       setIsEditMode(false);
@@ -289,7 +399,7 @@ export default function ViewProfileScreen(): React.JSX.Element {
     } finally {
       setIsLoading(false);
     }
-  }, [firstName, lastName, dateOfBirth, employmentType, designation, profilePhoto, t]);
+  }, [firstName, lastName, dateOfBirth, employmentType, designation, profilePhoto, t, userData?.email]);
 
   const handleCancel = useCallback(() => {
     // Reset to original values
@@ -381,7 +491,7 @@ export default function ViewProfileScreen(): React.JSX.Element {
           <UserImage
             size={hp(15)}
             source={profilePhoto ? { uri: profilePhoto } : null}
-            userName={profilePhoto ? undefined : `${firstName || ''} ${lastName || ''}`}
+            userName={profilePhoto ? undefined : `${firstName || ''} ${lastName || ''}`.trim() || 'User'}
             isAttendanceStatusVisible={false}
             charsCount={2}
           />
@@ -435,17 +545,7 @@ export default function ViewProfileScreen(): React.JSX.Element {
               onPress={handleDatePickerOpen}
               style={[
                 styles.dateInputContainer,
-                {
-                  backgroundColor: (colors as any).cardBg || DarkThemeColors.black + '20',
-                  borderColor: appTheme === APP_THEMES.light 
-                    ? (colors as any).cardBorder || '#E0E0E0'
-                    : DarkThemeColors.white_common + '40',
-                  shadowColor: appTheme === APP_THEMES.light ? colors.black_common : 'transparent',
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: appTheme === APP_THEMES.light ? 0.05 : 0,
-                  shadowRadius: appTheme === APP_THEMES.light ? 2 : 0,
-                  elevation: appTheme === APP_THEMES.light ? 1 : 0,
-                }
+                dateInputStyle,
               ]}
             >
               <AppText size={hp(2)} color={dateOfBirth ? colors.text || DarkThemeColors.white_common : (colors.text || DarkThemeColors.white_common) + '80'}>
@@ -571,13 +671,7 @@ export default function ViewProfileScreen(): React.JSX.Element {
                 style={[
                   styles.modalButton,
                   styles.cancelModalButton,
-                  {
-                    backgroundColor: appTheme === APP_THEMES.light 
-                      ? (colors as any).cardBg || '#F6F6F6'
-                      : DarkThemeColors.white_common + '20',
-                    borderWidth: appTheme === APP_THEMES.light ? 1 : 0,
-                    borderColor: appTheme === APP_THEMES.light ? (colors as any).cardBorder || '#E0E0E0' : 'transparent',
-                  }
+                  cancelModalButtonStyle,
                 ]}
                 onPress={handleDatePickerCancel}
               >

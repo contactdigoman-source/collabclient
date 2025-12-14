@@ -1,6 +1,6 @@
 // store.ts
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
-import { userReducer, appReducer, aadhaarReducer } from '../reducers';
+import { userReducer, appReducer, aadhaarReducer, syncReducer } from '../reducers';
 import {
   FLUSH,
   PAUSE,
@@ -17,6 +17,7 @@ const appReducers = combineReducers({
   userState: userReducer,
   appState: appReducer,
   aadhaarState: aadhaarReducer,
+  syncState: syncReducer,
 });
 
 // 👇 This function resets state when LOGOUT is dispatched
@@ -33,7 +34,7 @@ const persistConfig = {
   version: 1,
   storage: reduxStorage,
   timeout: 0,
-  whitelist: ['userState', 'appState'],
+  whitelist: ['userState', 'appState', 'syncState'],
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

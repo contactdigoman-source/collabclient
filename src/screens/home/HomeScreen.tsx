@@ -12,6 +12,7 @@ import {
   HomeHeader,
   MyTeamListItem,
   UserImage,
+  SyncStatusIndicator,
 } from '../../components';
 import {
   DEFAULT_REGION,
@@ -23,7 +24,7 @@ import {
   Images,
 } from '../../constants';
 import type { Region } from 'react-native-maps';
-import { useAppSelector } from '../../redux';
+import { useAppSelector, useAppDispatch } from '../../redux';
 import { APP_THEMES } from '../../themes';
 import { useTranslation } from '../../hooks/useTranslation';
 import {
@@ -34,7 +35,15 @@ import {
   requestLocationPermission,
   isSessionExpired,
   logoutUser,
+  getProfile,
 } from '../../services';
+import {
+  profileSyncService,
+  syncCoordinator,
+  syncStatusService,
+} from '../../services/sync';
+import { setSyncing, setLastSyncAt, setUnsyncedItems } from '../../redux/reducers/syncReducer';
+import { initializeDatabaseTables } from '../../services/database';
 import moment from 'moment';
 
 const COLLEAGUE_NUM_COLUMNS = 4;
@@ -59,6 +68,7 @@ interface GridItem {
 export default function HomeScreen(): React.JSX.Element {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const dispatch = useAppDispatch();
   const mapRef = useRef<MapView>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -192,6 +202,61 @@ export default function HomeScreen(): React.JSX.Element {
     };
   }, [checkSessionExpiration]);
 
+  // Initialize database tables and load profile from DB on mount
+  useEffect(() => {
+    const initializeAndLoadProfile = async () => {
+      try {
+        // Initialize database tables
+        await initializeDatabaseTables();
+        
+        // Load profile from DB
+        const email = userData?.email;
+        if (email) {
+          const dbProfile = await profileSyncService.loadProfileFromDB(email);
+          if (dbProfile) {
+            // Profile loaded from DB, now sync unsynced items
+            const userID = userData?.id?.toString() || email;
+            await syncUnsyncedItems(email, userID);
+          } else {
+            // No profile in DB, sync from server
+            await syncCoordinator.syncPullOnly(email, userData?.id?.toString() || email);
+          }
+        }
+      } catch (error) {
+        console.log('Error initializing and loading profile:', error);
+      }
+    };
+
+    initializeAndLoadProfile();
+  }, []);
+
+  // Sync unsynced items helper function
+  const syncUnsyncedItems = useCallback(async (email: string, userID: string) => {
+    try {
+      dispatch(setSyncing(true));
+      
+      // Get unsynced items and update Redux
+      const unsyncedItems = await syncStatusService.getAllUnsyncedItems(email, userID);
+      dispatch(setUnsyncedItems(unsyncedItems));
+      
+      // Sync all unsynced items
+      const result = await syncCoordinator.syncAll(email, userID);
+      
+      // Update last sync time
+      if (result.success) {
+        dispatch(setLastSyncAt(Date.now()));
+      }
+      
+      // Refresh unsynced items after sync
+      const updatedUnsyncedItems = await syncStatusService.getAllUnsyncedItems(email, userID);
+      dispatch(setUnsyncedItems(updatedUnsyncedItems));
+    } catch (error) {
+      console.log('Error syncing unsynced items:', error);
+    } finally {
+      dispatch(setSyncing(false));
+    }
+  }, [dispatch]);
+
   // Get current location on mount
   useEffect(() => {
     updateCurrentLocation();
@@ -220,8 +285,25 @@ export default function HomeScreen(): React.JSX.Element {
     
     // Update location if session is still valid
     await updateCurrentLocation();
+    
+    // Sync profile data from server (getProfile() will update DB only if server.lastSyncedAt >= local.lastUpdatedAt)
+    const email = userData?.email;
+    if (email) {
+      try {
+        await getProfile(); // This will sync profile data to DB
+      } catch (error) {
+        console.log('Error syncing profile on pull-to-refresh:', error);
+      }
+    }
+    
+    // Sync unsynced items
+    const userID = userData?.id?.toString() || email || '';
+    if (email) {
+      await syncUnsyncedItems(email, userID);
+    }
+    
     setRefreshing(false);
-  }, [updateCurrentLocation, expiresAt]);
+  }, [updateCurrentLocation, expiresAt, userData, syncUnsyncedItems]);
 
   // Animate map to current location when it's updated
   useEffect(() => {
@@ -516,6 +598,11 @@ export default function HomeScreen(): React.JSX.Element {
         textColor={headerTextColor}
         bgColor={headerBgColor}
       />
+      
+      {/* Sync Status Indicator */}
+      <View style={styles.syncIndicatorContainer}>
+        <SyncStatusIndicator />
+      </View>
     </AppContainer>
   );
 }
@@ -567,6 +654,12 @@ const styles = StyleSheet.create({
     flex: 1,
     marginEnd: wp(5),
     opacity: 0.7,
+  },
+  syncIndicatorContainer: {
+    position: 'absolute',
+    top: hp(12),
+    right: wp(5),
+    zIndex: 1000,
   },
 });
 

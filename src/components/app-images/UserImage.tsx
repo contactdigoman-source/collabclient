@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, StyleSheet, ViewStyle } from 'react-native';
+import { View, StyleSheet, ViewStyle, TouchableOpacity } from 'react-native';
 import AppImage from './AppImage';
 import {
   FontTypes,
@@ -118,32 +118,65 @@ export default function UserImage(props: UserImageProps): React.JSX.Element {
     );
   }
 
+  // Get initials to display (always show if userName is provided)
+  const initials = userName ? (firstCharsOfString(userName, charsCount) || 'U') : 'U';
+  const hasValidImage = source && typeof source === 'object' && 'uri' in source && source.uri && source.uri.trim() !== '';
+
   return (
     <View style={[styles.container, containerStyle]}>
       <View style={[styles.container, subContainerStyle]}>
-        <AppImage
-          size={size}
-          isRounded
-          source={source}
-          isClickable={isClickable}
-          onPress={onPress}
-          accessibilityRole={isClickable ? 'imagebutton' : 'image'}
-          accessibilityLabel="User profile picture"
-          style={{ backgroundColor: colors.user_image_bg } as ViewStyle}
-        >
-          {userName && !source ? (
-            <View style={styles.charsContainer}>
-              <AppText
-                size={size / 2.75}
-                color={finalCharsColor}
-                fontType={FontTypes.medium}
-                style={styles.charsText}
-              >
-                {firstCharsOfString(userName, charsCount)}
-              </AppText>
-            </View>
-          ) : null}
-        </AppImage>
+        {/* Always show initials as background/default */}
+        <View style={[styles.initialsBackground, { 
+          width: SUB_CONTAINER_SIZE, 
+          height: SUB_CONTAINER_SIZE, 
+          borderRadius: SUB_CONTAINER_SIZE / 2,
+          backgroundColor: colors.user_image_bg 
+        }]}>
+          <View style={styles.charsContainer}>
+            <AppText
+              size={size / 2.75}
+              color={finalCharsColor}
+              fontType={FontTypes.medium}
+              style={styles.charsText}
+            >
+              {initials}
+            </AppText>
+          </View>
+        </View>
+        
+        {/* Load profile image on top of initials if available */}
+        {hasValidImage && (
+          <View style={[styles.imageOverlay, {
+            width: SUB_CONTAINER_SIZE,
+            height: SUB_CONTAINER_SIZE,
+            borderRadius: SUB_CONTAINER_SIZE / 2,
+          }]}>
+            <AppImage
+              size={size}
+              isRounded
+              source={source}
+              isClickable={isClickable}
+              onPress={onPress}
+              accessibilityRole={isClickable ? 'imagebutton' : 'image'}
+              accessibilityLabel="User profile picture"
+              style={{ backgroundColor: 'transparent' } as ViewStyle}
+              isLoadingVisible={false}
+            />
+          </View>
+        )}
+        
+        {/* Clickable overlay for initials when no image */}
+        {isClickable && !hasValidImage && (
+          <TouchableOpacity
+            style={[styles.clickableOverlay, {
+              width: SUB_CONTAINER_SIZE,
+              height: SUB_CONTAINER_SIZE,
+              borderRadius: SUB_CONTAINER_SIZE / 2,
+            }]}
+            onPress={onPress}
+            activeOpacity={0.7}
+          />
+        )}
       </View>
     </View>
   );
@@ -153,6 +186,21 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  initialsBackground: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  imageOverlay: {
+    position: 'absolute',
+    zIndex: 2,
+    overflow: 'hidden',
+  },
+  clickableOverlay: {
+    position: 'absolute',
+    zIndex: 3,
   },
   charsContainer: {
     flexGrow: 1,

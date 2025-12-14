@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { Configs } from '../../constants/configs';
-import { logServiceError } from '../logger/logger-service';
+import { logger } from '../logger';
 
 const API_BASE_URL = Configs.apiBaseUrl;
 
@@ -58,23 +58,15 @@ export const forgotPassword = async (
     return responseData;
   } catch (error: any) {
     // Log service error with context
-    logServiceError(
-      'auth',
-      'forgot-password-service.ts',
-      'forgotPassword',
-      error,
-      {
-        request: {
-          url: `${API_BASE_URL}/api/auth/forgot-password`,
-          method: 'POST',
-          statusCode: error.response?.status,
-          requestBody: {
-            email: params.email,
-          },
-          responseBody: error.response?.data,
-        },
-      }
-    );
+    logger.error('Failed to send password reset OTP', error, {
+      url: `${API_BASE_URL}/api/auth/forgot-password`,
+      method: 'POST',
+      statusCode: error.response?.status,
+      requestBody: {
+        email: params.email,
+      },
+      responseBody: error.response?.data,
+    });
 
     if (error.response) {
       // Server responded with error

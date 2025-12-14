@@ -67,11 +67,16 @@ function AppImage({
   
   // Handle image source - FastImage needs proper format for local assets on Android
   const getImageSource = () => {
-    if (!source) return Icons.eye_closed; // Fallback icon
+    if (!source) return null; // No placeholder, return null
     
     // If it's a URI (remote image)
     if ((source as { uri?: string })?.uri) {
-      return { uri: (source as { uri: string }).uri, priority: FastImage.priority.high };
+      const uri = (source as { uri: string }).uri;
+      // Only return if URI is valid and not empty
+      if (uri && uri.trim() !== '') {
+        return { uri, priority: FastImage.priority.high };
+      }
+      return null;
     }
     
     // Handle require() assets - check for default export first
@@ -106,6 +111,22 @@ function AppImage({
   
   const imageSource = getImageSource();
 
+  // If no valid source, just render children in a container
+  if (!imageSource) {
+    return (
+      <RippleButton
+        rippleContainerBorderRadius={finalBorderRadius}
+        disabled={!isClickable}
+        onPress={onPress}
+        onLongPress={onLongPress}
+      >
+        <View style={[style, { width, height, borderRadius: finalBorderRadius }] as ImageStyle}>
+          {children}
+        </View>
+      </RippleButton>
+    );
+  }
+
   return (
     <RippleButton
       rippleContainerBorderRadius={finalBorderRadius}
@@ -122,7 +143,7 @@ function AppImage({
         style={[style, { width, height, borderRadius: finalBorderRadius }] as ImageStyle}
         tintColor={(style as ImageStyle)?.tintColor || tintColor}
         resizeMode={resizeMode}
-        source={imageSource || Icons.eye_closed}
+        source={imageSource}
       >
         {isLoadingVisible && (source as { uri?: string })?.uri && (
           <View style={styles.overlay}>
@@ -130,26 +151,8 @@ function AppImage({
               <ActivityIndicator size="small" color={colors.primary} />
             )}
             {status === 'error' && (
-              <View style={styles.errorContainer}>
-                <FastImage
-                  style={{
-                    width: noPreviewIconSize,
-                    height: noPreviewIconSize,
-                  }}
-                  source={Icons.eye_closed}
-                  resizeMode="contain"
-                  tintColor={colors.text || colors.white}
-                />
-                {isNoPreviewTitle && (
-                  <AppText
-                    size={noPreviewTitleSize}
-                    color={colors.white}
-                    style={styles.errorText}
-                  >
-                    No preview available
-                  </AppText>
-                )}
-              </View>
+              // No placeholder - let parent component handle fallback (e.g., initials)
+              null
             )}
           </View>
         )}

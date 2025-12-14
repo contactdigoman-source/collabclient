@@ -19,6 +19,7 @@ import ProfilePhotoScreen from './auth/ProfilePhotoScreen';
 import ProfileDrawerScreen from './profile/ProfileDrawerScreen';
 import ViewProfileScreen from './profile/ViewProfileScreen';
 import UsbDebuggingBlockScreen from './security/UsbDebuggingBlockScreen';
+import DatabaseViewerScreen from './debug/DatabaseViewerScreen';
 
 export {
   FirstTimeLoginScreen,
@@ -42,5 +43,6 @@ export {
   TermsAndConditionsScreen,
   ProfilePhotoScreen,
   UsbDebuggingBlockScreen,
+  DatabaseViewerScreen,
 };
 

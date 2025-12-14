@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useMemo } from 'react';
+import React, { memo, useCallback, useMemo, useState, useEffect } from 'react';
 import { Animated, StyleSheet, AnimatedValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useTheme } from '@react-navigation/native';
@@ -9,6 +9,8 @@ import { UserImage } from '../../components';
 import { NavigationProp } from '../../types/navigation';
 import { PUNCH_DIRECTIONS } from '../../constants';
 import { useAppSelector } from '../../redux';
+import { profileSyncService } from '../../services/sync/profile-sync-service';
+import { getProfile } from '../../services';
 
 interface HomeHeaderProps {
   bgColor?: string | AnimatedValue;
@@ -31,6 +33,31 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const { userData } = useAppSelector(state => state.userState);
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+
+  // Load profile photo from DB
+  useEffect(() => {
+    const loadProfilePhoto = async () => {
+      if (!userData?.email) {
+        setProfilePhoto(userData?.profilePhotoUrl || null);
+        return;
+      }
+      
+      try {
+        const dbProfile = await profileSyncService.loadProfileFromDB(userData.email);
+        if (dbProfile) {
+          setProfilePhoto(dbProfile.profilePhotoUrl || null);
+        } else {
+          setProfilePhoto(userData?.profilePhotoUrl || null);
+        }
+      } catch (error) {
+        console.log('Error loading profile photo from DB:', error);
+        setProfilePhoto(userData?.profilePhotoUrl || null);
+      }
+    };
+    
+    loadProfilePhoto();
+  }, [userData?.email, userData?.profilePhotoUrl]);
 
   const formattedDate = useMemo(
     () =>
@@ -59,16 +86,31 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
     [insets.top, bgColor, borderBottomColor],
   );
 
-  const onProfilePress = useCallback((): void => {
+  const onProfilePress = useCallback(async (): void => {
+    // Sync profile from server when profile icon is clicked
+    if (userData?.email) {
+      try {
+        await getProfile(); // This will sync profile data to DB
+        
+        // Reload profile photo from DB after sync
+        const dbProfile = await profileSyncService.loadProfileFromDB(userData.email);
+        if (dbProfile) {
+          setProfilePhoto(dbProfile.profilePhotoUrl || dbProfile.profilePhoto || null);
+        }
+      } catch (error) {
+        console.log('Error syncing profile on icon click:', error);
+      }
+    }
+    
     navigation.navigate('ProfileDrawerScreen');
-  }, [navigation]);
+  }, [navigation, userData?.email]);
 
   return (
     <Animated.View style={styles.container}>
       <Animated.View style={headerContainerStyle}>
         <UserImage
-          source={userData?.profilePhoto ? { uri: userData.profilePhoto } : null}
-          userName={userData?.profilePhoto ? undefined : userName}
+          source={profilePhoto ? { uri: profilePhoto } : null}
+          userName={profilePhoto ? undefined : (userName || `${userData?.firstName || ''} ${userData?.lastName || ''}`.trim() || 'User')}
           size={wp('10%')}
           isClickable
           punchDirection={punchDirection}

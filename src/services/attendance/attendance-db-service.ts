@@ -1,10 +1,12 @@
 import SQLite from 'react-native-sqlite-storage';
 
 import { store, setUserAttendanceHistory } from '../../redux';
+import { logger } from '../logger';
 
 // 🔹 Debug Logger
-const DEBUG = true;
-const log = (...args: any[]): void => DEBUG && console.log('[SQLite]', ...args);
+const log = (...args: any[]): void => {
+  logger.debug(args.join(' '));
+};
 
 // 🔹 Singleton DB
 let db: SQLite.SQLiteDatabase | null = null;
@@ -14,7 +16,9 @@ export const getDB = (): SQLite.SQLiteDatabase => {
     db = SQLite.openDatabase(
       { name: 'RadiumDB', location: 'default' },
       () => log('Database opened'),
-      (error: any) => console.log('DB open error:', error),
+      (error: any) =>         logger.error('DB open error', error as Error, undefined, {
+          operation: 'open_database',
+        }),
     );
   }
   return db;
@@ -108,7 +112,7 @@ export const createTableForAttendance = async (): Promise<void> => {
           [],
           () => log('Table created successfully'),
           (_tx: SQLite.Transaction, error: SQLite.SQLError) =>
-            console.log('Table creation error:', error),
+            logger.error('Table creation error', error),
         );
 
         // Indexes for performance
@@ -123,7 +127,7 @@ export const createTableForAttendance = async (): Promise<void> => {
         );
       },
       (error: SQLite.SQLError) => {
-        console.log('Transaction error:', error);
+        logger.error('Transaction error', error);
         reject(error);
       },
       () => {
@@ -157,16 +161,20 @@ export const updateTableStructure = (): void => {
                 [],
                 () => log(`Added column: ${col}`),
                 (_tx: SQLite.Transaction, error: SQLite.SQLError) =>
-                  console.log(`Error adding ${col}:`, error),
+            logger.error(`Error adding column: ${col}`, error, undefined, {
+              column: col,
+            }),
               );
             }
           });
         },
         (_tx: SQLite.Transaction, error: SQLite.SQLError) =>
-          console.log('PRAGMA error:', error),
+        logger.error('PRAGMA error', error, undefined, {
+          operation: 'pragma',
+        }),
       );
     },
-    (error: SQLite.SQLError) => console.log('Transaction error:', error),
+    (error: SQLite.SQLError) => logServiceError(error),
     () => {
       if (store.getState().userState?.userData?.email) {
         getAttendanceData(store.getState().userState?.userData?.email);
@@ -191,7 +199,7 @@ const getTableData = (): void => {
         log('Attendance Data:', JSON.stringify(rows, null, 2));
       },
       (_tx: SQLite.Transaction, error: SQLite.SQLError) =>
-        console.log('Fetch error:', error),
+        logger.error('Get attendance data error', error),
     );
   });
 };
@@ -234,7 +242,7 @@ export function insertAttendancePunchRecord(
             resolve(res);
           },
           (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
-            console.log('Insert error:', error);
+            logger.error('Transaction error', error);
             reject(error);
           },
         );
@@ -260,11 +268,11 @@ export const getAttendanceData = (userID: string): void => {
             AllowanceData: safeParseJSON(row.AllowanceData),
           });
         }
-        console.log('getAttendanceData', data);
+        logger.debug(`Retrieved ${data.length} attendance records`);
         store.dispatch(setUserAttendanceHistory(data));
       },
       (_tx: SQLite.Transaction, error: SQLite.SQLError) =>
-        console.log('Get attendance data error:', error),
+        logger.error('Get attendance data error', error),
     );
   });
 };
@@ -288,7 +296,7 @@ export const updateAttendanceSyncState = (
         log('Sync state updated');
       },
       (_tx: SQLite.Transaction, error: SQLite.SQLError) =>
-        console.log('Update sync error:', error),
+        logger.error('Get attendance data error', error),
     );
   });
 };
@@ -313,8 +321,81 @@ export const getUnsyncedAttendanceRecord = (userID: string): void => {
         log('Unsynced records fetched:', unsynced.length);
       },
       (_tx: SQLite.Transaction, error: SQLite.SQLError) =>
-        console.log('Get unsynced records error:', error),
+        logger.error('Get attendance data error', error),
     );
+  });
+};
+
+// 🔹 Get Unsynced Records (Promise-based for sync service)
+export const getUnsyncedAttendanceRecords = (userID: string): Promise<AttendanceHistoryItem[]> => {
+  const db = getDB();
+  return new Promise((resolve, reject) => {
+    db.transaction((tx: SQLite.Transaction) => {
+      tx.executeSql(
+        'SELECT * FROM attendance WHERE IsSynced=? AND UserID=? ORDER BY Timestamp ASC',
+        ['N', userID],
+        (_tx: SQLite.Transaction, results: SQLite.ResultSet) => {
+          const unsynced: AttendanceHistoryItem[] = [];
+          for (let i = 0; i < results.rows.length; i++) {
+            const row = results.rows.item(i);
+            unsynced.push({
+              ...row,
+              AllowanceData: safeParseJSON(row.AllowanceData),
+            });
+          }
+          log('Unsynced records fetched:', unsynced.length);
+          resolve(unsynced);
+        },
+        (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
+          console.log('Get unsynced records error:', error);
+          reject(error);
+        },
+      );
+    }, (error: SQLite.SQLError) => {
+      console.log('Get unsynced records transaction error:', error);
+      reject(error);
+    });
+  });
+};
+
+// 🔹 Mark Attendance Record as Synced
+export const markAttendanceRecordAsSynced = (
+  timestamp: string | number,
+  serverTimestamp?: number,
+): Promise<void> => {
+  const db = getDB();
+  return new Promise((resolve, reject) => {
+    db.transaction((tx: SQLite.Transaction) => {
+      const now = Date.now();
+      const updateSQL = serverTimestamp
+        ? 'UPDATE attendance SET IsSynced=?, lastSyncedAt=?, server_Timestamp=? WHERE Timestamp=?'
+        : 'UPDATE attendance SET IsSynced=?, lastSyncedAt=? WHERE Timestamp=?';
+      const params = serverTimestamp
+        ? ['Y', now, serverTimestamp, timestamp]
+        : ['Y', now, timestamp];
+
+      tx.executeSql(
+        updateSQL,
+        params,
+        () => {
+          log('Marked attendance record as synced:', timestamp);
+          // Update Redux store
+          const history = store.getState().userState.userAttendanceHistory;
+          const updated = history.map((item: AttendanceHistoryItem) =>
+            item.Timestamp === timestamp ? { ...item, IsSynced: 'Y' } : item,
+          );
+          store.dispatch(setUserAttendanceHistory(updated));
+          resolve();
+        },
+        (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
+          logServiceError('attendance', 'attendance-db-service.ts', 'updateAttendanceSyncState', error);
+          reject(error);
+        },
+      );
+    }, (error: SQLite.SQLError) => {
+      logServiceError('attendance', 'attendance-db-service.ts', 'updateAttendanceSyncState', error);
+      reject(error);
+    });
   });
 };
 

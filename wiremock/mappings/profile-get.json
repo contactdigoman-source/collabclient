@@ -29,6 +29,7 @@
       ],
       "createdAt": "2026-01-01T00:00:00Z",
       "lastLoginAt": "2026-01-15T10:00:00Z",
+      "lastSyncedAt": "2024-12-11T10:30:00Z",
       "aadhaarVerification": {
         "isVerified": true,
         "verificationMethod": "FACE_RD",

@@ -235,8 +235,13 @@ export default function ConfirmPunchScreen(): React.JSX.Element {
   }, [isUserCheckedIn, colors]);
 
   const buttonTextColor = useMemo(() => {
-    return isUserCheckedIn ? colors.black_common : colors.white_common;
-  }, [isUserCheckedIn, colors]);
+    if (isUserCheckedIn) {
+      // For checkout button: white in dark mode, black in light mode
+      return appTheme === 'dark' ? colors.white_common : colors.black_common;
+    }
+    // For check-in button: always white
+    return colors.white_common;
+  }, [isUserCheckedIn, colors, appTheme]);
 
   return (
     <View style={styles.container}>

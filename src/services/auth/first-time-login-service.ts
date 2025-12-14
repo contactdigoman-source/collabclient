@@ -1,9 +1,10 @@
 import axios from 'axios';
 import { Configs } from '../../constants/configs';
-import { logServiceError } from '../logger';
+import { logger } from '../logger';
 import { getDeviceUniqueIdentifier } from '../device/device-identifier-service';
 import { store } from '../../redux';
 import { setUserData, setJWTToken, setExpiresAt } from '../../redux/reducers/userReducer';
+import { profileSyncService } from '../sync/profile-sync-service';
 
 // FormData is available globally in React Native
 declare const FormData: any;
@@ -41,6 +42,7 @@ export interface FirstTimeLoginResponse {
     requiresPasswordChange: boolean;
     roles: string[];
     firstTimeLogin: boolean;
+    profilePhotoUrl?: string; // Profile photo URL from server
   };
 }
 
@@ -137,15 +139,36 @@ export const submitFirstTimeLogin = async (data: {
       );
     }
 
-    // If successful, update Redux store
+    // If successful, update Redux store and SQLite
     if (response.data.success && response.data.user) {
+      const userEmail = response.data.user.email;
+      
+      // Determine which profile photo to use: server URL (preferred) or local path
+      const profilePhotoToSave = response.data.user.profilePhotoUrl || data.profilePhoto;
+      
+      // Save profile photo to SQLite (prefer server URL over local path)
+      if (profilePhotoToSave && userEmail) {
+        try {
+          await profileSyncService.saveProfileProperty(userEmail, 'profilePhoto', profilePhotoToSave);
+          // Mark as synced if we got a server URL
+          if (response.data.user.profilePhotoUrl) {
+            await profileSyncService.markPropertyAsSynced(userEmail, 'profilePhoto');
+          }
+        } catch (dbError) {
+          logger.error('Error saving profile photo to SQLite', dbError as Error);
+          // Continue even if SQLite save fails
+        }
+      }
+      
       // Update user data
-      store.dispatch(
-        setUserData({
-          ...response.data.user,
-          firstTimeLogin: false, // Mark as completed
-        }),
-      );
+      const updatedUserData = {
+        ...response.data.user,
+        firstTimeLogin: false, // Mark as completed
+        profilePhoto: profilePhotoToSave,
+        profilePhotoUrl: response.data.user.profilePhotoUrl || profilePhotoToSave,
+      };
+      
+      store.dispatch(setUserData(updatedUserData));
 
       // Store JWT token if provided
       if (response.data.token) {
@@ -165,28 +188,19 @@ export const submitFirstTimeLogin = async (data: {
       error.message ||
       'Failed to submit first-time login data';
 
-    logServiceError(
-      'auth',
-      'first-time-login-service.ts',
-      'submitFirstTimeLogin',
-      error,
-      {
-        request: {
-          url: `${API_BASE_URL}/api/auth/first-time-login`,
-          method: 'POST',
-          statusCode: error.response?.status,
-          requestBody: {
-            email: data.email,
-            firstName: data.firstName,
-            // Don't log password
-          },
-          responseBody: error.response?.data,
-        },
-        metadata: {
-          email: data.email,
-        },
+    logger.error('Failed to submit first-time login', error, {
+      url: `${API_BASE_URL}/api/auth/first-time-login`,
+      method: 'POST',
+      statusCode: error.response?.status,
+      requestBody: {
+        email: data.email,
+        firstName: data.firstName,
+        // Don't log password
       },
-    );
+      responseBody: error.response?.data,
+    }, {
+      email: data.email,
+    });
 
     throw new Error(errorMessage);
   }
