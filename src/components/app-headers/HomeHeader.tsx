@@ -11,6 +11,7 @@ import { PUNCH_DIRECTIONS } from '../../constants';
 import { useAppSelector } from '../../redux';
 import { profileSyncService } from '../../services/sync/profile-sync-service';
 import { getProfile } from '../../services';
+import { getJWTToken } from '../../services/auth/login-service';
 import { logger } from '../../services/logger';
 
 interface HomeHeaderProps {
@@ -123,18 +124,38 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
   );
 
   const onProfilePress = useCallback(async (): Promise<void> => {
-    // Sync profile from server when profile icon is clicked
+    // Sync profile from server when profile icon is clicked (only if authenticated)
     if (userData?.email) {
       try {
-        await getProfile(); // This will sync profile data to DB
-        
-        // Reload profile photo from DB after sync
-        const dbProfile = await profileSyncService.loadProfileFromDB(userData.email);
-        if (dbProfile) {
-          setProfilePhoto(dbProfile.profilePhotoUrl || null);
+        // Check if authentication token exists before attempting to sync
+        const token = await getJWTToken(userData.email);
+        if (token) {
+          await getProfile(); // This will sync profile data to DB
+          
+          // Reload profile photo from DB after sync
+          const dbProfile = await profileSyncService.loadProfileFromDB(userData.email);
+          if (dbProfile) {
+            setProfilePhoto(dbProfile.profilePhotoUrl || null);
+          }
+        } else {
+          // No token - just load from DB without syncing
+          const dbProfile = await profileSyncService.loadProfileFromDB(userData.email);
+          if (dbProfile) {
+            setProfilePhoto(dbProfile.profilePhotoUrl || null);
+          }
         }
       } catch (error) {
+        // Log error but don't prevent navigation
         logger.warn('Error syncing profile on icon click', error);
+        // Still try to load from DB as fallback
+        try {
+          const dbProfile = await profileSyncService.loadProfileFromDB(userData.email);
+          if (dbProfile) {
+            setProfilePhoto(dbProfile.profilePhotoUrl || null);
+          }
+        } catch (dbError) {
+          // Ignore DB errors - just use existing state
+        }
       }
     }
     

@@ -53,3 +53,6 @@ export * from './sync';
 
 // Database services
 export * from './database';
+
+// Administrators services (movie, celebrities, news)
+export * from './administrators';

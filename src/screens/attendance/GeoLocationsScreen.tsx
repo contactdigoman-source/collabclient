@@ -1,45 +1,41 @@
-import React, { useMemo, useCallback, useState } from 'react';
+import React, { useMemo, useCallback, useState, useRef } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Image, Linking, Modal } from 'react-native';
-import { useFocusEffect, useRoute, RouteProp, useTheme } from '@react-navigation/native';
+import { useFocusEffect, useTheme } from '@react-navigation/native';
 import moment from 'moment';
+import { Marker, Region } from 'react-native-maps';
 import {
   AppContainer,
   AppText,
   BackHeader,
+  AppMap,
 } from '../../components';
 import { useAppSelector } from '../../redux';
 import { useTranslation } from '../../hooks/useTranslation';
-import { wp, hp, Icons, FontTypes } from '../../constants';
+import { wp, hp, Icons, FontTypes, DEFAULT_REGION } from '../../constants';
 import { AttendanceRecord } from '../../redux/types/userTypes';
 import { getAttendanceData, getAllAttendanceRecords } from '../../services/attendance/attendance-db-service';
 import { getDaysAttendance } from '../../services/attendance/attendance-service';
 import { DarkThemeColors, APP_THEMES } from '../../themes';
 import { logger } from '../../services/logger';
-
-type GeoLocationsRouteParams = {
-  filterToday?: boolean;
-};
-
-type GeoLocationsRouteProp = RouteProp<{ params: GeoLocationsRouteParams }, 'params'>;
+import MapView from 'react-native-maps';
 
 export default function GeoLocationsScreen(): React.JSX.Element {
-  const route = useRoute<GeoLocationsRouteProp>();
-  const filterTodayParam = route.params?.filterToday || false;
   const { t } = useTranslation();
   const { userAttendanceHistory, userData } = useAppSelector(state => state.userState);
   const { colors } = useTheme();
   const { appTheme } = useAppSelector(state => state.appState);
 
-  // Date range state
+  // Date range state - default to today
   const [startDate, setStartDate] = useState<moment.Moment | null>(
-    filterTodayParam ? moment.utc() : null
+    moment.utc()
   );
   const [endDate, setEndDate] = useState<moment.Moment | null>(
-    filterTodayParam ? moment.utc() : null
+    moment.utc()
   );
   const [showDatePicker, setShowDatePicker] = useState<'start' | 'end' | null>(null);
   const [tempDate, setTempDate] = useState<moment.Moment>(moment.utc());
   const [isLoading, setIsLoading] = useState(false);
+  const mapRef = useRef<MapView>(null);
 
   // Load attendance data from SQL when screen is focused
   useFocusEffect(
@@ -127,6 +123,40 @@ export default function GeoLocationsScreen(): React.JSX.Element {
     return filtered.sort((a, b) => (b.Timestamp || 0) - (a.Timestamp || 0)); // Most recent first
   }, [userAttendanceHistory, startDate, endDate]);
 
+  /** Calculate map region to show all markers */
+  const mapRegion = useMemo<Region>(() => {
+    if (!locationRecords.length) return DEFAULT_REGION;
+    
+    const coordinates = locationRecords
+      .map(record => {
+        if (!record.LatLon) return null;
+        const [lat, lon] = record.LatLon.split(',').map(Number);
+        if (isNaN(lat) || isNaN(lon)) return null;
+        return { latitude: lat, longitude: lon };
+      })
+      .filter((coord): coord is { latitude: number; longitude: number } => coord !== null);
+
+    if (!coordinates.length) return DEFAULT_REGION;
+
+    const latitudes = coordinates.map(c => c.latitude);
+    const longitudes = coordinates.map(c => c.longitude);
+    
+    const minLat = Math.min(...latitudes);
+    const maxLat = Math.max(...latitudes);
+    const minLon = Math.min(...longitudes);
+    const maxLon = Math.max(...longitudes);
+
+    const latDelta = Math.max((maxLat - minLat) * 1.5, 0.01);
+    const lonDelta = Math.max((maxLon - minLon) * 1.5, 0.01);
+
+    return {
+      latitude: (minLat + maxLat) / 2,
+      longitude: (minLon + maxLon) / 2,
+      latitudeDelta: latDelta,
+      longitudeDelta: lonDelta,
+    };
+  }, [locationRecords]);
+
   /** Date selection handlers */
   const handleDatePickerOpen = useCallback((type: 'start' | 'end') => {
     const currentDate = type === 'start' ? startDate : endDate;
@@ -160,8 +190,8 @@ export default function GeoLocationsScreen(): React.JSX.Element {
   }, []);
 
   const handleResetDateRange = useCallback(() => {
-    setStartDate(null);
-    setEndDate(null);
+    setStartDate(moment.utc());
+    setEndDate(moment.utc());
   }, []);
 
   /** Open location in maps app */
@@ -226,16 +256,20 @@ export default function GeoLocationsScreen(): React.JSX.Element {
         backgroundColor: appTheme === APP_THEMES.light
           ? (colors as any).cardBg || '#F6F6F6'
           : DarkThemeColors.black + '40',
+        borderColor: appTheme === APP_THEMES.light
+          ? (colors as any).cardBorder || '#E0E0E0'
+          : DarkThemeColors.white_common + '40',
       }]}>
         <TouchableOpacity
           style={[styles.dateButton, {
-            borderColor: appTheme === APP_THEMES.light
-              ? (colors as any).cardBorder || '#E0E0E0'
-              : DarkThemeColors.white_common + '40',
+            borderColor: colors.primary,
+            backgroundColor: startDate 
+              ? (appTheme === APP_THEMES.light ? colors.primary + '20' : colors.primary + '30')
+              : (appTheme === APP_THEMES.light ? 'transparent' : DarkThemeColors.cardBg),
           }]}
           onPress={() => handleDatePickerOpen('start')}
         >
-          <AppText size={hp(1.8)} color={colors.text}>
+          <AppText size={hp(1.8)} color={startDate ? colors.primary : colors.text}>
             {startDate ? startDate.format('DD MMM YY') : t('attendance.selectStartDate', 'Start Date')}
           </AppText>
         </TouchableOpacity>
@@ -246,27 +280,26 @@ export default function GeoLocationsScreen(): React.JSX.Element {
         
         <TouchableOpacity
           style={[styles.dateButton, {
-            borderColor: appTheme === APP_THEMES.light
-              ? (colors as any).cardBorder || '#E0E0E0'
-              : DarkThemeColors.white_common + '40',
+            borderColor: colors.primary,
+            backgroundColor: endDate 
+              ? (appTheme === APP_THEMES.light ? colors.primary + '20' : colors.primary + '30')
+              : (appTheme === APP_THEMES.light ? 'transparent' : DarkThemeColors.cardBg),
           }]}
           onPress={() => handleDatePickerOpen('end')}
         >
-          <AppText size={hp(1.8)} color={colors.text}>
+          <AppText size={hp(1.8)} color={endDate ? colors.primary : colors.text}>
             {endDate ? endDate.format('DD MMM YY') : t('attendance.selectEndDate', 'End Date')}
           </AppText>
         </TouchableOpacity>
 
-        {(startDate || endDate) && (
-          <TouchableOpacity
-            style={styles.resetButton}
-            onPress={handleResetDateRange}
-          >
-            <AppText size={hp(1.6)} color={colors.text} style={{ opacity: 0.7 }}>
-              {t('common.reset', 'Reset')}
-            </AppText>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          style={styles.resetButton}
+          onPress={handleResetDateRange}
+        >
+          <AppText size={hp(1.6)} color={colors.text} style={{ opacity: 0.7 }}>
+            {t('common.reset', 'Reset')}
+          </AppText>
+        </TouchableOpacity>
       </View>
 
       {/* Loading indicator */}
@@ -275,6 +308,33 @@ export default function GeoLocationsScreen(): React.JSX.Element {
           <AppText style={styles.loadingText}>
             {t('attendance.loading', 'Loading...')}
           </AppText>
+        </View>
+      )}
+
+      {/* Map View */}
+      {locationRecords.length > 0 && (
+        <View style={styles.mapContainer}>
+          <AppMap
+            ref={mapRef}
+            style={styles.map}
+            region={mapRegion}
+          >
+            {locationRecords.map((record, index) => {
+              if (!record.LatLon) return null;
+              const [lat, lon] = record.LatLon.split(',').map(Number);
+              if (isNaN(lat) || isNaN(lon)) return null;
+              
+              return (
+                <Marker
+                  key={`${record.Timestamp}-${index}`}
+                  coordinate={{ latitude: lat, longitude: lon }}
+                  title={record.Address || 'Location'}
+                  description={`${moment(record.Timestamp).format('DD MMM YY hh:mm A')} - ${record.PunchDirection === 'IN' ? 'Check In' : 'Check Out'}`}
+                  onPress={() => openInMaps(record.LatLon!, record.Address || '')}
+                />
+              );
+            })}
+          </AppMap>
         </View>
       )}
 
@@ -314,10 +374,12 @@ export default function GeoLocationsScreen(): React.JSX.Element {
             <View style={styles.datePickerContainer}>
               <View style={styles.datePickerRow}>
                 <TouchableOpacity
-                  style={styles.datePickerButton}
+                  style={[styles.datePickerButton, {
+                    backgroundColor: appTheme === APP_THEMES.light ? '#F0F0F0' : colors.primary,
+                  }]}
                   onPress={() => changeDate('year', -1)}
                 >
-                  <AppText size={hp(2)} color={colors.text}>−</AppText>
+                  <AppText size={hp(2)} color={appTheme === APP_THEMES.light ? colors.text : '#FFFFFF'}>−</AppText>
                 </TouchableOpacity>
                 <View style={styles.datePickerValue}>
                   <AppText size={hp(2.5)} fontType={FontTypes.medium} color={colors.text}>
@@ -326,19 +388,23 @@ export default function GeoLocationsScreen(): React.JSX.Element {
                   <AppText size={hp(1.5)} color={colors.text} style={{ opacity: 0.7 }}>Year</AppText>
                 </View>
                 <TouchableOpacity
-                  style={styles.datePickerButton}
+                  style={[styles.datePickerButton, {
+                    backgroundColor: appTheme === APP_THEMES.light ? '#F0F0F0' : colors.primary,
+                  }]}
                   onPress={() => changeDate('year', 1)}
                 >
-                  <AppText size={hp(2)} color={colors.text}>+</AppText>
+                  <AppText size={hp(2)} color={appTheme === APP_THEMES.light ? colors.text : '#FFFFFF'}>+</AppText>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.datePickerRow}>
                 <TouchableOpacity
-                  style={styles.datePickerButton}
+                  style={[styles.datePickerButton, {
+                    backgroundColor: appTheme === APP_THEMES.light ? '#F0F0F0' : colors.primary,
+                  }]}
                   onPress={() => changeDate('month', -1)}
                 >
-                  <AppText size={hp(2)} color={colors.text}>−</AppText>
+                  <AppText size={hp(2)} color={appTheme === APP_THEMES.light ? colors.text : '#FFFFFF'}>−</AppText>
                 </TouchableOpacity>
                 <View style={styles.datePickerValue}>
                   <AppText size={hp(2.5)} fontType={FontTypes.medium} color={colors.text}>
@@ -347,19 +413,23 @@ export default function GeoLocationsScreen(): React.JSX.Element {
                   <AppText size={hp(1.5)} color={colors.text} style={{ opacity: 0.7 }}>Month</AppText>
                 </View>
                 <TouchableOpacity
-                  style={styles.datePickerButton}
+                  style={[styles.datePickerButton, {
+                    backgroundColor: appTheme === APP_THEMES.light ? '#F0F0F0' : colors.primary,
+                  }]}
                   onPress={() => changeDate('month', 1)}
                 >
-                  <AppText size={hp(2)} color={colors.text}>+</AppText>
+                  <AppText size={hp(2)} color={appTheme === APP_THEMES.light ? colors.text : '#FFFFFF'}>+</AppText>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.datePickerRow}>
                 <TouchableOpacity
-                  style={styles.datePickerButton}
+                  style={[styles.datePickerButton, {
+                    backgroundColor: appTheme === APP_THEMES.light ? '#F0F0F0' : colors.primary,
+                  }]}
                   onPress={() => changeDate('day', -1)}
                 >
-                  <AppText size={hp(2)} color={colors.text}>−</AppText>
+                  <AppText size={hp(2)} color={appTheme === APP_THEMES.light ? colors.text : '#FFFFFF'}>−</AppText>
                 </TouchableOpacity>
                 <View style={styles.datePickerValue}>
                   <AppText size={hp(2.5)} fontType={FontTypes.medium} color={colors.text}>
@@ -368,10 +438,12 @@ export default function GeoLocationsScreen(): React.JSX.Element {
                   <AppText size={hp(1.5)} color={colors.text} style={{ opacity: 0.7 }}>Day</AppText>
                 </View>
                 <TouchableOpacity
-                  style={styles.datePickerButton}
+                  style={[styles.datePickerButton, {
+                    backgroundColor: appTheme === APP_THEMES.light ? '#F0F0F0' : colors.primary,
+                  }]}
                   onPress={() => changeDate('day', 1)}
                 >
-                  <AppText size={hp(2)} color={colors.text}>+</AppText>
+                  <AppText size={hp(2)} color={appTheme === APP_THEMES.light ? colors.text : '#FFFFFF'}>+</AppText>
                 </TouchableOpacity>
               </View>
             </View>
@@ -381,7 +453,7 @@ export default function GeoLocationsScreen(): React.JSX.Element {
                 style={[styles.modalButton, styles.cancelButton]}
                 onPress={handleDatePickerCancel}
               >
-                <AppText size={hp(2)} color={colors.text}>
+                <AppText size={hp(2)} color={appTheme === APP_THEMES.light ? colors.text : '#000000'}>
                   {t('common.cancel', 'Cancel')}
                 </AppText>
               </TouchableOpacity>
@@ -458,6 +530,18 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: wp(3.5),
     opacity: 0.7,
+  },
+  mapContainer: {
+    height: hp(30),
+    marginHorizontal: wp(4.27),
+    marginTop: hp(1),
+    marginBottom: hp(1),
+    borderRadius: wp(2),
+    overflow: 'hidden',
+  },
+  map: {
+    width: '100%',
+    height: '100%',
   },
   locationCard: {
     padding: hp(2),

@@ -60,6 +60,56 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
     return safeAreaTop + paddingVertical + contentHeight + hp(1); // Add extra buffer
   }, [insets.top]);
 
+  // Get today's attendance records (first check-in and last checkout) in UTC date format
+  const todayAttendance = useMemo(() => {
+    if (!userAttendanceHistory || userAttendanceHistory.length === 0) {
+      return { checkIn: null, checkout: null };
+    }
+    
+    const today = moment.utc().format('YYYY-MM-DD');
+    
+    // Find today's check-in and checkout records
+    let checkIn: typeof userAttendanceHistory[0] | null = null;
+    let checkout: typeof userAttendanceHistory[0] | null = null;
+    let checkoutTimestamp = 0;
+    
+    for (const record of userAttendanceHistory) {
+      // Check DateOfPunch field first, then derive from Timestamp
+      let recordDate: string;
+      if (record.DateOfPunch) {
+        recordDate = record.DateOfPunch;
+      } else if (record.Timestamp) {
+        const timestamp = typeof record.Timestamp === 'string' 
+          ? parseInt(record.Timestamp, 10) 
+          : record.Timestamp;
+        recordDate = moment.utc(timestamp).format('YYYY-MM-DD');
+      } else {
+        continue;
+      }
+      
+      if (recordDate === today) {
+        const timestamp = typeof record.Timestamp === 'string' 
+          ? parseInt(record.Timestamp, 10) 
+          : record.Timestamp;
+        
+        if (record.PunchDirection === 'IN') {
+          // Get first check-in of the day (earliest timestamp)
+          if (!checkIn || timestamp < (typeof checkIn.Timestamp === 'string' ? parseInt(checkIn.Timestamp, 10) : checkIn.Timestamp)) {
+            checkIn = record;
+          }
+        } else if (record.PunchDirection === 'OUT') {
+          // Get last checkout of the day (most recent/latest timestamp)
+          if (timestamp > checkoutTimestamp) {
+            checkout = record;
+            checkoutTimestamp = timestamp;
+          }
+        }
+      }
+    }
+    
+    return { checkIn, checkout };
+  }, [userAttendanceHistory]);
+
   // Load attendance data from database
   const loadAttendanceData = useCallback(async (isRefresh = false) => {
     try {
@@ -268,8 +318,15 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
       <HomeHeader
         userName={`${userData?.firstName || ''} ${userData?.lastName || ''}`}
         borderBottomColor={(colors as any).home_header_border || DarkThemeColors.home_header_border}
-        punchTimestamp={userLastAttendance?.Timestamp}
-        punchDirection={userLastAttendance?.PunchDirection}
+        punchTimestamp={
+          // Only show today's check-in time (first check-in)
+          todayAttendance.checkIn?.Timestamp || undefined
+        }
+        checkoutTimestamp={
+          // Only show today's checkout time (last checkout)
+          todayAttendance.checkout?.Timestamp || undefined
+        }
+        punchDirection={todayAttendance.checkIn?.PunchDirection || undefined}
       />
       
       {/* Month Switcher Header */}

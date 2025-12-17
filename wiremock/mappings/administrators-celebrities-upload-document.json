@@ -1,0 +1,34 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/api/administrators/celebrities/upload-document",
+    "headers": {
+      "Content-Type": {
+        "matches": "multipart/form-data.*"
+      }
+    },
+    "multipartPatterns": [
+      {
+        "matchingType": "ANY",
+        "headers": {
+          "Content-Disposition": {
+            "matches": ".*name=\"document\".*"
+          }
+        }
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "success": true,
+      "message": "Celebrity document uploaded successfully",
+      "documentUrl": "https://example.com/documents/celebrity-1.pdf",
+      "documentName": "document.pdf"
+    }
+  }
+}
+

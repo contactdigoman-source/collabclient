@@ -38,6 +38,7 @@ import {
   getProfile,
   insertAttendancePunchRecord,
 } from '../../services';
+import { getJWTToken } from '../../services/auth/login-service';
 import { needsAutoCheckout } from '../../utils/shift-utils';
 import { setUserLastAttendance } from '../../redux/reducers/userReducer';
 import {
@@ -430,7 +431,12 @@ export default function HomeScreen(): React.JSX.Element {
     const email = userData?.email;
     if (email) {
       try {
-        await getProfile(); // This will sync profile data to DB
+        // Check if authentication token exists before attempting to sync
+        const token = await getJWTToken(email);
+        if (token) {
+          await getProfile(); // This will sync profile data to DB
+        }
+        // If no token, skip sync silently (user might not be logged in)
       } catch (error) {
         logger.error('Error syncing profile on pull-to-refresh', error);
       }

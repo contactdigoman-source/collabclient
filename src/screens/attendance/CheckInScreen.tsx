@@ -21,6 +21,7 @@ import Geolocation from '@react-native-community/geolocation';
 import {
   requestLocationPermission,
   watchUserLocation,
+  clearWatch,
   getLocationFromLatLon,
   isLocationEnabled,
   cancelBreakReminderNotifications,
@@ -64,14 +65,26 @@ export default function CheckInScreen(): React.JSX.Element {
   const [currentAddress, setCurrentAddress] = useState<string | null>(null);
   const [isFetchingAddress, setIsFetchingAddress] = useState<boolean>(false);
   const [showEarlyCheckoutModal, setShowEarlyCheckoutModal] = useState<boolean>(false);
+  const [isProcessingCheckIn, setIsProcessingCheckIn] = useState<boolean>(false);
+  
+  // Refs to prevent infinite loops and state changes during navigation
+  const addressFetchedRef = useRef<boolean>(false);
+  const lastLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  const buttonStateLockedRef = useRef<boolean>(false);
+  const watchIdRef = useRef<number | null>(null);
+  const isWatchingRef = useRef<boolean>(false);
 
   const isUserCheckedIn = useMemo(() => {
     return userLastAttendance?.PunchDirection === PUNCH_DIRECTIONS.in;
   }, [userLastAttendance?.PunchDirection]);
 
   const stopWatching = useCallback((): void => {
-    // watchIdRef is not needed here as watchUserLocation handles it internally
-    // Just clear any existing watch
+    if (watchIdRef.current !== null) {
+      logger.debug('stopWatching: Clearing watch', { watchId: watchIdRef.current });
+      clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+      isWatchingRef.current = false;
+    }
   }, []);
 
   const handleLocationUpdate = useCallback(
@@ -79,6 +92,16 @@ export default function CheckInScreen(): React.JSX.Element {
       logger.debug('handleLocationUpdate: Called with coords', { coords });
       if (!coords) {
         logger.debug('handleLocationUpdate: No coords, returning');
+        return;
+      }
+
+      // Check if location has actually changed significantly (prevent unnecessary updates)
+      const hasLocationChanged = !lastLocationRef.current || 
+        Math.abs(lastLocationRef.current.latitude - coords.latitude) > 0.0001 ||
+        Math.abs(lastLocationRef.current.longitude - coords.longitude) > 0.0001;
+
+      if (!hasLocationChanged && !isFetchingLocation) {
+        logger.debug('handleLocationUpdate: Location unchanged, skipping update');
         return;
       }
 
@@ -90,13 +113,20 @@ export default function CheckInScreen(): React.JSX.Element {
         longitudeDelta: coords.longitudeDelta || ZOOM_IN_DELTA,
       };
 
+      // Update last location ref
+      lastLocationRef.current = {
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      };
+
       logger.debug('handleLocationUpdate: Dispatching location region');
       dispatch(setUserLocationRegion(locationRegion));
       setIsFetchingLocation(false);
 
-      // Fetch address immediately when location is available using Google API
-      if (coords.latitude && coords.longitude) {
+      // Fetch address immediately when location is available using Google API (only if not already fetched)
+      if (coords.latitude && coords.longitude && !addressFetchedRef.current && !currentAddress) {
         logger.debug('handleLocationUpdate: Fetching address from Google API', { latitude: coords.latitude, longitude: coords.longitude });
+        addressFetchedRef.current = true;
         setIsFetchingAddress(true);
         getLocationFromLatLon(coords.latitude, coords.longitude)
           .then((address) => {
@@ -108,12 +138,17 @@ export default function CheckInScreen(): React.JSX.Element {
             logger.warn('handleLocationUpdate: Error fetching address from Google API', error);
             setCurrentAddress(null);
             setIsFetchingAddress(false);
+            addressFetchedRef.current = false; // Allow retry on error
           });
       } else {
-        logger.debug('handleLocationUpdate: Missing latitude or longitude');
+        logger.debug('handleLocationUpdate: Skipping address fetch', { 
+          alreadyFetched: addressFetchedRef.current, 
+          hasAddress: !!currentAddress 
+        });
       }
 
-      if (mapRef.current) {
+      // Only animate map on initial location or significant location change
+      if (mapRef.current && (isFetchingLocation || hasLocationChanged)) {
         logger.debug('handleLocationUpdate: Animating map to region');
         // Focus on current location when location updates
         mapRef.current.animateToRegion(
@@ -126,10 +161,10 @@ export default function CheckInScreen(): React.JSX.Element {
           1000,
         );
       } else {
-        logger.debug('handleLocationUpdate: mapRef.current is null');
+        logger.debug('handleLocationUpdate: Skipping map animation');
       }
     },
-    [dispatch],
+    [dispatch, isFetchingLocation, currentAddress],
   );
 
   const onCancelPress = useCallback((): void => {
@@ -137,6 +172,12 @@ export default function CheckInScreen(): React.JSX.Element {
   }, [navigation]);
 
   const startWatching = useCallback(async (): Promise<void> => {
+    // Prevent multiple simultaneous watch starts
+    if (isWatchingRef.current) {
+      logger.debug('startWatching: Already watching, skipping');
+      return;
+    }
+
     logger.debug('startWatching: Starting location watch');
     const granted = await requestLocationPermission(onCancelPress);
     if (!granted) {
@@ -150,6 +191,7 @@ export default function CheckInScreen(): React.JSX.Element {
     if (isLocationOn) {
       logger.debug('startWatching: Location is enabled, fetching current position and starting watch');
       setIsFetchingLocation(true);
+      isWatchingRef.current = true;
       
       // Get current position first (this will call handleLocationUpdate immediately)
       Geolocation.getCurrentPosition(
@@ -159,12 +201,15 @@ export default function CheckInScreen(): React.JSX.Element {
         },
         (error) => {
           logger.warn('startWatching: Error getting current position', error);
+          setIsFetchingLocation(false);
         },
         { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 },
       );
       
       // Then start watching for updates
-      watchUserLocation(handleLocationUpdate);
+      const watchId = watchUserLocation(handleLocationUpdate);
+      watchIdRef.current = watchId;
+      logger.debug('startWatching: Watch started', { watchId });
     } else {
       logger.debug('startWatching: Location is not enabled');
       navigation.goBack();
@@ -173,28 +218,28 @@ export default function CheckInScreen(): React.JSX.Element {
 
   useEffect(() => {
     startWatching();
-    return stopWatching;
-  }, [startWatching, stopWatching]);
+    return () => {
+      stopWatching();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
-  // Fetch address when location region changes (backup/retry mechanism)
+  // Fetch address when location region changes (backup/retry mechanism) - only once on initial load
   useEffect(() => {
     const fetchAddress = async (): Promise<void> => {
-      // Always try to fetch address if we have location and don't have address yet
+      // Only fetch if we have location, don't have address, and haven't already fetched
       if (
         userLocationRegion?.latitude &&
         userLocationRegion?.longitude &&
-        !isFetchingLocation
+        !isFetchingLocation &&
+        !addressFetchedRef.current &&
+        !currentAddress
       ) {
-        // Only fetch if we don't already have an address
-        if (currentAddress) {
-          logger.debug('useEffect: Address already exists, skipping fetch');
-          return;
-        }
-
         logger.debug('useEffect: Fetching address from Google API', { 
           latitude: userLocationRegion.latitude, 
           longitude: userLocationRegion.longitude 
         });
+        addressFetchedRef.current = true;
         setIsFetchingAddress(true);
         try {
           // Use Google API to get address
@@ -204,34 +249,24 @@ export default function CheckInScreen(): React.JSX.Element {
           );
           logger.debug('useEffect: Address fetched from Google API', { address });
           setCurrentAddress(address);
-          
-          // Focus map on current location when address is fetched
-          if (mapRef.current) {
-            mapRef.current.animateToRegion(
-              {
-                latitude: userLocationRegion.latitude,
-                longitude: userLocationRegion.longitude,
-                latitudeDelta: ZOOM_IN_DELTA,
-                longitudeDelta: ZOOM_IN_DELTA,
-              },
-              500,
-            );
-          }
         } catch (error) {
           logger.warn('useEffect: Error fetching address from Google API', error);
           setCurrentAddress(null);
+          addressFetchedRef.current = false; // Allow retry on error
         } finally {
           setIsFetchingAddress(false);
         }
       } else {
         logger.debug('useEffect: Skipping address fetch', { 
           isFetchingLocation, 
-          hasLocation: !!userLocationRegion?.latitude 
+          hasLocation: !!userLocationRegion?.latitude,
+          alreadyFetched: addressFetchedRef.current,
+          hasAddress: !!currentAddress
         });
       }
     };
 
-    // Fetch address when location is ready
+    // Fetch address when location is ready (only once)
     fetchAddress();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userLocationRegion?.latitude, userLocationRegion?.longitude, isFetchingLocation]);
@@ -298,13 +333,24 @@ export default function CheckInScreen(): React.JSX.Element {
   }, [isUserCheckedIn, userLastAttendance?.CreatedOn]);
 
   const onCheckInPress = useCallback(async (): Promise<void> => {
+    // Prevent multiple simultaneous check-in/out attempts
+    if (isProcessingCheckIn) {
+      logger.debug('onCheckInPress: Already processing, skipping');
+      return;
+    }
+
     // If checking out and hours worked is less than 9, show early checkout modal
     if (isUserCheckedIn && hoursWorked < 9) {
       setShowEarlyCheckoutModal(true);
       return;
     }
 
-    // Proceed with normal check-in/check-out
+    // Lock button state to prevent text changes during processing
+    buttonStateLockedRef.current = true;
+    setIsProcessingCheckIn(true);
+
+    // Store current state to prevent changes during navigation
+    const currentIsCheckedIn = isUserCheckedIn;
     const currentTimeTS = getCurrentTimestamp();
     const currentDate = getCurrentDate();
 
@@ -314,7 +360,7 @@ export default function CheckInScreen(): React.JSX.Element {
         orgID: '123',
         userID: userData?.email || '',
         punchType: 'CHECK',
-        punchDirection: isUserCheckedIn
+        punchDirection: currentIsCheckedIn
           ? PUNCH_DIRECTIONS.out
           : PUNCH_DIRECTIONS.in,
         latLon: userLocationRegion
@@ -337,7 +383,7 @@ export default function CheckInScreen(): React.JSX.Element {
       });
 
       // Cancel break notifications when checking in (returning from break)
-      if (isUserCheckedIn) {
+      if (currentIsCheckedIn) {
         cancelBreakReminderNotifications();
       }
 
@@ -346,16 +392,18 @@ export default function CheckInScreen(): React.JSX.Element {
       // but we call it here as well to ensure state is updated before navigation
       if (userData?.email) {
         await getAttendanceData(userData.email);
-        // Small delay to ensure Redux state has propagated and components have re-rendered
-        await new Promise(resolve => setTimeout(resolve, 100));
       }
     } catch (error) {
       logger.error('Error inserting attendance record', error);
+      // Reset processing state on error
+      setIsProcessingCheckIn(false);
+      buttonStateLockedRef.current = false;
       // Show error to user or handle gracefully
       return; // Don't navigate if insert failed
     }
 
-    // Navigate to DashboardScreen (home) and reset the stack
+    // Navigate immediately without waiting for state propagation
+    // The state will update in the background, but we navigate before it changes
     navigation.dispatch(
       CommonActions.reset({
         index: 0,
@@ -370,11 +418,15 @@ export default function CheckInScreen(): React.JSX.Element {
     currentAddress,
     getCurrentTimestamp,
     hoursWorked,
+    isProcessingCheckIn,
   ]);
 
   const handleBreakStatusSelect = useCallback(
     async (status: string): Promise<void> => {
       setShowEarlyCheckoutModal(false);
+      buttonStateLockedRef.current = true;
+      setIsProcessingCheckIn(true);
+      
       const currentTimeTS = getCurrentTimestamp();
       const currentDate = getCurrentDate();
 
@@ -418,6 +470,8 @@ export default function CheckInScreen(): React.JSX.Element {
         );
       } catch (error) {
         logger.error('Error inserting attendance record', error);
+        setIsProcessingCheckIn(false);
+        buttonStateLockedRef.current = false;
       }
     },
     [
@@ -431,6 +485,9 @@ export default function CheckInScreen(): React.JSX.Element {
 
   const handleSkip = useCallback(async (): Promise<void> => {
     setShowEarlyCheckoutModal(false);
+    buttonStateLockedRef.current = true;
+    setIsProcessingCheckIn(true);
+    
     const currentTimeTS = getCurrentTimestamp();
     const currentDate = getCurrentDate();
 
@@ -463,8 +520,6 @@ export default function CheckInScreen(): React.JSX.Element {
       // Refresh attendance data from database to update Redux state
       if (userData?.email) {
         await getAttendanceData(userData.email);
-        // Small delay to ensure Redux state has propagated
-        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       // Navigate to DashboardScreen (home) and reset the stack
@@ -476,6 +531,8 @@ export default function CheckInScreen(): React.JSX.Element {
       );
     } catch (error) {
       logger.error('Error inserting attendance record', error);
+      setIsProcessingCheckIn(false);
+      buttonStateLockedRef.current = false;
     }
   }, [
     userLocationRegion,
@@ -486,6 +543,18 @@ export default function CheckInScreen(): React.JSX.Element {
   ]);
 
   const buttonText = useMemo(() => {
+    // If button state is locked (during check-in/out), don't change text
+    if (buttonStateLockedRef.current) {
+      // Return text based on the state when lock was applied
+      if (isUserCheckedIn) {
+        return 'Confirm Check Out';
+      }
+      return 'Confirm CheckIn';
+    }
+    
+    if (isProcessingCheckIn) {
+      return t('attendance.processing') || 'Processing...';
+    }
     if (isFetchingLocation || isFetchingAddress) {
       return t('attendance.fetchingLocation') || 'Fetching Location...';
     }
@@ -496,7 +565,7 @@ export default function CheckInScreen(): React.JSX.Element {
       return 'Confirm Check Out';
     }
     return 'Confirm CheckIn';
-  }, [isUserCheckedIn, isFetchingLocation, isFetchingAddress, permissionDenied, t]);
+  }, [isUserCheckedIn, isFetchingLocation, isFetchingAddress, permissionDenied, isProcessingCheckIn, t]);
 
   const handleClosePress = useCallback((): void => {
     navigation.goBack();
@@ -628,11 +697,11 @@ export default function CheckInScreen(): React.JSX.Element {
         </View>
 
         <AppButton
-          disabled={isFetchingLocation || permissionDenied || !userLocationRegion?.latitude || !userLocationRegion?.longitude}
+          disabled={isFetchingLocation || permissionDenied || !userLocationRegion?.latitude || !userLocationRegion?.longitude || isProcessingCheckIn}
           title={buttonText}
           titleColor={buttonTextColor}
           titleSize={hp(2.24)} // Standard button text size
-          loading={isFetchingLocation || isFetchingAddress}
+          loading={isFetchingLocation || isFetchingAddress || isProcessingCheckIn}
           style={{
             ...styles.checkInButton,
             backgroundColor: buttonStyle.backgroundColor,
