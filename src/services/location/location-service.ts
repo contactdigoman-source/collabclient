@@ -10,6 +10,7 @@ import axios from 'axios';
 
 import { store, setUserLocationRegion } from '../../redux';
 import { Configs } from '../../constants';
+import { logger } from '../logger';
 
 interface LocationEnablerModule {
   isLocationEnabled: () => Promise<boolean>;
@@ -23,7 +24,7 @@ const { LocationEnabler } = NativeModules as {
 export const isLocationEnabled = async (): Promise<boolean> => {
   if (Platform.OS === 'android') {
     if (!LocationEnabler) {
-      console.warn('LocationEnabler native module not found');
+      logger.warn('LocationEnabler native module not found');
       return false;
     }
     // 2️⃣ Check if location is ON
@@ -66,7 +67,7 @@ export async function requestLocationPermission(
 
     return true; // already on
   } catch (error) {
-    console.log('Error checking location:', error);
+    logger.warn('Error checking location', error);
     return false;
   }
 }
@@ -75,7 +76,7 @@ export function openAppSettings(): void {
   try {
     Linking.openSettings();
   } catch (error) {
-    console.log('openSettings error', error);
+    logger.warn('openSettings error', error);
   }
 }
 
@@ -110,7 +111,7 @@ export const getLocationFromLatLon = async (
     const apiKey = Configs.googleMapsApiKey;
     const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`;
     
-    console.log('Calling Google Geocoding API:', url.replace(apiKey, 'API_KEY_HIDDEN'));
+    logger.debug('Calling Google Geocoding API', { url: url.replace(apiKey, 'API_KEY_HIDDEN') });
     
     const { data } = await axios.get<{
       results?: Array<{ formatted_address?: string }>;
@@ -118,20 +119,20 @@ export const getLocationFromLatLon = async (
       error_message?: string;
     }>(url);
 
-    console.log('Google Geocoding API response status:', data?.status);
+    logger.debug('Google Geocoding API response status', { status: data?.status });
     
     if (data?.status === 'OK' && data?.results && data.results.length > 0) {
       const address = data.results[0]?.formatted_address || null;
-      console.log('Google API returned address:', address);
+      logger.debug('Google API returned address', { address });
       return address;
     } else {
-      console.log('Google API error:', data?.status, data?.error_message);
+      logger.debug('Google API error', { status: data?.status, errorMessage: data?.error_message });
       return null;
     }
   } catch (error: any) {
-    console.log('Error fetching address from Google API:', error?.message || error);
+    logger.warn('Error fetching address from Google API', error, undefined, { message: error?.message });
     if (error?.response) {
-      console.log('API Error Response:', error.response.status, error.response.data);
+      logger.debug('API Error Response', { status: error.response.status, data: error.response.data });
     }
     return null;
   }
@@ -145,7 +146,7 @@ export function watchUserLocation(
       onLocationUpdate(position.coords);
     },
     error => {
-      console.log('Watch error:', error);
+      logger.warn('Watch error', error);
     },
     { enableHighAccuracy: true, distanceFilter: 0, interval: 5000 }, // update every 5s
   );

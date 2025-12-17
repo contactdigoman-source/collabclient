@@ -4,10 +4,9 @@ import { attendanceSyncService } from './attendance-sync-service';
 import { settingsSyncService } from './settings-sync-service';
 import { syncQueueService } from './sync-queue-service';
 import { retryService } from './retry-service';
-import { logServiceError } from '../logger';
+import { logger } from '../logger';
 
-const DEBUG = true;
-const log = (...args: any[]): void => DEBUG && console.log('[SyncCoordinator]', ...args);
+// Removed DEBUG log helper - use logger.debug() directly
 
 export interface SyncResult {
   success: boolean;
@@ -39,14 +38,14 @@ class SyncCoordinator {
       // Check network connectivity
       const isOnline = await networkService.isConnected();
       if (!isOnline) {
-        log('Offline - cannot sync');
+        logger.debug('[SyncCoordinator] Offline - cannot sync');
         result.success = false;
         result.errors.push('No network connection');
         return result;
       }
 
       // Phase 1: Push unsynced items
-      log('Starting push phase...');
+      logger.debug('[SyncCoordinator] Starting push phase...');
       const pushResult = await this.syncPushOnly(email, userID);
       result.profile = pushResult.profile;
       result.attendance = pushResult.attendance;
@@ -55,21 +54,15 @@ class SyncCoordinator {
 
       // Phase 2: Pull from server (only if push was successful)
       if (pushResult.success) {
-        log('Starting pull phase...');
+        logger.debug('[SyncCoordinator] Starting pull phase...');
         await this.syncPullOnly(email, userID);
       }
 
       result.success = pushResult.success && result.errors.length === 0;
-      log('Sync completed:', result);
+      logger.debug('[SyncCoordinator] Sync completed', { result });
       return result;
     } catch (error: any) {
-      logServiceError(
-        'sync',
-        'sync-coordinator.ts',
-        'syncAll',
-        error,
-        { email, userID },
-      );
+      logger.error('syncAll error', error, undefined, { email, userID });
       result.success = false;
       result.errors.push(error.message || 'Unknown error');
       return result;
@@ -92,7 +85,7 @@ class SyncCoordinator {
       // Check network connectivity
       const isOnline = await networkService.isConnected();
       if (!isOnline) {
-        log('Offline - cannot push');
+        logger.debug('[SyncCoordinator] Offline - cannot push');
         result.success = false;
         result.errors.push('No network connection');
         return result;
@@ -101,7 +94,7 @@ class SyncCoordinator {
       // Push unsynced profile properties
       try {
         result.profile = await profileSyncService.syncAllUnsyncedProperties(email);
-        log(`Profile sync: ${result.profile.success} succeeded, ${result.profile.failed} failed`);
+        logger.debug('[SyncCoordinator] Profile sync', { succeeded: result.profile.success, failed: result.profile.failed });
       } catch (error: any) {
         result.errors.push(`Profile sync error: ${error.message}`);
         result.success = false;
@@ -110,7 +103,7 @@ class SyncCoordinator {
       // Push unsynced attendance records
       try {
         result.attendance = await attendanceSyncService.syncAllUnsyncedAttendance(userID);
-        log(`Attendance sync: ${result.attendance.success} succeeded, ${result.attendance.failed} failed`);
+        logger.debug('[SyncCoordinator] Attendance sync', { succeeded: result.attendance.success, failed: result.attendance.failed });
       } catch (error: any) {
         result.errors.push(`Attendance sync error: ${error.message}`);
         result.success = false;
@@ -119,7 +112,7 @@ class SyncCoordinator {
       // Push unsynced settings
       try {
         result.settings = await settingsSyncService.syncAllUnsyncedSettings();
-        log(`Settings sync: ${result.settings.success} succeeded, ${result.settings.failed} failed`);
+        logger.debug('[SyncCoordinator] Settings sync', { succeeded: result.settings.success, failed: result.settings.failed });
       } catch (error: any) {
         result.errors.push(`Settings sync error: ${error.message}`);
         result.success = false;
@@ -127,13 +120,7 @@ class SyncCoordinator {
 
       return result;
     } catch (error: any) {
-      logServiceError(
-        'sync',
-        'sync-coordinator.ts',
-        'syncPushOnly',
-        error,
-        { email, userID },
-      );
+      logger.error('syncPushOnly error', error, undefined, { email, userID });
       result.success = false;
       result.errors.push(error.message || 'Unknown error');
       return result;
@@ -148,58 +135,35 @@ class SyncCoordinator {
       // Check network connectivity
       const isOnline = await networkService.isConnected();
       if (!isOnline) {
-        log('Offline - cannot pull');
+        logger.debug('[SyncCoordinator] Offline - cannot pull');
         return;
       }
 
       // Pull profile from server
       try {
         await profileSyncService.syncProfileFromServer(email);
-        log('Profile pulled from server');
+        logger.debug('[SyncCoordinator] Profile pulled from server');
       } catch (error: any) {
-        logServiceError(
-          'sync',
-          'sync-coordinator.ts',
-          'syncPullOnly - profile',
-          error,
-          { email },
-        );
+        logger.error('syncPullOnly - profile error', error, undefined, { email });
       }
 
       // Pull attendance from server
       try {
         await attendanceSyncService.syncAttendanceFromServer(userID);
-        log('Attendance pulled from server');
+        logger.debug('[SyncCoordinator] Attendance pulled from server');
       } catch (error: any) {
-        logServiceError(
-          'sync',
-          'sync-coordinator.ts',
-          'syncPullOnly - attendance',
-          error,
-          { userID },
-        );
+        logger.error('syncPullOnly - attendance error', error, undefined, { userID });
       }
 
       // Pull settings from server
       try {
         await settingsSyncService.syncSettingsFromServer();
-        log('Settings pulled from server');
+        logger.debug('[SyncCoordinator] Settings pulled from server');
       } catch (error: any) {
-        logServiceError(
-          'sync',
-          'sync-coordinator.ts',
-          'syncPullOnly - settings',
-          error,
-        );
+        logger.error('syncPullOnly - settings error', error);
       }
     } catch (error: any) {
-      logServiceError(
-        'sync',
-        'sync-coordinator.ts',
-        'syncPullOnly',
-        error,
-        { email, userID },
-      );
+      logger.error('syncPullOnly error', error, undefined, { email, userID });
     }
   }
 
@@ -210,18 +174,18 @@ class SyncCoordinator {
     try {
       const isOnline = await networkService.isConnected();
       if (!isOnline) {
-        log('Offline - cannot process queue');
+        logger.debug('[SyncCoordinator] Offline - cannot process queue');
         return;
       }
 
       const pendingItems = await syncQueueService.getPendingItems();
-      log(`Processing ${pendingItems.length} items from sync queue`);
+      logger.debug('[SyncCoordinator] Processing items from sync queue', { count: pendingItems.length });
 
       for (const item of pendingItems) {
         try {
           // Check if should retry
           if (!retryService.shouldRetry(item.attempts)) {
-            log(`Max attempts reached for ${item.id}, removing from queue`);
+            logger.debug('[SyncCoordinator] Max attempts reached, removing from queue', { itemId: item.id });
             await syncQueueService.markAsSynced(item.id);
             continue;
           }
@@ -242,29 +206,18 @@ class SyncCoordinator {
 
           if (success) {
             await syncQueueService.markAsSynced(item.id);
-            log(`Successfully synced ${item.id}`);
+            logger.debug('[SyncCoordinator] Successfully synced item', { itemId: item.id });
           } else {
             await syncQueueService.incrementAttempts(item.id);
-            log(`Failed to sync ${item.id}, will retry later`);
+            logger.debug('[SyncCoordinator] Failed to sync item, will retry later', { itemId: item.id });
           }
         } catch (error: any) {
-          logServiceError(
-            'sync',
-            'sync-coordinator.ts',
-            'processSyncQueue',
-            error,
-            { itemId: item.id },
-          );
+          logger.error('processSyncQueue item error', error, undefined, { itemId: item.id });
           await syncQueueService.incrementAttempts(item.id);
         }
       }
     } catch (error: any) {
-      logServiceError(
-        'sync',
-        'sync-coordinator.ts',
-        'processSyncQueue',
-        error,
-      );
+      logger.error('processSyncQueue error', error);
     }
   }
 }

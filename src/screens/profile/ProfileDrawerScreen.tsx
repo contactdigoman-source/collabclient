@@ -17,6 +17,7 @@ import { setAppTheme } from '../../redux';
 import { APP_THEMES, DarkThemeColors } from '../../themes';
 import { logoutUser, getProfile } from '../../services';
 import { profileSyncService } from '../../services/sync/profile-sync-service';
+import { logger } from '../../services/logger';
 import { NavigationProp } from '../../types/navigation';
 import { useTranslation } from '../../hooks/useTranslation';
 
@@ -48,7 +49,7 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
         setProfilePhoto(userData?.profilePhotoUrl || userData?.profilePhoto || null);
       }
     } catch (dbError) {
-      console.log('Error loading profile from DB:', dbError);
+      logger.warn('Error loading profile from DB', dbError);
       // Fallback to Redux
       setProfilePhoto(userData?.profilePhotoUrl || userData?.profilePhoto || null);
     }
@@ -76,7 +77,7 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
       await loadProfileFromDB();
     } catch (error: any) {
       // Silently fail - app should work even if profile service is down
-      console.warn('[ProfileDrawer] Failed to sync profile (service may be down):', error.message);
+      logger.warn('[ProfileDrawer] Failed to sync profile (service may be down)', error);
       // Still reload from DB in case there's cached data
       await loadProfileFromDB();
     } finally {
@@ -109,7 +110,7 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
   }, [dispatch, displayBreakStatus]);
 
   const onAttendanceLogsPress = useCallback((): void => {
-    navigation.navigate('AttendanceLogsScreen');
+    navigation.navigate('AttendanceLogsScreen', { filterToday: true });
   }, [navigation]);
 
   const onViewProfilePress = useCallback((): void => {
@@ -122,8 +123,8 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
 
 
   const onGeoLocationsPress = useCallback((): void => {
-    // Disabled for now
-  }, []);
+    navigation.navigate('GeoLocationsScreen', { filterToday: true });
+  }, [navigation]);
 
   const onSecurityPress = useCallback((): void => {
     navigation.navigate('ChangePasswordScreen');
@@ -148,7 +149,7 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
         });
       }
     } catch (error) {
-      console.error('Error during logout:', error);
+      logger.error('Error during logout', error);
       // Even if navigation fails, try to navigate
       if (navigation && navigation.navigate) {
         navigation.navigate('LoginScreen');
@@ -242,7 +243,6 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
 
         {/* Attendance Logs */}
         <ProfileDrawerItem
-          disabled
           title={t('profile.attendanceLogs')}
           icon={Icons.attendance_logs}
           iconColor={colors.text}
@@ -269,7 +269,6 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
 
         {/* Geo-locations */}
         <ProfileDrawerItem
-          disabled
           title={t('profile.geoLocations')}
           icon={Icons.geo_locations}
           iconColor={colors.text}

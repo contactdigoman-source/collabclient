@@ -15,7 +15,6 @@ import {
 } from 'react-native';
 import { useNavigation, useTheme, RouteProp } from '@react-navigation/native';
 import { OtpInput } from 'react-native-otp-entry';
-
 import {
   AppButton,
   AppContainer,
@@ -34,6 +33,7 @@ import {
 } from '../../services';
 import { NavigationProp, RootStackParamList } from '../../types/navigation';
 import { useTranslation } from '../../hooks/useTranslation';
+import { logger } from '../../services/logger';
 
 const IMAGE_SIZE = hp(18.63);
 const RESEND_TIMEOUT = 120; // seconds
@@ -122,7 +122,7 @@ const AadhaarOtpScreen: React.FC<AadhaarOtpScreenProps> = ({ route }) => {
         aadhaarNumber: aadhaarNumber,
         emailID: emailID,
       }).catch(error => {
-        console.error('Failed to request OTP:', error);
+        logger.error('Failed to request OTP:', error);
         setOtpError(error.message || t('auth.otp.requestFailed', 'Failed to request OTP. Please try again.'));
       });
     }
@@ -142,7 +142,7 @@ const AadhaarOtpScreen: React.FC<AadhaarOtpScreenProps> = ({ route }) => {
       startTimer();
       setOtpError('');
     } catch (error: any) {
-      console.error('Failed to resend OTP:', error);
+      logger.error('Failed to resend OTP:', error);
       setOtpError(error.message || t('auth.otp.resendFailed', 'Failed to resend OTP. Please try again.'));
     }
   }, [resendActive, aadhaarNumber, emailID, startTimer, t]);
@@ -196,7 +196,7 @@ const AadhaarOtpScreen: React.FC<AadhaarOtpScreenProps> = ({ route }) => {
         navigation.replace('DashboardScreen');
       }
     } catch (error: any) {
-      console.error('Aadhaar OTP verification error:', error);
+      logger.error('Aadhaar OTP verification error:', error);
       setOtpError(error.message || t('auth.otp.verificationFailed', 'Failed to verify OTP. Please try again.'));
     } finally {
       setIsVerifying(false);

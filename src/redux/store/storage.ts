@@ -1,4 +1,5 @@
 import { Storage } from 'redux-persist';
+import { logger } from '../../services/logger';
 import { MMKV } from 'react-native-mmkv';
 
 const storage = new MMKV();
@@ -22,7 +23,7 @@ export const clearStorage = () => {
   try {
     storage.clearAll();
   } catch (error) {
-    console.log('clearStorage error', error);
+    logger.debug('clearStorage error', error);
   }
 };
 

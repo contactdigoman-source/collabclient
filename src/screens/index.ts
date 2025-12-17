@@ -2,6 +2,7 @@ import AadhaarInputScreen from './aadhaar/AadhaarInputScreen';
 import AadhaarOtpScreen from './aadhaar/AadhaarOtpScreen';
 import PanCardCaptureScreen from './aadhaar/PanCardCaptureScreen';
 import AttendanceLogsScreen from './attendance/AttendanceLogsScreen';
+import GeoLocationsScreen from './attendance/GeoLocationsScreen';
 import ChangeForgottenPassword from './auth/ChangeForgottenPassword';
 import ChangePasswordScreen from './auth/ChangePasswordScreen';
 import CheckInScreen from './attendance/CheckInScreen';
@@ -29,6 +30,7 @@ export {
   CheckInScreen,
   ProfileDrawerScreen,
   AttendanceLogsScreen,
+  GeoLocationsScreen,
   ViewProfileScreen,
   OtpScreen,
   ChangeForgottenPassword,

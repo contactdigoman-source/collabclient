@@ -36,7 +36,10 @@ import {
   isSessionExpired,
   logoutUser,
   getProfile,
+  insertAttendancePunchRecord,
 } from '../../services';
+import { needsAutoCheckout } from '../../utils/shift-utils';
+import { setUserLastAttendance } from '../../redux/reducers/userReducer';
 import {
   profileSyncService,
   syncCoordinator,
@@ -45,6 +48,7 @@ import {
 import { setSyncing, setLastSyncAt, setUnsyncedItems } from '../../redux/reducers/syncReducer';
 import { initializeDatabaseTables } from '../../services/database';
 import moment from 'moment';
+import { logger } from '../../services/logger';
 
 const COLLEAGUE_NUM_COLUMNS = 4;
 const TEAM_NUM_COLUMNS = 2;
@@ -76,9 +80,63 @@ export default function HomeScreen(): React.JSX.Element {
   const userLastAttendance = useAppSelector(
     state => state.userState.userLastAttendance,
   );
+  const userAttendanceHistory = useAppSelector(
+    state => state.userState.userAttendanceHistory,
+  );
   const userData = useAppSelector(state => state.userState.userData);
   const expiresAt = useAppSelector(state => state.userState.expiresAt);
   const displayBreakStatus = useAppSelector(state => state.userState.displayBreakStatus);
+  
+  // Get today's attendance records (first check-in and last checkout) in UTC date format
+  const todayAttendance = useMemo(() => {
+    if (!userAttendanceHistory || userAttendanceHistory.length === 0) {
+      return { checkIn: null, checkout: null };
+    }
+    
+    const today = moment.utc().format('YYYY-MM-DD');
+    
+    // Find today's check-in and checkout records
+    let checkIn: typeof userAttendanceHistory[0] | null = null;
+    let checkout: typeof userAttendanceHistory[0] | null = null;
+    let checkoutTimestamp = 0;
+    
+    for (const record of userAttendanceHistory) {
+      // Check DateOfPunch field first, then derive from Timestamp
+      let recordDate: string;
+      if (record.DateOfPunch) {
+        recordDate = record.DateOfPunch;
+      } else if (record.Timestamp) {
+        const timestamp = typeof record.Timestamp === 'string' 
+          ? parseInt(record.Timestamp, 10) 
+          : record.Timestamp;
+        recordDate = moment.utc(timestamp).format('YYYY-MM-DD');
+      } else {
+        continue;
+      }
+      
+      if (recordDate === today) {
+        const timestamp = typeof record.Timestamp === 'string' 
+          ? parseInt(record.Timestamp, 10) 
+          : record.Timestamp;
+        
+        if (record.PunchDirection === 'IN') {
+          // Get first check-in of the day (earliest timestamp)
+          if (!checkIn || timestamp < (typeof checkIn.Timestamp === 'string' ? parseInt(checkIn.Timestamp, 10) : checkIn.Timestamp)) {
+            checkIn = record;
+          }
+        } else if (record.PunchDirection === 'OUT') {
+          // Get last checkout of the day (most recent/latest timestamp)
+          if (timestamp > checkoutTimestamp) {
+            checkout = record;
+            checkoutTimestamp = timestamp;
+          }
+        }
+      }
+    }
+    
+    return { checkIn, checkout };
+  }, [userAttendanceHistory]);
+  
   const [currentLocation, setCurrentLocation] = useState<{
     latitude: number;
     longitude: number;
@@ -109,12 +167,13 @@ export default function HomeScreen(): React.JSX.Element {
     return statusMap[status] || userLastAttendance.AttendanceStatus;
   }, [isOnBreak, userLastAttendance?.AttendanceStatus, t]);
 
-  // Get break start time
+  // Get break start time (convert from UTC to local time for display)
   const breakStartTime = useMemo(() => {
     if (!isOnBreak || !userLastAttendance?.CreatedOn) {
       return null;
     }
     try {
+      // Convert UTC timestamp to local time for display
       const createdOn =
         typeof userLastAttendance.CreatedOn === 'string'
           ? moment(userLastAttendance.CreatedOn)
@@ -127,6 +186,7 @@ export default function HomeScreen(): React.JSX.Element {
 
   // Set up notifications when user goes on break
   useEffect(() => {
+
     if (isOnBreak && userLastAttendance?.AttendanceStatus) {
       scheduleBreakReminderNotifications(userLastAttendance.AttendanceStatus);
     } else {
@@ -139,7 +199,86 @@ export default function HomeScreen(): React.JSX.Element {
         cancelBreakReminderNotifications();
       }
     };
-  }, [isOnBreak, userLastAttendance?.AttendanceStatus]);
+  }, [isOnBreak, userLastAttendance?.AttendanceStatus, userData?.shiftEndTime]);
+
+  // Auto-checkout after 3 hours if user hasn't checked out
+  useEffect(() => {
+    const performAutoCheckout = async () => {
+      // Check if user has checked in today but not checked out
+      if (!todayAttendance.checkIn || todayAttendance.checkout) {
+        return; // No check-in or already checked out
+      }
+
+      const checkInTimestamp = typeof todayAttendance.checkIn.Timestamp === 'string'
+        ? parseInt(todayAttendance.checkIn.Timestamp, 10)
+        : todayAttendance.checkIn.Timestamp;
+
+      // Check if 3 hours have passed since check-in
+      if (!needsAutoCheckout(checkInTimestamp)) {
+        return; // Not yet 3 hours
+      }
+
+      // Don't auto-checkout if user is on break
+      if (isOnBreak) {
+        return;
+      }
+
+      try {
+        // Get current location for auto-checkout
+        const hasPermission = await requestLocationPermission(() => {
+          logger.debug('Location permission denied for auto-checkout');
+        });
+
+        let latLon = '';
+        let address = '';
+
+        if (hasPermission && currentLocation) {
+          latLon = `${currentLocation.latitude.toFixed(4)},${currentLocation.longitude.toFixed(4)}`;
+          // For auto-checkout, we don't have address, but that's okay
+        }
+
+        // Get current timestamp and date in UTC
+        const currentTimeTS = Date.now();
+        const currentDate = moment.utc().format('YYYY-MM-DD');
+
+        // Perform auto-checkout
+        await insertAttendancePunchRecord({
+          timestamp: currentTimeTS,
+          orgID: '123',
+          userID: userData?.email || '',
+          punchType: 'CHECK',
+          punchDirection: 'OUT',
+          latLon,
+          address,
+          createdOn: currentTimeTS,
+          isSynced: 'N',
+          dateOfPunch: currentDate,
+          attendanceStatus: 'AUTOCHECKOUT', // Mark as auto-checkout
+          moduleID: '',
+          tripType: '',
+          passengerID: '',
+          allowanceData: JSON.stringify([]),
+          isCheckoutQrScan: 0,
+          travelerName: '',
+          phoneNumber: '',
+        });
+
+        // Cancel break notifications since user is checked out
+        cancelBreakReminderNotifications();
+
+        logger.info('Auto-checkout performed after 3 hours');
+      } catch (error) {
+        logger.error('Error performing auto-checkout', error);
+      }
+    };
+
+    performAutoCheckout();
+
+    // Check every minute for auto-checkout
+    const interval = setInterval(performAutoCheckout, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [todayAttendance, isOnBreak, currentLocation, userData?.email]);
 
   const barStyle = useMemo<StatusBar['props']['barStyle']>(
     () => (appTheme === APP_THEMES.dark ? 'light-content' : 'dark-content'),
@@ -151,23 +290,23 @@ export default function HomeScreen(): React.JSX.Element {
     try {
       // Request permission first (on Android, iOS handles this automatically)
       const hasPermission = await requestLocationPermission(() => {
-        console.log('Location permission denied by user');
+        logger.debug('Location permission denied by user');
       });
 
       if (!hasPermission) {
-        console.log('Location permission not granted');
+        logger.debug('Location permission not granted');
         return false;
       }
 
       const coords = await getCurrentPositionOfUser();
-      console.log('Current location fetched:', coords);
+      logger.debug('Current location fetched', { coords });
       setCurrentLocation({
         latitude: coords.latitude,
         longitude: coords.longitude,
       });
       return true;
     } catch (error) {
-      console.log('Error getting current location:', error);
+      logger.warn('Error getting current location', error);
       // Fallback to last attendance location if current location fails
       return false;
     }
@@ -178,7 +317,7 @@ export default function HomeScreen(): React.JSX.Element {
     if (expiresAt && isSessionExpired(expiresAt)) {
       // Session expired, logout user
       logoutUser().catch(error => {
-        console.error('Error during logout on home screen:', error);
+        logger.error('Error during logout on home screen', error);
       });
     }
   }, [expiresAt]);
@@ -223,12 +362,13 @@ export default function HomeScreen(): React.JSX.Element {
           }
         }
       } catch (error) {
-        console.log('Error initializing and loading profile:', error);
+        logger.error('Error initializing and loading profile', error);
       }
     };
 
     initializeAndLoadProfile();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userData?.email, userData?.id]);
 
   // Sync unsynced items helper function
   const syncUnsyncedItems = useCallback(async (email: string, userID: string) => {
@@ -251,7 +391,7 @@ export default function HomeScreen(): React.JSX.Element {
       const updatedUnsyncedItems = await syncStatusService.getAllUnsyncedItems(email, userID);
       dispatch(setUnsyncedItems(updatedUnsyncedItems));
     } catch (error) {
-      console.log('Error syncing unsynced items:', error);
+      logger.error('Error syncing unsynced items', error);
     } finally {
       dispatch(setSyncing(false));
     }
@@ -278,7 +418,7 @@ export default function HomeScreen(): React.JSX.Element {
       // Session expired, logout user
       setRefreshing(false);
       logoutUser().catch(error => {
-        console.error('Error during logout on pull-to-refresh:', error);
+        logger.error('Error during logout on pull-to-refresh', error);
       });
       return;
     }
@@ -292,7 +432,7 @@ export default function HomeScreen(): React.JSX.Element {
       try {
         await getProfile(); // This will sync profile data to DB
       } catch (error) {
-        console.log('Error syncing profile on pull-to-refresh:', error);
+        logger.error('Error syncing profile on pull-to-refresh', error);
       }
     }
     
@@ -524,7 +664,7 @@ export default function HomeScreen(): React.JSX.Element {
         </View>
       </View>
     ),
-    [mapRegion, markerCoordinates, t, isOnBreak, breakStatusLabel, breakStartTime, displayBreakStatus],
+    [mapRegion, markerCoordinates, t, isOnBreak, breakStatusLabel, breakStartTime, displayBreakStatus, appTheme, colors.border, colors.card, colors.text],
   );
 
   const footerComponent = useMemo(
@@ -594,8 +734,15 @@ export default function HomeScreen(): React.JSX.Element {
 
       <HomeHeader
         userName={`${userData?.firstName || ''} ${userData?.lastName || ''}`}
-        punchTimestamp={userLastAttendance?.Timestamp}
-        punchDirection={userLastAttendance?.PunchDirection}
+        punchTimestamp={
+          // Only show today's check-in time (active shift)
+          todayAttendance.checkIn?.Timestamp || undefined
+        }
+        checkoutTimestamp={
+          // Only show today's checkout time (active shift)
+          todayAttendance.checkout?.Timestamp || undefined
+        }
+        punchDirection={todayAttendance.checkIn?.PunchDirection || undefined}
         textColor={headerTextColor}
         bgColor={headerBgColor}
       />

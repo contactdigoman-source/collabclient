@@ -1,5 +1,6 @@
 import ReactNativeBiometrics, { BiometryTypes } from 'react-native-biometrics';
 import { Platform } from 'react-native';
+import { logger } from '../logger';
 
 const rnBiometrics = new ReactNativeBiometrics();
 
@@ -15,7 +16,7 @@ export async function isBiometricAvailable(): Promise<{
     const { available, biometryType, error } = await rnBiometrics.isSensorAvailable();
     return { available, biometryType, error };
   } catch (error: any) {
-    console.log('Biometric check error:', error);
+    logger.warn('Biometric check error', error);
     return { available: false, error: error?.message || 'Biometric check failed' };
   }
 }
@@ -65,7 +66,7 @@ export async function authenticateWithBiometric(
         reject(new Error(error || 'Authentication cancelled'));
       }
     } catch (error: any) {
-      console.log('Biometric authentication error:', error);
+      logger.warn('Biometric authentication error', error);
       reject(error);
     }
   });
@@ -78,14 +79,14 @@ export async function authenticateWithBiometric(
  */
 export async function verifyBiometricForPunch(): Promise<void> {
   try {
-    console.log('verifyBiometricForPunch: Starting biometric/device password verification');
+    logger.debug('verifyBiometricForPunch: Starting biometric/device password verification');
     
     // Always attempt authentication (will use biometric if available, device password if not)
     // This is compulsory - user must authenticate with either biometric or device password
     await authenticateWithBiometric('Authenticate to proceed with check-in/check-out');
-    console.log('verifyBiometricForPunch: Biometric/device password verification successful');
+    logger.debug('verifyBiometricForPunch: Biometric/device password verification successful');
   } catch (error: any) {
-    console.log('verifyBiometricForPunch: Error:', error);
+    logger.warn('verifyBiometricForPunch: Error', error);
     throw error;
   }
 }

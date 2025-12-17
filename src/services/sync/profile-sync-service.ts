@@ -62,9 +62,7 @@ class ProfileSyncService {
           );
         },
         (error: SQLite.SQLError) => {
-          logServiceError('sync', 'profile-sync-service.ts', 'updateLastUpdatedAt', error, {
-            metadata: { email, timestamp },
-          });
+          logger.error('updateLastUpdatedAt error', error, undefined, { email, timestamp });
           reject(error);
         },
       );
@@ -282,13 +280,7 @@ class ProfileSyncService {
       await this.markPropertyAsSynced(email, property);
       return true;
     } catch (error: any) {
-      logServiceError(
-        'sync',
-        'profile-sync-service.ts',
-        'syncProfilePropertyToServer',
-        error,
-        { email, property },
-      );
+      logger.error('syncProfilePropertyToServer error', error, undefined, { email, property });
       return false;
     }
   }
@@ -500,9 +492,7 @@ class ProfileSyncService {
           );
         },
         (error: SQLite.SQLError) => {
-          logServiceError('sync', 'profile-sync-service.ts', 'markAsSynced', error, {
-            metadata: { email },
-          });
+          logger.error('markAsSynced error', error, undefined, { email });
           reject(error);
         },
       );
@@ -550,9 +540,7 @@ class ProfileSyncService {
               });
             },
             (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
-              logServiceError('sync', 'profile-sync-service.ts', 'getProfileSyncStatus', error, {
-                metadata: { email },
-              });
+              logger.error('getProfileSyncStatus error', error, undefined, { email });
               reject(error);
             },
           );
@@ -579,43 +567,62 @@ class ProfileSyncService {
             `SELECT * FROM profile WHERE email = ?`,
             [email],
             (_tx: SQLite.Transaction, result: SQLite.ResultSet) => {
-              if (result.rows.length === 0) {
-                resolve(null);
-                return;
-              }
-
-              const row = result.rows.item(0);
-              const profile: any = {
-                email: row.email,
-              };
-
-              PROFILE_PROPERTIES.forEach((prop) => {
-                const value = this.safeParseJSON(row[prop]);
-                if (value !== null && value !== undefined) {
-                  // Map profilePhoto to profilePhotoUrl for ProfileResponse interface
-                  if (prop === 'profilePhoto') {
-                    profile.profilePhotoUrl = value;
-                  } else {
-                    profile[prop] = value;
-                  }
+              try {
+                if (result.rows.length === 0) {
+                  resolve(null);
+                  return;
                 }
-              });
 
-              resolve(profile as ProfileResponse);
+                const row = result.rows.item(0);
+                const profile: any = {
+                  email: row.email,
+                };
+
+                PROFILE_PROPERTIES.forEach((prop) => {
+                  try {
+                    // Check if column exists in row before accessing
+                    if (row.hasOwnProperty(prop)) {
+                      const value = this.safeParseJSON(row[prop]);
+                      if (value !== null && value !== undefined) {
+                        // Map profilePhoto to profilePhotoUrl for ProfileResponse interface
+                        if (prop === 'profilePhoto') {
+                          profile.profilePhotoUrl = value;
+                        } else {
+                          profile[prop] = value;
+                        }
+                      }
+                    }
+                  } catch (propError) {
+                    // Skip properties that cause parsing errors
+                    logger.debug(`Error parsing profile property ${prop}:`, propError);
+                  }
+                });
+
+                resolve(profile as ProfileResponse);
+              } catch (parseError) {
+                logger.error('Error parsing profile data from DB', parseError, undefined, {
+                  email,
+                  rowKeys: row ? Object.keys(row) : 'no row',
+                });
+                // Return null instead of rejecting to allow app to continue
+                resolve(null);
+              }
             },
             (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
               logger.error('Load profile from DB error', error, undefined, {
                 email,
+                errorCode: error.code,
+                errorMessage: error.message,
               });
-              reject(error);
+              // Return null instead of rejecting to allow app to continue with fallback data
+              resolve(null);
             },
           );
         },
         (error: SQLite.SQLError) => {
-          logServiceError('sync', 'profile-sync-service.ts', 'loadProfileFromDB', error, {
-            metadata: { email },
-          });
-          reject(error);
+          logger.error('loadProfileFromDB error', error, undefined, { email, errorCode: error.code, errorMessage: error.message });
+          // Return null instead of rejecting to allow app to continue
+          resolve(null);
         },
       );
     });
@@ -648,9 +655,7 @@ class ProfileSyncService {
           );
         },
         (error: SQLite.SQLError) => {
-          logServiceError('sync', 'profile-sync-service.ts', 'syncLastUpdatedAtWithServer', error, {
-            metadata: { email, serverLastSyncedAt },
-          });
+          logger.error('syncLastUpdatedAtWithServer error', error, undefined, { email, serverLastSyncedAt });
           reject(error);
         },
       );

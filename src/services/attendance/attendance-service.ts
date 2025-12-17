@@ -1,11 +1,60 @@
-import axios from 'axios';
-import { Configs } from '../../constants/configs';
-import { getJWTToken } from '../auth/login-service';
-import { logger } from '../logger';
+/**
+ * ATTENDANCE SERVICE - High-level API for UI components
+ * 
+ * ✅ ARCHITECTURE - API Calls ONLY in attendance-sync-service.ts:
+ * 
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │ UI COMPONENTS (HomeScreen, DaysBottomTabScreen, etc.)      │
+ * │ ✅ USE THIS FILE: getDaysAttendance()                      │
+ * │    → High-level, UI-friendly function                      │
+ * │    → NO API calls, just delegates to sync service          │
+ * └──────────────────────┬──────────────────────────────────────┘
+ *                        │
+ * ┌──────────────────────▼──────────────────────────────────────┐
+ * │ attendance-service.ts (THIS FILE)                          │
+ * │ ✅ NO API CALLS - Just delegates                           │
+ * │ - Type definitions (AttendanceDay, AttendanceDayRecord)    │
+ * │ - High-level function: getDaysAttendance()                 │
+ * │ - Error handling for UI                                    │
+ * └──────────────────────┬──────────────────────────────────────┘
+ *                        │ delegates to
+ * ┌──────────────────────▼──────────────────────────────────────┐
+ * │ attendance-sync-service.ts                                  │
+ * │ ✅ ALL API CALLS HERE (axios.get, axios.post)              │
+ * │ - syncAttendanceFromServer() → GET /api/attendance/days    │
+ * │ - syncAttendanceRecordToServer() → POST /api/attendance/*  │
+ * │ - Used by: UI (via this file) AND Sync Coordinator (direct)│
+ * └──────────────────────┬──────────────────────────────────────┘
+ *                        │ uses
+ * ┌──────────────────────▼──────────────────────────────────────┐
+ * │ attendance-db-service.ts                                    │
+ * │ - Database operations (insert, update, query)               │
+ * │ - Redux state updates (getAttendanceData)                   │
+ * └─────────────────────────────────────────────────────────────┘
+ * 
+ * 📋 USAGE GUIDELINES:
+ * 
+ * ✅ UI COMPONENTS (HomeScreen, DaysBottomTabScreen, etc.):
+ *    → import { getDaysAttendance } from 'attendance-service'
+ *    → await getDaysAttendance(userID, month?)
+ *    → This handles: network check, API call, DB merge, Redux update
+ * 
+ * ✅ SYNC COORDINATOR (background sync):
+ *    → import { attendanceSyncService } from 'attendance-sync-service'
+ *    → await attendanceSyncService.syncAttendanceFromServer(userID, month?)
+ *    → await attendanceSyncService.syncAllUnsyncedAttendance(userID)
+ * 
+ * ✅ CHECK-IN/CHECKOUT FLOWS:
+ *    → import { attendanceSyncService } from 'attendance-sync-service'
+ *    → await attendanceSyncService.syncAttendanceRecordToServer(record)
+ * 
+ * ⚠️ IMPORTANT: API calls (axios) are ONLY in attendance-sync-service.ts
+ */
 
-const API_BASE_URL = Configs.apiBaseUrl;
+// ============================================================================
+// TYPE DEFINITIONS (for API responses)
+// ============================================================================
 
-// Attendance Days API Types
 export interface AttendanceDayRecord {
   Timestamp: number;
   PunchDirection: 'IN' | 'OUT';
@@ -27,59 +76,52 @@ export interface GetDaysAttendanceResponse {
   data: AttendanceDay[];
 }
 
+// ============================================================================
+// HIGH-LEVEL API FUNCTIONS (for UI components)
+// ============================================================================
+
+import moment from 'moment';
+import { logger } from '../logger';
+import { attendanceSyncService } from '../sync/attendance-sync-service';
+
 /**
- * Get attendance data grouped by days
- * Returns attendance records grouped by date with calculated durations
+ * Get attendance data from server and sync with local database
+ * 
+ * This is the MAIN function UI components should use to fetch attendance data.
+ * 
+ * FLOW:
+ * 1. ✅ Pulls data from server (with optional month filter)
+ * 2. ✅ Compares server records with local DB (by timestamp)
+ * 3. ✅ Updates database:
+ *    - Marks local records as synced if they match server (preserves local data)
+ *    - Inserts server records that don't exist locally
+ *    - Preserves local records that don't exist on server (never overwritten)
+ * 4. ✅ Refreshes Redux state from database (UI updates automatically)
+ * 
+ * @param userID - User ID (email) to sync data for
+ * @param month - Optional month parameter to fetch specific month data
+ * @returns Promise that resolves when sync is complete
+ * 
+ * @example
+ * // Fetch current month data (HomeScreen, DaysBottomTabScreen)
+ * await getDaysAttendance(userEmail);
+ * 
+ * // Fetch specific month
+ * const targetMonth = moment('2024-01', 'YYYY-MM');
+ * await getDaysAttendance(userEmail, targetMonth);
  */
-export const getDaysAttendance = async (): Promise<AttendanceDay[]> => {
+export const getDaysAttendance = async (userID: string, month?: moment.Moment): Promise<void> => {
   try {
-    const token = await getJWTToken('');
-    // if (!token) {
-    //   // Return empty array if no token - treat as no data available
-    //   return [];
-    // }
-
-    const response = await axios.get<any[]>(
-      `${API_BASE_URL}/api/attendance/days`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        timeout: 30000, // 30 seconds timeout
-      }
-    );
-
-    // Transform API response to match our types
-    const data = response.data || [];
-    return data.map((day: any) => ({
-      dateOfPunch: day.dateOfPunch,
-      attendanceStatus: day.attendanceStatus,
-      totalDuration: day.totalDuration,
-      breakDuration: day.breakDuration,
-      records: (day.records || []).map((record: any) => ({
-        Timestamp: record.Timestamp || record.timestamp,
-        PunchDirection: record.PunchDirection || record.punchDirection,
-        AttendanceStatus: record.AttendanceStatus !== undefined ? record.AttendanceStatus : record.attendanceStatus,
-        LatLon: record.LatLon || record.latLon,
-        Address: record.Address || record.address,
-        DateOfPunch: record.DateOfPunch || record.dateOfPunch,
-      })),
-    }));
+    // Delegate to sync service - it handles all the complexity (API calls, network, merge, DB update)
+    await attendanceSyncService.syncAttendanceFromServer(userID, month);
+    // After this completes, Redux state is updated and UI will re-render automatically
   } catch (error: any) {
-    // Log service error with context
-    logger.error('Failed to get days attendance', error, {
-      url: `${API_BASE_URL}/api/attendance/days`,
-      method: 'GET',
-      statusCode: error.response?.status,
-      responseBody: error.response?.data,
-    }, {
-      hasResponse: !!error.response,
-      hasRequest: !!error.request,
+    logger.error('[AttendanceService] getDaysAttendance error', error, undefined, {
+      userID,
+      month: month?.format('YYYY-MM'),
     });
-
-    // Return empty array on error - treat as no data available
-    return [];
+    // Error is logged but not thrown - allows UI to continue functioning
+    // UI components can check Redux state to see if data is available
   }
 };
 

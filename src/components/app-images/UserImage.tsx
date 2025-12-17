@@ -159,7 +159,7 @@ export default function UserImage(props: UserImageProps): React.JSX.Element {
               onPress={onPress}
               accessibilityRole={isClickable ? 'imagebutton' : 'image'}
               accessibilityLabel="User profile picture"
-              style={{ backgroundColor: 'transparent' } as ViewStyle}
+              style={{ backgroundColor: 'transparent' }}
               isLoadingVisible={false}
             />
           </View>

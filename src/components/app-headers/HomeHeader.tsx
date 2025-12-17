@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useMemo, useState, useEffect } from 'react';
-import { Animated, StyleSheet, AnimatedValue } from 'react-native';
+import { Animated, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useTheme } from '@react-navigation/native';
 import moment from 'moment';
@@ -11,13 +11,15 @@ import { PUNCH_DIRECTIONS } from '../../constants';
 import { useAppSelector } from '../../redux';
 import { profileSyncService } from '../../services/sync/profile-sync-service';
 import { getProfile } from '../../services';
+import { logger } from '../../services/logger';
 
 interface HomeHeaderProps {
-  bgColor?: string | AnimatedValue;
-  borderBottomColor?: string | AnimatedValue;
+  bgColor?: string | Animated.Value | Animated.AnimatedInterpolation<string | number>;
+  borderBottomColor?: string | Animated.Value | Animated.AnimatedInterpolation<string | number>;
   punchTimestamp?: string | number | null;
+  checkoutTimestamp?: string | number | null;
   punchDirection?: typeof PUNCH_DIRECTIONS[keyof typeof PUNCH_DIRECTIONS];
-  textColor?: string | AnimatedValue;
+  textColor?: string | Animated.Value | Animated.AnimatedInterpolation<string | number>;
   userName?: string;
 }
 
@@ -25,6 +27,7 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
   bgColor = 'transparent',
   borderBottomColor = 'transparent',
   punchTimestamp = null,
+  checkoutTimestamp = null,
   punchDirection,
   textColor,
   userName = '',
@@ -51,7 +54,7 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
           setProfilePhoto(userData?.profilePhotoUrl || null);
         }
       } catch (error) {
-        console.log('Error loading profile photo from DB:', error);
+        logger.warn('Error loading profile photo from DB', error);
         setProfilePhoto(userData?.profilePhotoUrl || null);
       }
     };
@@ -59,19 +62,52 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
     loadProfilePhoto();
   }, [userData?.email, userData?.profilePhotoUrl]);
 
+  // Always show today's date (not from punch timestamp)
   const formattedDate = useMemo(
-    () =>
-      punchTimestamp
-        ? moment(punchTimestamp).format('DD MMM, YY')
-        : '-- ---, --',
-    [punchTimestamp],
+    () => moment().format('DD MMM, YY'), // Always show current date
+    [],
   );
+  
+  
   const formattedTime = useMemo(
-    () =>
-      punchTimestamp
-        ? `${moment(punchTimestamp).format('hh:mm A')} ${punchDirection}`
-        : '--:--',
-    [punchTimestamp, punchDirection],
+    () => {
+      // Date comparisons use UTC for logic, display uses local time
+      const todayUTC = moment.utc().format('YYYY-MM-DD');
+      
+      let checkInTimeStr = '';
+      let checkoutTimeStr = '';
+      
+      // Get first check-in time if available and from today
+      if (punchTimestamp) {
+        const checkInDateUTC = moment.utc(punchTimestamp).format('YYYY-MM-DD');
+        if (checkInDateUTC === todayUTC) {
+          checkInTimeStr = moment(punchTimestamp).format('hh:mm A');
+        }
+      }
+      
+      // Get last checkout time if available and from today
+      if (checkoutTimestamp) {
+        const checkoutDateUTC = moment.utc(checkoutTimestamp).format('YYYY-MM-DD');
+        if (checkoutDateUTC === todayUTC) {
+          checkoutTimeStr = moment(checkoutTimestamp).format('hh:mm A');
+        }
+      }
+      
+      // Build display string: first check-in and last checkout
+      if (checkInTimeStr && checkoutTimeStr) {
+        return `${checkInTimeStr} IN | ${checkoutTimeStr} OUT`;
+      } else if (checkInTimeStr) {
+        // Only check-in available
+        return `${checkInTimeStr} IN`;
+      } else if (checkoutTimeStr) {
+        // Only checkout available (shouldn't happen normally, but handle it)
+        return `${checkoutTimeStr} OUT`;
+      }
+      
+      // If no attendance today, don't show any time
+      return '';
+    },
+    [punchTimestamp, checkoutTimestamp],
   );
 
   const headerContainerStyle = useMemo(
@@ -86,7 +122,7 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
     [insets.top, bgColor, borderBottomColor],
   );
 
-  const onProfilePress = useCallback(async (): void => {
+  const onProfilePress = useCallback(async (): Promise<void> => {
     // Sync profile from server when profile icon is clicked
     if (userData?.email) {
       try {
@@ -95,10 +131,10 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
         // Reload profile photo from DB after sync
         const dbProfile = await profileSyncService.loadProfileFromDB(userData.email);
         if (dbProfile) {
-          setProfilePhoto(dbProfile.profilePhotoUrl || dbProfile.profilePhoto || null);
+          setProfilePhoto(dbProfile.profilePhotoUrl || null);
         }
       } catch (error) {
-        console.log('Error syncing profile on icon click:', error);
+        logger.warn('Error syncing profile on icon click', error);
       }
     }
     
@@ -121,9 +157,11 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
           <Animated.Text style={{ color: textColor || colors.text }}>
             {formattedDate}
           </Animated.Text>
-          <Animated.Text style={{ color: textColor || colors.text }}>
-            {formattedTime}
-          </Animated.Text>
+          {formattedTime ? (
+            <Animated.Text style={{ color: textColor || colors.text }}>
+              {formattedTime}
+            </Animated.Text>
+          ) : null}
         </Animated.View>
         <Animated.Image
           style={styles.chatIcon}
@@ -145,6 +183,7 @@ function areEqual(
   return (
     prevProps.userName === nextProps.userName &&
     prevProps.punchTimestamp === nextProps.punchTimestamp &&
+    prevProps.checkoutTimestamp === nextProps.checkoutTimestamp &&
     prevProps.punchDirection === nextProps.punchDirection
   );
 }

@@ -1,4 +1,5 @@
 import { NativeModules, DeviceEventEmitter, Platform, Linking } from 'react-native';
+import { logger } from '../logger';
 import * as Keychain from 'react-native-keychain';
 import CryptoJS from 'react-native-crypto-js';
 import Config from 'react-native-config';
@@ -44,7 +45,7 @@ export const isFaceRDAppInstalled = async (): Promise<boolean> => {
     // The module check is more reliable as it checks the actual native bridge
     return !!(FaceAuth || canOpen);
   } catch (error) {
-    console.error('Error checking FaceRD app installation:', error);
+    logger.error('Error checking FaceRD app installation:', error);
     // Fallback: check if native module exists
     const { FaceAuth } = NativeModules as { FaceAuth?: FaceAuthModule };
     return !!FaceAuth;
@@ -60,7 +61,7 @@ export const storeAadhaarNumber = async (): Promise<void> => {
   // const password = getRawAadhaarNumber(aadhaarInput);
 
   if (!username) {
-    console.log('storeAadhaarNumber: No username found');
+    logger.debug('storeAadhaarNumber: No username found');
     return;
   }
 
@@ -69,13 +70,13 @@ export const storeAadhaarNumber = async (): Promise<void> => {
       password,
       userLoginData?.email || '',
     ).toString();
-    console.log('ciphertext', ciphertext);
+    logger.debug('ciphertext', ciphertext);
     await Keychain.setGenericPassword(username, ciphertext, {
       service: userLoginData?.email || '',
     });
     // store.dispatch(setAadhaarInput(''));
   } catch (e) {
-    console.log('storeAadhaarNumber', e);
+    logger.debug('storeAadhaarNumber', e);
   }
 };
 
@@ -95,7 +96,7 @@ export function startFaceAuth(aadhaarNo: string): void {
   
   // Validate Aadhaar number
   if (!aadhaarNo || aadhaarNo.length !== 12) {
-    console.error('Invalid Aadhaar number provided to startFaceAuth');
+    logger.error('Invalid Aadhaar number provided to startFaceAuth');
     DeviceEventEmitter.emit('FaceAuthFailure', {
       message: 'Invalid Aadhaar number',
       code: 'INVALID_AADHAAR',
@@ -105,7 +106,7 @@ export function startFaceAuth(aadhaarNo: string): void {
   
   // Check if license key is configured
   if (!licenseKey) {
-    console.error('Aadhaar license key not configured');
+    logger.error('Aadhaar license key not configured');
     DeviceEventEmitter.emit('FaceAuthFailure', {
       message: 'License key not configured',
       code: 'LICENSE_MISSING',
@@ -115,7 +116,7 @@ export function startFaceAuth(aadhaarNo: string): void {
   
   // Check if Face RD module is available
   if (!FaceAuth) {
-    console.error('Face RD module not available');
+    logger.error('Face RD module not available');
     DeviceEventEmitter.emit('FaceAuthFailure', {
       message: 'Face RD service not available',
       code: 'SERVICE_NOT_AVAILABLE',
@@ -125,11 +126,11 @@ export function startFaceAuth(aadhaarNo: string): void {
   
   try {
     store.dispatch(setIsAuthenticatingFace(true));
-    console.log('Starting Face RD authentication with license key');
+    logger.debug('Starting Face RD authentication with license key');
     // Use hardcoded license key (replace with your actual key)
     FaceAuth.startFaceAuth(aadhaarNo, licenseKey);
   } catch (error: any) {
-    console.error('Error starting Face RD:', error);
+    logger.error('Error starting Face RD:', error);
     store.dispatch(setIsAuthenticatingFace(false));
     DeviceEventEmitter.emit('FaceAuthFailure', {
       message: error?.message || 'Failed to start Face RD',
@@ -175,7 +176,7 @@ export const checkAadhaarDataAvailability = (): Promise<AadhaarCheckResult> => {
         }
       })
       .catch(error => {
-        console.log('Failed to access Keychain', error);
+        logger.debug('Failed to access Keychain', error);
         reject(error);
       });
   });

@@ -27,11 +27,12 @@ import {
 } from '../../services';
 import { useAppDispatch, useAppSelector } from '../../redux';
 import { setUserLocationRegion } from '../../redux';
-import { insertAttendancePunchRecord } from '../../services';
+import { insertAttendancePunchRecord, getAttendanceData } from '../../services';
 import moment from 'moment';
 import { PUNCH_DIRECTIONS } from '../../constants/location';
 import { useTranslation } from '../../hooks/useTranslation';
 import { APP_THEMES, DarkThemeColors, LightThemeColors } from '../../themes';
+import { logger } from '../../services/logger';
 
 interface Coordinates {
   latitude: number;
@@ -75,13 +76,13 @@ export default function CheckInScreen(): React.JSX.Element {
 
   const handleLocationUpdate = useCallback(
     (coords: Coordinates): void => {
-      console.log('handleLocationUpdate: Called with coords:', coords);
+      logger.debug('handleLocationUpdate: Called with coords', { coords });
       if (!coords) {
-        console.log('handleLocationUpdate: No coords, returning');
+        logger.debug('handleLocationUpdate: No coords, returning');
         return;
       }
 
-      console.log('handleLocationUpdate: Processing location:', coords.latitude, coords.longitude);
+      logger.debug('handleLocationUpdate: Processing location', { latitude: coords.latitude, longitude: coords.longitude });
       const locationRegion = {
         latitude: coords.latitude,
         longitude: coords.longitude,
@@ -89,31 +90,31 @@ export default function CheckInScreen(): React.JSX.Element {
         longitudeDelta: coords.longitudeDelta || ZOOM_IN_DELTA,
       };
 
-      console.log('handleLocationUpdate: Dispatching location region');
+      logger.debug('handleLocationUpdate: Dispatching location region');
       dispatch(setUserLocationRegion(locationRegion));
       setIsFetchingLocation(false);
 
       // Fetch address immediately when location is available using Google API
       if (coords.latitude && coords.longitude) {
-        console.log('handleLocationUpdate: Fetching address from Google API for:', coords.latitude, coords.longitude);
+        logger.debug('handleLocationUpdate: Fetching address from Google API', { latitude: coords.latitude, longitude: coords.longitude });
         setIsFetchingAddress(true);
         getLocationFromLatLon(coords.latitude, coords.longitude)
           .then((address) => {
-            console.log('handleLocationUpdate: Address fetched from Google API:', address);
+            logger.debug('handleLocationUpdate: Address fetched from Google API', { address });
             setCurrentAddress(address);
             setIsFetchingAddress(false);
           })
           .catch((error) => {
-            console.log('handleLocationUpdate: Error fetching address from Google API:', error);
+            logger.warn('handleLocationUpdate: Error fetching address from Google API', error);
             setCurrentAddress(null);
             setIsFetchingAddress(false);
           });
       } else {
-        console.log('handleLocationUpdate: Missing latitude or longitude');
+        logger.debug('handleLocationUpdate: Missing latitude or longitude');
       }
 
       if (mapRef.current) {
-        console.log('handleLocationUpdate: Animating map to region');
+        logger.debug('handleLocationUpdate: Animating map to region');
         // Focus on current location when location updates
         mapRef.current.animateToRegion(
           {
@@ -125,7 +126,7 @@ export default function CheckInScreen(): React.JSX.Element {
           1000,
         );
       } else {
-        console.log('handleLocationUpdate: mapRef.current is null');
+        logger.debug('handleLocationUpdate: mapRef.current is null');
       }
     },
     [dispatch],
@@ -136,10 +137,10 @@ export default function CheckInScreen(): React.JSX.Element {
   }, [navigation]);
 
   const startWatching = useCallback(async (): Promise<void> => {
-    console.log('startWatching: Starting location watch');
+    logger.debug('startWatching: Starting location watch');
     const granted = await requestLocationPermission(onCancelPress);
     if (!granted) {
-      console.log('startWatching: Permission denied');
+      logger.debug('startWatching: Permission denied');
       setPermissionDenied(true);
       return;
     }
@@ -147,17 +148,17 @@ export default function CheckInScreen(): React.JSX.Element {
     stopWatching();
     const isLocationOn = await isLocationEnabled();
     if (isLocationOn) {
-      console.log('startWatching: Location is enabled, fetching current position and starting watch');
+      logger.debug('startWatching: Location is enabled, fetching current position and starting watch');
       setIsFetchingLocation(true);
       
       // Get current position first (this will call handleLocationUpdate immediately)
       Geolocation.getCurrentPosition(
         (position) => {
-          console.log('startWatching: Current position received:', position.coords);
+          logger.debug('startWatching: Current position received', { coords: position.coords });
           handleLocationUpdate(position.coords);
         },
         (error) => {
-          console.log('startWatching: Error getting current position:', error);
+          logger.warn('startWatching: Error getting current position', error);
         },
         { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 },
       );
@@ -165,7 +166,7 @@ export default function CheckInScreen(): React.JSX.Element {
       // Then start watching for updates
       watchUserLocation(handleLocationUpdate);
     } else {
-      console.log('startWatching: Location is not enabled');
+      logger.debug('startWatching: Location is not enabled');
       navigation.goBack();
     }
   }, [handleLocationUpdate, stopWatching, onCancelPress, navigation]);
@@ -186,12 +187,14 @@ export default function CheckInScreen(): React.JSX.Element {
       ) {
         // Only fetch if we don't already have an address
         if (currentAddress) {
-          console.log('useEffect: Address already exists, skipping fetch');
+          logger.debug('useEffect: Address already exists, skipping fetch');
           return;
         }
 
-        console.log('useEffect: Fetching address from Google API for:', 
-          userLocationRegion.latitude, userLocationRegion.longitude);
+        logger.debug('useEffect: Fetching address from Google API', { 
+          latitude: userLocationRegion.latitude, 
+          longitude: userLocationRegion.longitude 
+        });
         setIsFetchingAddress(true);
         try {
           // Use Google API to get address
@@ -199,7 +202,7 @@ export default function CheckInScreen(): React.JSX.Element {
             userLocationRegion.latitude,
             userLocationRegion.longitude,
           );
-          console.log('useEffect: Address fetched from Google API:', address);
+          logger.debug('useEffect: Address fetched from Google API', { address });
           setCurrentAddress(address);
           
           // Focus map on current location when address is fetched
@@ -215,14 +218,16 @@ export default function CheckInScreen(): React.JSX.Element {
             );
           }
         } catch (error) {
-          console.log('useEffect: Error fetching address from Google API:', error);
+          logger.warn('useEffect: Error fetching address from Google API', error);
           setCurrentAddress(null);
         } finally {
           setIsFetchingAddress(false);
         }
       } else {
-        console.log('useEffect: Skipping address fetch - isFetchingLocation:', isFetchingLocation, 
-          'hasLocation:', !!userLocationRegion?.latitude);
+        logger.debug('useEffect: Skipping address fetch', { 
+          isFetchingLocation, 
+          hasLocation: !!userLocationRegion?.latitude 
+        });
       }
     };
 
@@ -257,10 +262,12 @@ export default function CheckInScreen(): React.JSX.Element {
     }, 1000);
   }, [userLocationRegion]);
 
-  const getCurrentDate = (): string => moment().format('YYYY-MM-DD');
-  const getCurrentTimestampFormatted = useCallback((): string => {
-    // Capture timestamp with timezone offset
-    return moment().format('YYYY-MM-DDTHH:mm:ss');
+  const getCurrentDate = (): string => moment.utc().format('YYYY-MM-DD');
+  const getCurrentTimestamp = useCallback((): number => {
+    // Return UTC ticks (milliseconds since epoch UTC) - stored as BIGINT in SQLite
+    // Date.now() returns UTC ticks, which is what we need for backend
+    // UI will convert to local time for display using moment(timestamp)
+    return moment.utc().valueOf(); // Explicitly UTC ticks
   }, []);
 
   // Calculate hours worked from check-in time
@@ -273,24 +280,24 @@ export default function CheckInScreen(): React.JSX.Element {
       // Parse check-in time (can be string or number)
       let checkInTime: moment.Moment;
       if (typeof userLastAttendance.CreatedOn === 'string') {
-        checkInTime = moment(userLastAttendance.CreatedOn);
+        checkInTime = moment.utc(userLastAttendance.CreatedOn);
       } else if (typeof userLastAttendance.CreatedOn === 'number') {
-        checkInTime = moment(userLastAttendance.CreatedOn);
+        checkInTime = moment.utc(userLastAttendance.CreatedOn);
       } else {
         return 0;
       }
 
-      // Calculate difference in hours
-      const now = moment();
+      // Calculate difference in hours (UTC)
+      const now = moment.utc();
       const hours = now.diff(checkInTime, 'hours', true); // true for decimal precision
       return hours;
     } catch (error) {
-      console.log('Error calculating hours worked:', error);
+      logger.warn('Error calculating hours worked', error);
       return 0;
     }
   }, [isUserCheckedIn, userLastAttendance?.CreatedOn]);
 
-  const onCheckInPress = useCallback((): void => {
+  const onCheckInPress = useCallback(async (): Promise<void> => {
     // If checking out and hours worked is less than 9, show early checkout modal
     if (isUserCheckedIn && hoursWorked < 9) {
       setShowEarlyCheckoutModal(true);
@@ -298,39 +305,54 @@ export default function CheckInScreen(): React.JSX.Element {
     }
 
     // Proceed with normal check-in/check-out
-    const currentTimeTS = getCurrentTimestampFormatted();
+    const currentTimeTS = getCurrentTimestamp();
     const currentDate = getCurrentDate();
 
-    insertAttendancePunchRecord({
-      timestamp: currentTimeTS,
-      orgID: '123',
-      userID: userData?.email || '',
-      punchType: 'CHECK',
-      punchDirection: isUserCheckedIn
-        ? PUNCH_DIRECTIONS.out
-        : PUNCH_DIRECTIONS.in,
-      latLon: userLocationRegion
-        ? `${userLocationRegion.latitude?.toFixed(
-            4,
-          )},${userLocationRegion.longitude?.toFixed(4)}`
-        : '',
-      address: currentAddress || '',
-      createdOn: currentTimeTS,
-      isSynced: 'N',
-      dateOfPunch: currentDate,
-      attendanceStatus: '',
-      moduleID: '',
-      tripType: '',
-      passengerID: '',
-      allowanceData: JSON.stringify([]),
-      isCheckoutQrScan: 0,
-      travelerName: '',
-      phoneNumber: '',
-    });
+    try {
+      await insertAttendancePunchRecord({
+        timestamp: currentTimeTS,
+        orgID: '123',
+        userID: userData?.email || '',
+        punchType: 'CHECK',
+        punchDirection: isUserCheckedIn
+          ? PUNCH_DIRECTIONS.out
+          : PUNCH_DIRECTIONS.in,
+        latLon: userLocationRegion
+          ? `${userLocationRegion.latitude?.toFixed(
+              4,
+            )},${userLocationRegion.longitude?.toFixed(4)}`
+          : '',
+        address: currentAddress || '',
+        createdOn: currentTimeTS,
+        isSynced: 'N',
+        dateOfPunch: currentDate,
+        attendanceStatus: '',
+        moduleID: '',
+        tripType: '',
+        passengerID: '',
+        allowanceData: JSON.stringify([]),
+        isCheckoutQrScan: 0,
+        travelerName: '',
+        phoneNumber: '',
+      });
 
-    // Cancel break notifications when checking in (returning from break)
-    if (isUserCheckedIn) {
-      cancelBreakReminderNotifications();
+      // Cancel break notifications when checking in (returning from break)
+      if (isUserCheckedIn) {
+        cancelBreakReminderNotifications();
+      }
+
+      // Refresh attendance data from database to update Redux state
+      // Note: getAttendanceData is also called in insertAttendancePunchRecord callback,
+      // but we call it here as well to ensure state is updated before navigation
+      if (userData?.email) {
+        await getAttendanceData(userData.email);
+        // Small delay to ensure Redux state has propagated and components have re-rendered
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    } catch (error) {
+      logger.error('Error inserting attendance record', error);
+      // Show error to user or handle gracefully
+      return; // Don't navigate if insert failed
     }
 
     // Navigate to DashboardScreen (home) and reset the stack
@@ -346,17 +368,74 @@ export default function CheckInScreen(): React.JSX.Element {
     userData?.email,
     navigation,
     currentAddress,
-    getCurrentTimestampFormatted,
+    getCurrentTimestamp,
     hoursWorked,
   ]);
 
   const handleBreakStatusSelect = useCallback(
-    (status: string): void => {
+    async (status: string): Promise<void> => {
       setShowEarlyCheckoutModal(false);
-      const currentTimeTS = getCurrentTimestampFormatted();
+      const currentTimeTS = getCurrentTimestamp();
       const currentDate = getCurrentDate();
 
-      insertAttendancePunchRecord({
+      try {
+        await insertAttendancePunchRecord({
+          timestamp: currentTimeTS,
+          orgID: '123',
+          userID: userData?.email || '',
+          punchType: 'CHECK',
+          punchDirection: PUNCH_DIRECTIONS.out,
+          latLon: userLocationRegion
+            ? `${userLocationRegion.latitude?.toFixed(
+                4,
+              )},${userLocationRegion.longitude?.toFixed(4)}`
+            : '',
+          address: currentAddress || '',
+          createdOn: currentTimeTS,
+          isSynced: 'N',
+          dateOfPunch: currentDate,
+          attendanceStatus: status.toUpperCase(), // Mark with selected break status
+          moduleID: '',
+          tripType: '',
+          passengerID: '',
+          allowanceData: JSON.stringify([]),
+          isCheckoutQrScan: 0,
+          travelerName: '',
+          phoneNumber: '',
+        });
+
+        // Refresh attendance data from database to update Redux state
+        if (userData?.email) {
+          await getAttendanceData(userData.email);
+        }
+
+        // Navigate to DashboardScreen (home) and reset the stack
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'DashboardScreen' }],
+          }),
+        );
+      } catch (error) {
+        logger.error('Error inserting attendance record', error);
+      }
+    },
+    [
+      userLocationRegion,
+      userData?.email,
+      navigation,
+      currentAddress,
+      getCurrentTimestamp,
+    ],
+  );
+
+  const handleSkip = useCallback(async (): Promise<void> => {
+    setShowEarlyCheckoutModal(false);
+    const currentTimeTS = getCurrentTimestamp();
+    const currentDate = getCurrentDate();
+
+    try {
+      await insertAttendancePunchRecord({
         timestamp: currentTimeTS,
         orgID: '123',
         userID: userData?.email || '',
@@ -371,7 +450,7 @@ export default function CheckInScreen(): React.JSX.Element {
         createdOn: currentTimeTS,
         isSynced: 'N',
         dateOfPunch: currentDate,
-        attendanceStatus: status.toUpperCase(), // Mark with selected break status
+        attendanceStatus: 'EARLY_CHECKOUT', // Mark as early checkout when skipped
         moduleID: '',
         tripType: '',
         passengerID: '',
@@ -381,6 +460,13 @@ export default function CheckInScreen(): React.JSX.Element {
         phoneNumber: '',
       });
 
+      // Refresh attendance data from database to update Redux state
+      if (userData?.email) {
+        await getAttendanceData(userData.email);
+        // Small delay to ensure Redux state has propagated
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
       // Navigate to DashboardScreen (home) and reset the stack
       navigation.dispatch(
         CommonActions.reset({
@@ -388,59 +474,15 @@ export default function CheckInScreen(): React.JSX.Element {
           routes: [{ name: 'DashboardScreen' }],
         }),
       );
-    },
-    [
-      userLocationRegion,
-      userData?.email,
-      navigation,
-      currentAddress,
-      getCurrentTimestampFormatted,
-    ],
-  );
-
-  const handleSkip = useCallback((): void => {
-    setShowEarlyCheckoutModal(false);
-    const currentTimeTS = getCurrentTimestampFormatted();
-    const currentDate = getCurrentDate();
-
-    insertAttendancePunchRecord({
-      timestamp: currentTimeTS,
-      orgID: '123',
-      userID: userData?.email || '',
-      punchType: 'CHECK',
-      punchDirection: PUNCH_DIRECTIONS.out,
-      latLon: userLocationRegion
-        ? `${userLocationRegion.latitude?.toFixed(
-            4,
-          )},${userLocationRegion.longitude?.toFixed(4)}`
-        : '',
-      address: currentAddress || '',
-      createdOn: currentTimeTS,
-      isSynced: 'N',
-      dateOfPunch: currentDate,
-      attendanceStatus: 'EARLY_CHECKOUT', // Mark as early checkout when skipped
-      moduleID: '',
-      tripType: '',
-      passengerID: '',
-      allowanceData: JSON.stringify([]),
-      isCheckoutQrScan: 0,
-      travelerName: '',
-      phoneNumber: '',
-    });
-
-    // Navigate to DashboardScreen (home) and reset the stack
-    navigation.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [{ name: 'DashboardScreen' }],
-      }),
-    );
+    } catch (error) {
+      logger.error('Error inserting attendance record', error);
+    }
   }, [
     userLocationRegion,
     userData?.email,
     navigation,
     currentAddress,
-    getCurrentTimestampFormatted,
+    getCurrentTimestamp,
   ]);
 
   const buttonText = useMemo(() => {

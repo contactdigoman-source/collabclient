@@ -16,13 +16,14 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { useAppDispatch, useAppSelector, setUserData, setFirstTimeLoginData } from '../../redux';
 import { submitFirstTimeLogin } from '../../services/auth/first-time-login-service';
 import { profileSyncService } from '../../services/sync/profile-sync-service';
+import { logger } from '../../services/logger';
 
 // Try to import ImagePicker, fallback if not available
 let ImagePicker: any = null;
 try {
   ImagePicker = require('react-native-image-crop-picker');
 } catch (e) {
-  console.log('react-native-image-crop-picker not installed');
+  // ImagePicker not installed - will be handled gracefully
 }
 
 export default function ProfilePhotoScreen(): React.JSX.Element {
@@ -53,7 +54,7 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
           setProfileImage(userData.profilePhoto || userData.profilePhotoUrl || null);
         }
       } catch (error) {
-        console.log('Error loading profile photo from DB:', error);
+        logger.warn('Error loading profile photo from DB', error);
         // Fallback to Redux state
         if (userData?.profilePhoto || userData?.profilePhotoUrl) {
           setProfileImage(userData.profilePhoto || userData.profilePhotoUrl || null);
@@ -91,7 +92,7 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
       })
       .catch((error: any) => {
         if (error.code !== 'E_PICKER_CANCELLED') {
-          console.error('Camera error:', error);
+          logger.error('Camera error', error);
           Alert.alert(t('auth.profilePhoto.error'), t('auth.profilePhoto.cameraError'));
         }
       });
@@ -124,7 +125,7 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
       })
       .catch((error: any) => {
         if (error.code !== 'E_PICKER_CANCELLED') {
-          console.error('Gallery error:', error);
+          logger.error('Gallery error', error);
           Alert.alert(t('auth.profilePhoto.error'), t('auth.profilePhoto.galleryError'));
         }
       });
@@ -211,7 +212,7 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
           try {
             await profileSyncService.saveProfileProperty(userData.email, 'profilePhoto', profileImage);
           } catch (dbError) {
-            console.log('Error saving profile photo to SQLite:', dbError);
+            logger.warn('Error saving profile photo to SQLite', dbError);
           }
         }
         
@@ -219,13 +220,13 @@ export default function ProfilePhotoScreen(): React.JSX.Element {
           const updatedUser = { ...userData, profilePhoto: profileImage };
           dispatch(setUserData(updatedUser));
         }
-        console.log('Profile photo saved:', profileImage);
+        logger.debug('Profile photo saved', { profileImage });
       }
 
       // Navigate to dashboard
       navigation.replace('DashboardScreen');
     } catch (error: any) {
-      console.error('Error saving profile photo or submitting data:', error);
+      logger.error('Error saving profile photo or submitting data', error);
       Alert.alert(
         t('auth.profilePhoto.error'),
         error.message || t('auth.profilePhoto.saveError'),

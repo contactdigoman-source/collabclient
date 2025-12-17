@@ -8,7 +8,8 @@ export type RootStackParamList = {
   ForgotPasswordScreen: { emailID?: string };
   CheckInScreen: undefined;
   ProfileDrawerScreen: undefined;
-  AttendanceLogsScreen: undefined;
+  AttendanceLogsScreen: { filterToday?: boolean } | undefined;
+  GeoLocationsScreen: { filterToday?: boolean } | undefined;
   ViewProfileScreen: undefined;
   OtpScreen: {
     emailID?: string;

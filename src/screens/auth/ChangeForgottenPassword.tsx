@@ -22,6 +22,7 @@ import { FontTypes, hp, Icons, Images, PASSWORD_FORMAT } from '../../constants';
 import { RootStackParamList } from '../../types/navigation';
 import { useTranslation } from '../../hooks/useTranslation';
 import { NavigationProp } from '../../types/navigation';
+import { logger } from '../../services/logger';
 
 const IMAGE_SIZE = hp(18.63);
 
@@ -118,7 +119,7 @@ const ChangeForgottenPassword: React.FC<ChangeForgottenPasswordProps> = ({
     setConfirmPassError(null);
 
     // TODO: Call your updatePassword API
-    console.log('Password successfully validated and ready for update');
+    logger.debug('Password successfully validated and ready for update');
     navigation.navigate('LoginScreen');
   }, [validatePassword]);
 

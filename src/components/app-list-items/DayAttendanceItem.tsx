@@ -7,6 +7,7 @@ import AppText from '../app-texts/AppText';
 import { hp, wp, Icons } from '../../constants';
 import { DarkThemeColors, APP_THEMES } from '../../themes';
 import { useAppSelector } from '../../redux';
+import { getDateStringFromTicks, isTodayUTC } from '../../utils/timestamp-utils';
 
 interface AttendanceRecord {
   Timestamp: string | number;
@@ -88,12 +89,10 @@ const DayAttendanceItem: React.FC<DayAttendanceItemProps> = ({
         // Find the next IN punch after this OUT
         const nextIn = sortedRecords.slice(i + 1).find(r => r.PunchDirection === 'IN');
         if (nextIn) {
-          const outTime = typeof record.Timestamp === 'string' 
-            ? moment(record.Timestamp) 
-            : moment(record.Timestamp);
-          const inTime = typeof nextIn.Timestamp === 'string' 
-            ? moment(nextIn.Timestamp) 
-            : moment(nextIn.Timestamp);
+          // Timestamps are UTC ticks - moment() auto-converts to local for display
+          // Use moment() for display, but calculations work correctly with UTC ticks
+          const outTime = moment(record.Timestamp); // UTC ticks → local time
+          const inTime = moment(nextIn.Timestamp); // UTC ticks → local time
           const diff = moment.duration(inTime.diff(outTime));
           totalBreakMinutes += diff.asMinutes();
         }
@@ -111,12 +110,9 @@ const DayAttendanceItem: React.FC<DayAttendanceItemProps> = ({
       return totalDuration;
     }
     if (!firstCheckIn || !lastCheckOut) return null;
-    const inTime = typeof firstCheckIn.Timestamp === 'string' 
-      ? moment(firstCheckIn.Timestamp) 
-      : moment(firstCheckIn.Timestamp);
-    const outTime = typeof lastCheckOut.Timestamp === 'string' 
-      ? moment(lastCheckOut.Timestamp) 
-      : moment(lastCheckOut.Timestamp);
+    // Timestamps are UTC ticks - moment() auto-converts to local for display
+    const inTime = moment(firstCheckIn.Timestamp); // UTC ticks → local time
+    const outTime = moment(lastCheckOut.Timestamp); // UTC ticks → local time
     const diff = moment.duration(outTime.diff(inTime));
     const hours = Math.floor(diff.asHours());
     const minutes = diff.minutes();
@@ -125,6 +121,7 @@ const DayAttendanceItem: React.FC<DayAttendanceItemProps> = ({
 
   // Format date header (e.g., "8 Apr" or "9 Apr")
   const dateHeader = useMemo(() => {
+    // Date strings (YYYY-MM-DD) are date-only, can format directly
     const dateMoment = moment(date, 'YYYY-MM-DD');
     return dateMoment.format('D MMM');
   }, [date]);
@@ -135,45 +132,42 @@ const DayAttendanceItem: React.FC<DayAttendanceItemProps> = ({
     return dateMoment.format('ddd');
   }, [date]);
 
-  // Check if today
+  // Check if today (compare dates using UTC for consistency)
   const isToday = useMemo(() => {
-    const dateMoment = moment(date, 'YYYY-MM-DD');
-    const today = moment().startOf('day');
-    return dateMoment.isSame(today, 'day');
+    // Date string is YYYY-MM-DD format, compare using UTC
+    const dateMoment = moment.utc(date, 'YYYY-MM-DD');
+    const todayUTC = moment.utc().startOf('day');
+    return dateMoment.isSame(todayUTC, 'day');
   }, [date]);
 
   // Format time with date for check-in (e.g., "11:30 In |")
+  // Timestamp is UTC ticks - moment() auto-converts to local time for display
   const formatTimeIn = (timestamp: string | number): string => {
-    const timeMoment = typeof timestamp === 'string' 
-      ? moment(timestamp) 
-      : moment(timestamp);
+    const timeMoment = moment(timestamp); // UTC ticks → local time
     const time = timeMoment.format('HH:mm');
     return `${time} In |`;
   };
 
   // Format time with date for check-out (e.g., "22:30 Out | 9 Apr")
+  // Timestamp is UTC ticks - moment() auto-converts to local time for display
   const formatTimeOut = (timestamp: string | number): string => {
-    const timeMoment = typeof timestamp === 'string' 
-      ? moment(timestamp) 
-      : moment(timestamp);
+    const timeMoment = moment(timestamp); // UTC ticks → local time
     const time = timeMoment.format('HH:mm');
     const dateStr = timeMoment.format('D MMM');
     return `${time} Out | ${dateStr}`;
   };
 
   // Format date only (e.g., "9 Apr")
+  // Timestamp is UTC ticks - moment() auto-converts to local time for display
   const formatDateOnly = (timestamp: string | number): string => {
-    const timeMoment = typeof timestamp === 'string' 
-      ? moment(timestamp) 
-      : moment(timestamp);
+    const timeMoment = moment(timestamp); // UTC ticks → local time
     return timeMoment.format('D MMM');
   };
 
   // Format time only (e.g., "10:30")
+  // Timestamp is UTC ticks - moment() auto-converts to local time for display
   const formatTimeOnly = (timestamp: string | number): string => {
-    const timeMoment = typeof timestamp === 'string' 
-      ? moment(timestamp) 
-      : moment(timestamp);
+    const timeMoment = moment(timestamp); // UTC ticks → local time
     return timeMoment.format('HH:mm');
   };
 

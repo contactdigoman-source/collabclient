@@ -1,6 +1,7 @@
 import SQLite from 'react-native-sqlite-storage';
+import moment from 'moment';
 
-import { store, setUserAttendanceHistory } from '../../redux';
+import { store, setUserAttendanceHistory, setUserLastAttendance } from '../../redux';
 import { logger } from '../logger';
 
 // 🔹 Debug Logger
@@ -65,6 +66,9 @@ interface AttendanceRecord {
   isCheckoutQrScan?: number;
   travelerName?: string;
   phoneNumber?: string;
+  lastUpdatedAt?: number; // When record was created/updated locally
+  lastSyncedAt?: number | null; // When record was synced to server
+  server_Timestamp?: number | null; // Server's timestamp for this record
 }
 
 interface AttendanceHistoryItem {
@@ -86,6 +90,9 @@ interface AttendanceHistoryItem {
   IsCheckoutQrScan: number;
   TravelerName: string;
   PhoneNumber: string;
+  lastUpdatedAt?: number | null; // When record was created/updated locally
+  lastSyncedAt?: number | null; // When record was synced to server
+  server_Timestamp?: number | null; // Server's timestamp for this record
 }
 
 // 🔹 Safe JSON Parse
@@ -174,7 +181,9 @@ export const updateTableStructure = (): void => {
         }),
       );
     },
-    (error: SQLite.SQLError) => logServiceError(error),
+    (error: SQLite.SQLError) => {
+      logger.error('extendAttendanceTable error', error, undefined, { operation: 'extend_table' });
+    },
     () => {
       if (store.getState().userState?.userData?.email) {
         getAttendanceData(store.getState().userState?.userData?.email);
@@ -212,38 +221,46 @@ export function insertAttendancePunchRecord(
   return new Promise((resolve, reject) => {
     db.transaction(
       (tx: SQLite.Transaction) => {
+        // Validate required fields
+        if (!record.timestamp) {
+          const error = new Error('Timestamp is required for attendance record');
+          logger.error('Insert attendance record validation error', error, undefined, {
+            userID: record.userID,
+            operation: 'insert',
+          });
+          reject(error);
+          return;
+        }
+
+        // Ensure timestamp is a number (ticks - milliseconds since epoch)
+        // SQLite BIGINT stores ticks perfectly, no conversion needed
+        const timestamp = typeof record.timestamp === 'string' 
+          ? parseInt(record.timestamp, 10) 
+          : record.timestamp;
+
+        // Check if record with this timestamp already exists
         tx.executeSql(
-          `INSERT INTO attendance 
-            (Timestamp, OrgID, UserID, PunchType, PunchDirection, LatLon, Address, CreatedOn, IsSynced, DateOfPunch, AttendanceStatus, ModuleID, TripType, PassengerID, AllowanceData, IsCheckoutQrScan, TravelerName, PhoneNumber) 
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-          [
-            record.timestamp,
-            record.orgID,
-            record.userID,
-            record.punchType,
-            record.punchDirection,
-            record.latLon,
-            record.address,
-            record.createdOn,
-            record.isSynced,
-            record.dateOfPunch,
-            record.attendanceStatus || '',
-            record.moduleID || '',
-            record.tripType || '',
-            record.passengerID || '',
-            record.allowanceData || JSON.stringify([]),
-            record.isCheckoutQrScan || 0,
-            record.travelerName || '',
-            record.phoneNumber || '',
-          ],
-          (_tx: SQLite.Transaction, res: SQLite.ResultSet) => {
-            log('Insert success');
-            getAttendanceData(record.userID);
-            resolve(res);
+          'SELECT Timestamp FROM attendance WHERE Timestamp = ?',
+          [timestamp],
+          (_tx: SQLite.Transaction, result: SQLite.ResultSet) => {
+            if (result.rows.length > 0) {
+              // Record already exists, log warning but don't fail
+              logger.debug('Attendance record already exists, skipping insert', undefined, {
+                timestamp,
+                userID: record.userID,
+                operation: 'insert_duplicate',
+              });
+              resolve(result); // Resolve with existing record instead of rejecting
+              return;
+            }
+
+            // Proceed with insert
+            insertNewRecord(tx, record, timestamp, resolve, reject);
           },
           (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
-            logger.error('Transaction error', error);
-            reject(error);
+            // Error checking for duplicate, proceed with insert anyway
+            logger.warn('Error checking for duplicate record, proceeding with insert', error);
+            insertNewRecord(tx, record, timestamp, resolve, reject);
           },
         );
       },
@@ -252,28 +269,149 @@ export function insertAttendancePunchRecord(
   });
 }
 
+// Helper function to insert a new attendance record
+function insertNewRecord(
+  tx: SQLite.Transaction,
+  record: AttendanceRecord,
+  timestamp: number,
+  resolve: (value: SQLite.ResultSet) => void,
+  reject: (reason?: any) => void,
+): void {
+  // Ensure DateOfPunch is set (derive from timestamp if not provided, in UTC format)
+  // Note: Backend DB uses UTC, we only store necessary fields locally
+  let dateOfPunch = record.dateOfPunch;
+  if (!dateOfPunch && timestamp) {
+    dateOfPunch = moment.utc(timestamp).format('YYYY-MM-DD');
+  }
+
+  // Build insert statement dynamically based on what columns exist
+  // Only include columns that are in ATTENDANCE_COLUMNS (backend doesn't need lastUpdatedAt, lastSyncedAt, server_Timestamp)
+  // Backend DB uses UTC, we store what's needed locally
+  tx.executeSql(
+    `INSERT INTO attendance 
+      (Timestamp, OrgID, UserID, PunchType, PunchDirection, LatLon, Address, CreatedOn, IsSynced, DateOfPunch, AttendanceStatus, ModuleID, TripType, PassengerID, AllowanceData, IsCheckoutQrScan, TravelerName, PhoneNumber) 
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    [
+      timestamp,
+      record.orgID || '',
+      record.userID || '',
+      record.punchType || '',
+      record.punchDirection || '',
+      record.latLon || '',
+      record.address || '',
+      record.createdOn || timestamp,
+      record.isSynced || 'N',
+      dateOfPunch || moment.utc().format('YYYY-MM-DD'),
+      record.attendanceStatus || '',
+      record.moduleID || '',
+      record.tripType || '',
+      record.passengerID || '',
+      record.allowanceData || JSON.stringify([]),
+      record.isCheckoutQrScan || 0,
+      record.travelerName || '',
+      record.phoneNumber || '',
+    ],
+    (_tx: SQLite.Transaction, res: SQLite.ResultSet) => {
+      logger.debug('Insert attendance record success', undefined, {
+        timestamp,
+        userID: record.userID,
+        punchDirection: record.punchDirection,
+        rowsAffected: res.rowsAffected,
+        insertId: res.insertId,
+        operation: 'insert_success',
+      });
+      // Refresh Redux state after successful insert (don't await - async operation)
+      getAttendanceData(record.userID).catch((error) => {
+        logger.error('Error refreshing attendance data after insert', error);
+      });
+      resolve(res);
+    },
+    (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
+      // Check if it's a duplicate key error (constraint violation)
+      // SQLite error code 19 is SQLITE_CONSTRAINT (including UNIQUE constraint violations)
+      if (error.code === 19 || error.message?.includes('UNIQUE constraint') || error.message?.includes('PRIMARY KEY') || error.message?.includes('unique constraint')) {
+        logger.warn('Duplicate attendance record (timestamp already exists), skipping insert', error, {
+          timestamp,
+          userID: record.userID,
+          operation: 'insert_duplicate',
+        });
+        // Query the existing record and resolve with it
+        _tx.executeSql(
+          'SELECT * FROM attendance WHERE Timestamp = ?',
+          [timestamp],
+          (queryTx: SQLite.Transaction, queryResult: SQLite.ResultSet) => {
+            // Create a mock ResultSet-like object with the existing record
+            const existingRecord = queryResult.rows.item(0);
+            resolve(queryResult); // Resolve with the query result
+          },
+          (queryTx: SQLite.Transaction, queryError: SQLite.SQLError) => {
+            // If we can't query the existing record, just resolve (record exists, that's okay)
+            logger.warn('Could not query existing record after duplicate error', queryError);
+            resolve({ rowsAffected: 0, insertId: timestamp } as SQLite.ResultSet);
+          },
+        );
+      } else {
+        logger.error('Insert attendance record error', error, undefined, {
+          timestamp,
+          userID: record.userID,
+          operation: 'insert',
+          dateOfPunch: record.dateOfPunch || dateOfPunch,
+          punchDirection: record.punchDirection,
+          errorCode: error.code,
+          errorMessage: error.message,
+        });
+        reject(error);
+      }
+    },
+  );
+}
+
 // 🔹 Get Attendance Data
-export const getAttendanceData = (userID: string): void => {
+export const getAttendanceData = (userID: string): Promise<void> => {
   const db = getDB();
-  db.transaction((tx: SQLite.Transaction) => {
-    tx.executeSql(
-      'SELECT * FROM attendance WHERE UserID=? ORDER BY Timestamp DESC',
-      [userID],
-      (_tx: SQLite.Transaction, results: SQLite.ResultSet) => {
-        const data: AttendanceHistoryItem[] = [];
-        for (let i = 0; i < results.rows.length; i++) {
-          const row = results.rows.item(i);
-          data.push({
-            ...row,
-            AllowanceData: safeParseJSON(row.AllowanceData),
-          });
-        }
-        logger.debug(`Retrieved ${data.length} attendance records`);
-        store.dispatch(setUserAttendanceHistory(data));
-      },
-      (_tx: SQLite.Transaction, error: SQLite.SQLError) =>
-        logger.error('Get attendance data error', error),
-    );
+  return new Promise((resolve, reject) => {
+    db.transaction((tx: SQLite.Transaction) => {
+      tx.executeSql(
+        'SELECT * FROM attendance WHERE UserID=? ORDER BY Timestamp DESC',
+        [userID],
+        (_tx: SQLite.Transaction, results: SQLite.ResultSet) => {
+          const data: AttendanceHistoryItem[] = [];
+          let syncedCount = 0;
+          let unsyncedCount = 0;
+          for (let i = 0; i < results.rows.length; i++) {
+            const row = results.rows.item(i);
+            if (row.IsSynced === 'Y') {
+              syncedCount++;
+            } else {
+              unsyncedCount++;
+            }
+            data.push({
+              ...row,
+              AllowanceData: safeParseJSON(row.AllowanceData),
+            });
+          }
+          logger.debug(`Retrieved ${data.length} attendance records (${syncedCount} synced, ${unsyncedCount} unsynced) for user: ${userID}`);
+          
+          // Also update last attendance if records exist
+          if (data.length > 0) {
+            const lastRecord = data[0]; // Already sorted by Timestamp DESC
+            logger.debug(`Last record: DateOfPunch=${lastRecord.DateOfPunch}, PunchDirection=${lastRecord.PunchDirection}, Timestamp=${lastRecord.Timestamp}`);
+            store.dispatch(setUserLastAttendance(lastRecord));
+          }
+          
+          // Dispatch attendance history update after last attendance to ensure proper state order
+          store.dispatch(setUserAttendanceHistory(data));
+          resolve();
+        },
+        (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
+          logger.error('Get attendance data error', error);
+          reject(error);
+        },
+      );
+    }, (error: SQLite.SQLError) => {
+      logger.error('Get attendance data transaction error', error);
+      reject(error);
+    });
   });
 };
 
@@ -347,12 +485,43 @@ export const getUnsyncedAttendanceRecords = (userID: string): Promise<Attendance
           resolve(unsynced);
         },
         (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
-          console.log('Get unsynced records error:', error);
+          logger.error('Get unsynced records error', error);
           reject(error);
         },
       );
     }, (error: SQLite.SQLError) => {
-      console.log('Get unsynced records transaction error:', error);
+      logger.error('Get unsynced records transaction error', error);
+      reject(error);
+    });
+  });
+};
+
+// 🔹 Get All Attendance Records (for sync merge logic)
+export const getAllAttendanceRecords = (userID: string): Promise<AttendanceHistoryItem[]> => {
+  const db = getDB();
+  return new Promise((resolve, reject) => {
+    db.transaction((tx: SQLite.Transaction) => {
+      tx.executeSql(
+        'SELECT * FROM attendance WHERE UserID=? ORDER BY Timestamp DESC',
+        [userID],
+        (_tx: SQLite.Transaction, results: SQLite.ResultSet) => {
+          const data: AttendanceHistoryItem[] = [];
+          for (let i = 0; i < results.rows.length; i++) {
+            const row = results.rows.item(i);
+            data.push({
+              ...row,
+              AllowanceData: safeParseJSON(row.AllowanceData),
+            });
+          }
+          resolve(data);
+        },
+        (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
+          logger.error('Get all attendance records error', error);
+          reject(error);
+        },
+      );
+    }, (error: SQLite.SQLError) => {
+      logger.error('Get all attendance records transaction error', error);
       reject(error);
     });
   });
@@ -362,38 +531,196 @@ export const getUnsyncedAttendanceRecords = (userID: string): Promise<Attendance
 export const markAttendanceRecordAsSynced = (
   timestamp: string | number,
   serverTimestamp?: number,
+  lastSyncedAt?: number,
 ): Promise<void> => {
   const db = getDB();
   return new Promise((resolve, reject) => {
     db.transaction((tx: SQLite.Transaction) => {
-      const now = Date.now();
-      const updateSQL = serverTimestamp
-        ? 'UPDATE attendance SET IsSynced=?, lastSyncedAt=?, server_Timestamp=? WHERE Timestamp=?'
-        : 'UPDATE attendance SET IsSynced=?, lastSyncedAt=? WHERE Timestamp=?';
-      const params = serverTimestamp
-        ? ['Y', now, serverTimestamp, timestamp]
-        : ['Y', now, timestamp];
-
+      // Backend DB uses UTC, we only need to mark IsSynced in local DB
       tx.executeSql(
-        updateSQL,
-        params,
+        'UPDATE attendance SET IsSynced=? WHERE Timestamp=?',
+        ['Y', timestamp],
         () => {
           log('Marked attendance record as synced:', timestamp);
           // Update Redux store
           const history = store.getState().userState.userAttendanceHistory;
           const updated = history.map((item: AttendanceHistoryItem) =>
-            item.Timestamp === timestamp ? { ...item, IsSynced: 'Y' } : item,
+            item.Timestamp === timestamp 
+              ? { ...item, IsSynced: 'Y' } 
+              : item,
           );
           store.dispatch(setUserAttendanceHistory(updated));
           resolve();
         },
         (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
-          logServiceError('attendance', 'attendance-db-service.ts', 'updateAttendanceSyncState', error);
+          logger.error('Error marking record as synced', error, undefined, {
+            timestamp,
+            operation: 'mark_synced',
+          });
           reject(error);
         },
       );
     }, (error: SQLite.SQLError) => {
-      logServiceError('attendance', 'attendance-db-service.ts', 'updateAttendanceSyncState', error);
+      logger.error('Mark as synced transaction error', error, undefined, {
+        timestamp,
+        operation: 'mark_synced_transaction',
+      });
+      reject(error);
+    });
+  });
+};
+
+// 🔹 Update Attendance Record (for merge logic)
+export const updateAttendanceRecord = (
+  timestamp: string | number,
+  updates: Partial<AttendanceHistoryItem>,
+  userID: string,
+): Promise<void> => {
+  const db = getDB();
+  return new Promise((resolve, reject) => {
+    db.transaction((tx: SQLite.Transaction) => {
+      // First check if record exists and is synced (we don't update unsynced records)
+      tx.executeSql(
+        'SELECT IsSynced FROM attendance WHERE Timestamp=? AND UserID=?',
+        [timestamp, userID],
+        (_tx: SQLite.Transaction, result: SQLite.ResultSet) => {
+          if (result.rows.length === 0) {
+            // Record doesn't exist, nothing to update
+            resolve();
+            return;
+          }
+
+          const record = result.rows.item(0);
+          if (record.IsSynced === 'N') {
+            // Don't overwrite unsynced records
+            log('Skipping update - record is unsynced:', timestamp);
+            resolve();
+            return;
+          }
+
+          // Build update query dynamically
+          const updateFields: string[] = [];
+          const updateValues: any[] = [];
+
+          if (updates.OrgID !== undefined) {
+            updateFields.push('OrgID=?');
+            updateValues.push(updates.OrgID);
+          }
+          if (updates.PunchType !== undefined) {
+            updateFields.push('PunchType=?');
+            updateValues.push(updates.PunchType);
+          }
+          if (updates.PunchDirection !== undefined) {
+            updateFields.push('PunchDirection=?');
+            updateValues.push(updates.PunchDirection);
+          }
+          if (updates.LatLon !== undefined) {
+            updateFields.push('LatLon=?');
+            updateValues.push(updates.LatLon);
+          }
+          if (updates.Address !== undefined) {
+            updateFields.push('Address=?');
+            updateValues.push(updates.Address);
+          }
+          if (updates.CreatedOn !== undefined) {
+            updateFields.push('CreatedOn=?');
+            updateValues.push(updates.CreatedOn);
+          }
+          if (updates.IsSynced !== undefined) {
+            updateFields.push('IsSynced=?');
+            updateValues.push(updates.IsSynced);
+          }
+          if (updates.DateOfPunch !== undefined) {
+            updateFields.push('DateOfPunch=?');
+            updateValues.push(updates.DateOfPunch);
+          }
+          if (updates.AttendanceStatus !== undefined) {
+            updateFields.push('AttendanceStatus=?');
+            updateValues.push(updates.AttendanceStatus);
+          }
+          if (updates.ModuleID !== undefined) {
+            updateFields.push('ModuleID=?');
+            updateValues.push(updates.ModuleID);
+          }
+          if (updates.TripType !== undefined) {
+            updateFields.push('TripType=?');
+            updateValues.push(updates.TripType);
+          }
+          if (updates.PassengerID !== undefined) {
+            updateFields.push('PassengerID=?');
+            updateValues.push(updates.PassengerID);
+          }
+          if (updates.AllowanceData !== undefined) {
+            updateFields.push('AllowanceData=?');
+            updateValues.push(typeof updates.AllowanceData === 'string' 
+              ? updates.AllowanceData 
+              : JSON.stringify(updates.AllowanceData));
+          }
+          if (updates.IsCheckoutQrScan !== undefined) {
+            updateFields.push('IsCheckoutQrScan=?');
+            updateValues.push(updates.IsCheckoutQrScan);
+          }
+          if (updates.TravelerName !== undefined) {
+            updateFields.push('TravelerName=?');
+            updateValues.push(updates.TravelerName);
+          }
+          if (updates.PhoneNumber !== undefined) {
+            updateFields.push('PhoneNumber=?');
+            updateValues.push(updates.PhoneNumber);
+          }
+          if (updates.lastSyncedAt !== undefined) {
+            updateFields.push('lastSyncedAt=?');
+            updateValues.push(updates.lastSyncedAt);
+          }
+          if (updates.lastUpdatedAt !== undefined) {
+            updateFields.push('lastUpdatedAt=?');
+            updateValues.push(updates.lastUpdatedAt);
+          }
+          if (updates.server_Timestamp !== undefined) {
+            updateFields.push('server_Timestamp=?');
+            updateValues.push(updates.server_Timestamp);
+          }
+
+          if (updateFields.length === 0) {
+            resolve();
+            return;
+          }
+
+          updateValues.push(timestamp);
+          updateValues.push(userID);
+
+          const updateSQL = `UPDATE attendance SET ${updateFields.join(', ')} WHERE Timestamp=? AND UserID=?`;
+
+          tx.executeSql(
+            updateSQL,
+            updateValues,
+            () => {
+              log('Updated attendance record:', timestamp);
+              getAttendanceData(userID);
+              resolve();
+            },
+            (_tx2: SQLite.Transaction, error: SQLite.SQLError) => {
+              logger.error('Error updating attendance record', error, undefined, {
+                timestamp,
+                operation: 'update_record',
+              });
+              reject(error);
+            },
+          );
+        },
+        (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
+          logger.error('Error checking record for update', error, undefined, {
+            timestamp,
+            operation: 'check_for_update',
+          });
+          reject(error);
+        },
+      );
+    }, (error: SQLite.SQLError) => {
+      logger.error('Update attendance record transaction error', error, undefined, {
+        timestamp,
+        operation: 'update_record_transaction',
+      });
       reject(error);
     });
   });

@@ -6,6 +6,7 @@ import { hp, wp } from '../../constants';
 import { useTranslation } from '../../hooks/useTranslation';
 import { DarkThemeColors, APP_THEMES } from '../../themes';
 import { useAppSelector } from '../../redux';
+import { logger } from '../../services/logger';
 
 interface FaceRDNotInstalledModalProps {
   visible: boolean;
@@ -41,7 +42,7 @@ export default function FaceRDNotInstalledModal({
         await Linking.openURL(FACE_RD_PLAY_STORE_URL);
       }
     } catch (error) {
-      console.error('Error opening Play Store:', error);
+      logger.error('Error opening Play Store', error);
     }
   };
 

@@ -1,4 +1,5 @@
 import i18n from 'i18next';
+import { logger } from '../services/logger';
 import { initReactI18next } from 'react-i18next';
 import * as RNLocalize from 'react-native-localize';
 import { MMKV } from 'react-native-mmkv';
@@ -56,7 +57,7 @@ i18n
     // Return the key if translation is missing (for debugging)
     // But we'll handle fallbacks in components
     missingKeyHandler: (lng, ns, key) => {
-      console.warn(`Translation missing for key: ${key} in language: ${lng}`);
+      logger.warn(`Translation missing for key: ${key} in language: ${lng}`);
     },
   });
 

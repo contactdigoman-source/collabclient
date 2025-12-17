@@ -1,4 +1,5 @@
 import { useTranslation as useI18nTranslation } from 'react-i18next';
+import { logger } from '../services/logger';
 
 /**
  * Custom hook for translations
@@ -36,7 +37,7 @@ export const useTranslation = () => {
         return translation;
       }
     } catch (error) {
-      console.warn(`Translation error for key: ${key}`, error);
+      logger.warn(`Translation error for key: ${key}`, error);
       const fallback = typeof fallbackOrOptions === 'string' ? fallbackOrOptions : key;
       return fallback;
     }

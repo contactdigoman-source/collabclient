@@ -1,9 +1,10 @@
 import SQLite from 'react-native-sqlite-storage';
+import { logger } from '../logger';
 import { getDB } from '../attendance/attendance-db-service';
 import { retryService } from './retry-service';
 
 const DEBUG = true;
-const log = (...args: any[]): void => DEBUG && console.log('[SyncQueue]', ...args);
+const log = (...args: any[]): void => DEBUG && logger.debug('[SyncQueue]', ...args);
 
 export interface SyncQueueItem {
   id: string;
@@ -54,17 +55,17 @@ class SyncQueueService {
               createdAt,
             ],
             () => {
-              log('Added to sync queue:', id);
+              logger.debug('Added to sync queue:', id);
               resolve();
             },
             (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
-              console.log('Add to queue error:', error);
+              logger.error('Add to queue error', error);
               reject(error);
             },
           );
         },
         (error: SQLite.SQLError) => {
-          console.log('Sync queue transaction error:', error);
+          logger.error('Sync queue transaction error', error);
           reject(error);
         },
       );
@@ -100,17 +101,17 @@ class SyncQueueService {
                   createdAt: row.createdAt,
                 });
               }
-              log(`Found ${items.length} pending items`);
+              logger.debug(`[SettingsSync] Found ${items.length} pending items`);
               resolve(items);
             },
             (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
-              console.log('Get pending items error:', error);
+              logger.error('Get pending items error', error);
               reject(error);
             },
           );
         },
         (error: SQLite.SQLError) => {
-          console.log('Get pending items transaction error:', error);
+          logger.error('Get pending items transaction error', error);
           reject(error);
         },
       );
@@ -149,13 +150,13 @@ class SyncQueueService {
               resolve(items);
             },
             (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
-              console.log('Get pending items by type error:', error);
+              logger.error('Get pending items by type error', error);
               reject(error);
             },
           );
         },
         (error: SQLite.SQLError) => {
-          console.log('Get pending items by type transaction error:', error);
+          logger.error('Get pending items by type transaction error', error);
           reject(error);
         },
       );
@@ -174,17 +175,17 @@ class SyncQueueService {
             `DELETE FROM sync_queue WHERE id = ?`,
             [id],
             () => {
-              log('Marked as synced:', id);
+              logger.debug('Marked as synced:', id);
               resolve();
             },
             (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
-              console.log('Mark as synced error:', error);
+              logger.error('Mark as synced error', error);
               reject(error);
             },
           );
         },
         (error: SQLite.SQLError) => {
-          console.log('Mark as synced transaction error:', error);
+          logger.error('Mark as synced transaction error', error);
           reject(error);
         },
       );
@@ -217,23 +218,23 @@ class SyncQueueService {
                 `UPDATE sync_queue SET attempts = ?, nextRetryAt = ? WHERE id = ?`,
                 [newAttempts, nextRetryAt, id],
                 () => {
-                  log(`Incremented attempts for ${id}: ${newAttempts}`);
+                  logger.debug(`[SettingsSync] Incremented attempts for ${id}: ${newAttempts}`);
                   resolve();
                 },
                 (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
-                  console.log('Increment attempts error:', error);
+                  logger.error('Increment attempts error', error);
                   reject(error);
                 },
               );
             },
             (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
-              console.log('Get attempts error:', error);
+              logger.error('Get attempts error', error);
               reject(error);
             },
           );
         },
         (error: SQLite.SQLError) => {
-          console.log('Increment attempts transaction error:', error);
+          logger.error('Increment attempts transaction error', error);
           reject(error);
         },
       );
@@ -252,17 +253,17 @@ class SyncQueueService {
             `DELETE FROM sync_queue`,
             [],
             () => {
-              log('Queue cleared');
+              logger.debug('Queue cleared');
               resolve();
             },
             (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
-              console.log('Clear queue error:', error);
+              logger.error('Clear queue error', error);
               reject(error);
             },
           );
         },
         (error: SQLite.SQLError) => {
-          console.log('Clear queue transaction error:', error);
+          logger.error('Clear queue transaction error', error);
           reject(error);
         },
       );
@@ -285,13 +286,13 @@ class SyncQueueService {
               resolve(count);
             },
             (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
-              console.log('Get queue size error:', error);
+              logger.error('Get queue size error', error);
               reject(error);
             },
           );
         },
         (error: SQLite.SQLError) => {
-          console.log('Get queue size transaction error:', error);
+          logger.error('Get queue size transaction error', error);
           reject(error);
         },
       );

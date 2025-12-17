@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { logger } from '../logger';
 
 // Dynamically import notifee to handle cases where native module isn't linked
 let notifee: any = null;
@@ -11,7 +12,7 @@ try {
   AndroidImportance = notifeeModule.AndroidImportance;
   TriggerType = notifeeModule.TriggerType;
 } catch (error) {
-  console.warn('@notifee/react-native not available. Notifications will be disabled.', error);
+  // Notifee not available - will be handled gracefully
 }
 
 const BREAK_NOTIFICATION_ID = 'break-reminder';
@@ -27,7 +28,7 @@ export interface BreakStatus {
  */
 export async function requestNotificationPermission(): Promise<boolean> {
   if (!notifee) {
-    console.warn('Notifee not available. Cannot request notification permission.');
+    logger.warn('Notifee not available. Cannot request notification permission.');
     return false;
   }
   try {
@@ -39,7 +40,7 @@ export async function requestNotificationPermission(): Promise<boolean> {
     }
     return true;
   } catch (error) {
-    console.log('Error requesting notification permission:', error);
+    logger.warn('Error requesting notification permission', error);
     return false;
   }
 }
@@ -51,7 +52,7 @@ export async function scheduleBreakReminderNotifications(
   breakStatus: string,
 ): Promise<void> {
   if (!notifee || !AndroidImportance || !TriggerType) {
-    console.warn('Notifee not available. Cannot schedule notifications.');
+    logger.warn('Notifee not available. Cannot schedule notifications.');
     return;
   }
   try {
@@ -61,7 +62,7 @@ export async function scheduleBreakReminderNotifications(
     // Request permission first
     const hasPermission = await requestNotificationPermission();
     if (!hasPermission) {
-      console.log('Notification permission not granted');
+      logger.debug('Notification permission not granted');
       return;
     }
 
@@ -110,7 +111,7 @@ export async function scheduleBreakReminderNotifications(
     // Since notifee doesn't support true recurring triggers, we'll schedule multiple notifications
     scheduleRecurringNotifications(breakStatusLabel, 5); // Schedule 5 notifications (2.5 hours)
   } catch (error) {
-    console.log('Error scheduling break reminder notifications:', error);
+    logger.error('Error scheduling break reminder notifications', error);
   }
 }
 
@@ -149,7 +150,7 @@ async function scheduleRecurringNotifications(
         trigger,
       );
     } catch (error) {
-      console.log(`Error scheduling notification ${i}:`, error);
+      logger.warn(`Error scheduling notification ${i}`, error);
     }
   }
 }
@@ -159,7 +160,7 @@ async function scheduleRecurringNotifications(
  */
 export async function cancelBreakReminderNotifications(): Promise<void> {
   if (!notifee) {
-    console.warn('Notifee not available. Cannot cancel notifications.');
+    logger.warn('Notifee not available. Cannot cancel notifications.');
     return;
   }
   try {
@@ -179,7 +180,7 @@ export async function cancelBreakReminderNotifications(): Promise<void> {
       }
     });
   } catch (error) {
-    console.log('Error canceling break reminder notifications:', error);
+    logger.warn('Error canceling break reminder notifications', error);
   }
 }
 

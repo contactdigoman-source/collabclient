@@ -59,3 +59,4 @@ echo "🌐 Admin UI: $WIREMOCK_URL/__admin/webapp"
 echo "📋 Admin API: $WIREMOCK_URL/__admin/mappings"
 
 
+

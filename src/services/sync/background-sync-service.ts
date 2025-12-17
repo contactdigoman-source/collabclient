@@ -1,10 +1,11 @@
 import { AppState, AppStateStatus } from 'react-native';
+import { logger } from '../logger';
 import { networkService } from '../network/network-service';
 import { syncCoordinator } from './sync-coordinator';
 import { store } from '../../redux';
 
 const DEBUG = true;
-const log = (...args: any[]): void => DEBUG && console.log('[BackgroundSync]', ...args);
+const log = (...args: any[]): void => DEBUG && logger.debug('[BackgroundSync]', ...args);
 
 /**
  * Background Sync Service
@@ -21,20 +22,20 @@ class BackgroundSyncService {
    */
   start(): void {
     if (this.isRunning) {
-      log('Background sync already running');
+      logger.debug('Background sync already running');
       return;
     }
 
     this.isRunning = true;
-    log('Starting background sync service');
+    logger.debug('Starting background sync service');
 
     // Monitor network state changes
     this.networkUnsubscribe = networkService.subscribe((isConnected) => {
       if (isConnected) {
-        log('Network available - triggering sync');
+        logger.debug('Network available - triggering sync');
         this.triggerSync();
       } else {
-        log('Network unavailable');
+        logger.debug('Network unavailable');
       }
     });
 
@@ -58,7 +59,7 @@ class BackgroundSyncService {
     }
 
     this.isRunning = false;
-    log('Stopping background sync service');
+    logger.debug('Stopping background sync service');
 
     if (this.networkUnsubscribe) {
       this.networkUnsubscribe();
@@ -81,7 +82,7 @@ class BackgroundSyncService {
    */
   private handleAppStateChange = (nextAppState: AppStateStatus): void => {
     if (nextAppState === 'active') {
-      log('App became active - triggering sync');
+      logger.debug('App became active - triggering sync');
       this.triggerSync();
     }
   };
@@ -93,7 +94,7 @@ class BackgroundSyncService {
     try {
       const isOnline = await networkService.isConnected();
       if (!isOnline) {
-        log('Network not available - skipping sync');
+        logger.debug('Network not available - skipping sync');
         return;
       }
 
@@ -102,14 +103,14 @@ class BackgroundSyncService {
       const userID = userState?.userData?.id?.toString() || email || '';
 
       if (!email) {
-        log('No user email - skipping sync');
+        logger.debug('No user email - skipping sync');
         return;
       }
 
-      log('Triggering background sync');
+      logger.debug('Triggering background sync');
       await syncCoordinator.syncAll(email, userID);
     } catch (error) {
-      console.log('Error triggering background sync:', error);
+      logger.debug('Error triggering background sync:', error);
     }
   }
 }

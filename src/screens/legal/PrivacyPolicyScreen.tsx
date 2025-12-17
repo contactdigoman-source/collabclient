@@ -6,6 +6,7 @@ import { AppContainer, BackHeader, AppText } from '../../components';
 import { Configs, hp, wp } from '../../constants';
 import { NavigationProp } from '../../types/navigation';
 import { useTranslation } from '../../hooks/useTranslation';
+import { logger } from '../../services/logger';
 
 export default function PrivacyPolicyScreen(): React.JSX.Element {
   const { colors } = useTheme();
@@ -28,7 +29,7 @@ export default function PrivacyPolicyScreen(): React.JSX.Element {
 
   const handleError = (syntheticEvent: any): void => {
     const { nativeEvent } = syntheticEvent;
-    console.error('WebView error: ', nativeEvent);
+    logger.error('WebView error: ', nativeEvent);
     setLoading(false);
   };
 
@@ -55,7 +56,7 @@ export default function PrivacyPolicyScreen(): React.JSX.Element {
               onError={handleError}
               // onHttpError={(syntheticEvent) => {
               //   const { nativeEvent } = syntheticEvent;
-              //   console.error('WebView HTTP error: ', nativeEvent);
+              //   logger.error('WebView HTTP error: ', nativeEvent);
               //   setLoading(false);
               // }}
               style={styles.webView}

@@ -6,9 +6,6 @@ import { FontTypes, hp, wp } from '../../constants';
 import RippleButton from '../app-buttons/RippleButton';
 
 const ChatListItem: React.FC = () => {
-  // Remove console.log in production (it prevents component from being pure)
-  console.log('render ChatListItem');
-
   return (
     <RippleButton style={styles.container}>
       <UserImage size={hp(5)} />

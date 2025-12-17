@@ -1,4 +1,5 @@
 import { profileSyncService, UnsyncedProfileProperty } from './profile-sync-service';
+import { logger } from '../logger';
 import { attendanceSyncService } from './attendance-sync-service';
 import { settingsSyncService, UnsyncedSetting } from './settings-sync-service';
 import { AttendanceRecord } from '../../redux/types/userTypes';
@@ -39,7 +40,7 @@ class SyncStatusService {
         settings,
       };
     } catch (error) {
-      console.log('Error getting all unsynced items:', error);
+      logger.debug('Error getting all unsynced items:', error);
       return {
         profile: [],
         attendance: [],
@@ -55,7 +56,7 @@ class SyncStatusService {
     try {
       return await profileSyncService.getUnsyncedProfileProperties(email);
     } catch (error) {
-      console.log('Error getting unsynced profile properties:', error);
+      logger.debug('Error getting unsynced profile properties:', error);
       return [];
     }
   }
@@ -67,7 +68,7 @@ class SyncStatusService {
     try {
       return await attendanceSyncService.getUnsyncedAttendanceRecords(userID);
     } catch (error) {
-      console.log('Error getting unsynced attendance records:', error);
+      logger.debug('Error getting unsynced attendance records:', error);
       return [];
     }
   }
@@ -79,7 +80,7 @@ class SyncStatusService {
     try {
       return await settingsSyncService.getUnsyncedSettings();
     } catch (error) {
-      console.log('Error getting unsynced settings:', error);
+      logger.debug('Error getting unsynced settings:', error);
       return [];
     }
   }
@@ -104,7 +105,7 @@ class SyncStatusService {
         lastSyncAt: profileStatus.serverLastSyncedAt,
       };
     } catch (error) {
-      console.log('Error getting sync summary:', error);
+      logger.debug('Error getting sync summary:', error);
       return {
         totalUnsynced: 0,
         profileUnsynced: 0,

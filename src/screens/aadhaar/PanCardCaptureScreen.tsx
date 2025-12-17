@@ -21,6 +21,7 @@ import { hp, wp, FontTypes } from '../../constants';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useAppDispatch } from '../../redux';
 import { setIsPanCardVerified, setUserAadhaarFaceValidated } from '../../redux';
+import { logger } from '../../services/logger';
 import {
   requestLocationPermission,
   isLocationEnabled,
@@ -31,7 +32,7 @@ let ImagePicker: any = null;
 try {
   ImagePicker = require('react-native-image-crop-picker');
 } catch (e) {
-  console.log('react-native-image-crop-picker not installed');
+  logger.debug('react-native-image-crop-picker not installed');
 }
 
 type PanCardSide = 'front' | 'back';
@@ -75,7 +76,7 @@ export default function PanCardCaptureScreen(): React.JSX.Element {
           setLoading(false);
         })
         .catch((error: any) => {
-          console.log('Image picker error:', error);
+          logger.debug('Image picker error:', error);
           setLoading(false);
           if (error.code !== 'E_PICKER_CANCELLED') {
             Alert.alert('Error', 'Failed to capture image');
@@ -112,7 +113,7 @@ export default function PanCardCaptureScreen(): React.JSX.Element {
           setLoading(false);
         })
         .catch((error: any) => {
-          console.log('Image picker error:', error);
+          logger.debug('Image picker error:', error);
           setLoading(false);
           if (error.code !== 'E_PICKER_CANCELLED') {
             Alert.alert('Error', 'Failed to select image');

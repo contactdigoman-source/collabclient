@@ -22,7 +22,8 @@ const AttendanceLogItem: React.FC<AttendanceLogItemProps> = ({ item }) => {
   const headerDate = useMemo(() => {
     const firstItem = item?.[0];
     if (!firstItem?.Timestamp) return '';
-    const date = moment(firstItem.Timestamp);
+    // Timestamp is UTC ticks - moment() auto-converts to local time for display
+    const date = moment(firstItem.Timestamp); // UTC ticks → local time
     const formattedDate = date.format('DD/MM/YYYY');
     if (formattedDate === todayFormatted) {
       return `Today, ${moment().format('DD MMM')}`;
@@ -74,8 +75,9 @@ const AttendanceLogItem: React.FC<AttendanceLogItemProps> = ({ item }) => {
           const { Timestamp, PunchType = '', PunchDirection = 'IN', IsSynced = 'N', CreatedOn } =
             attendanceItem;
 
+          // Timestamp is UTC ticks - moment() auto-converts to local time for display
           const formattedTime = useMemo(
-            () => moment(Timestamp).format('hh:mm A'),
+            () => moment(Timestamp).format('hh:mm A'), // UTC ticks → local time
             [Timestamp],
           );
 
@@ -85,7 +87,9 @@ const AttendanceLogItem: React.FC<AttendanceLogItemProps> = ({ item }) => {
               <View style={styles.flex1}>
                 <AppText
                   style={styles.capitalizeText}
-                >{`${PunchType || ''} ${PunchDirection}`}</AppText>
+                >
+                  {PunchDirection === 'IN' ? 'Check In' : PunchDirection === 'OUT' ? 'Check Out' : PunchDirection}
+                </AppText>
               </View>
 
               {/* Divider */}

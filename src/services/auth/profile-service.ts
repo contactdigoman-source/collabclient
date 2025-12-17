@@ -33,6 +33,8 @@ export interface ProfileResponse {
   createdAt?: string;
   lastLoginAt?: string;
   lastSyncedAt?: string; // ISO 8601 timestamp from server
+  shiftStartTime?: string; // Shift start time in HH:mm format (e.g., "09:00")
+  shiftEndTime?: string; // Shift end time in HH:mm format (e.g., "18:00")
   aadhaarVerification?: {
     isVerified: boolean;
     verificationMethod?: string;
@@ -68,6 +70,8 @@ export interface UpdateProfileResponse {
   roles: string[];
   requiresPasswordChange?: boolean;
   lastSyncedAt?: string; // ISO 8601 timestamp from server
+  shiftStartTime?: string; // Shift start time in HH:mm format (e.g., "09:00")
+  shiftEndTime?: string; // Shift end time in HH:mm format (e.g., "18:00")
   aadhaarVerification?: {
     isVerified: boolean;
     verificationMethod?: string;
@@ -173,6 +177,8 @@ export const getProfile = async (): Promise<ProfileResponse> => {
         finalProfile.dateOfBirth = localProfile.dateOfBirth || response.data.dateOfBirth;
         finalProfile.employmentType = localProfile.employmentType || response.data.employmentType;
         finalProfile.designation = localProfile.designation || response.data.designation;
+        finalProfile.shiftStartTime = response.data.shiftStartTime; // Always use server shift times (read-only)
+        finalProfile.shiftEndTime = response.data.shiftEndTime; // Always use server shift times (read-only)
       }
     } else if (response.data) {
       // No local data - use server data and save to local
@@ -199,6 +205,14 @@ export const getProfile = async (): Promise<ProfileResponse> => {
       if (response.data.designation) {
         await profileSyncService.saveProfileProperty(userData.email, 'designation', response.data.designation);
         await profileSyncService.markPropertyAsSynced(userData.email, 'designation');
+      }
+      if (response.data.shiftStartTime) {
+        await profileSyncService.saveProfileProperty(userData.email, 'shiftStartTime', response.data.shiftStartTime);
+        await profileSyncService.markPropertyAsSynced(userData.email, 'shiftStartTime');
+      }
+      if (response.data.shiftEndTime) {
+        await profileSyncService.saveProfileProperty(userData.email, 'shiftEndTime', response.data.shiftEndTime);
+        await profileSyncService.markPropertyAsSynced(userData.email, 'shiftEndTime');
       }
     }
 
@@ -231,20 +245,20 @@ export const getProfile = async (): Promise<ProfileResponse> => {
     logger.error('Failed to get profile', error, {
           url: `${API_BASE_URL}/api/auth/profile`,
           method: 'GET',
-          statusCode: error.response?.status,
-          responseBody: error.response?.data,
+          statusCode: error?.response?.status,
+          responseBody: error?.response?.data,
     }, {
-          hasResponse: !!error.response,
-          hasRequest: !!error.request,
+          hasResponse: !!error?.response,
+          hasRequest: !!error?.request,
     });
 
     // Don't throw errors - just log them and let the caller handle gracefully
     // This prevents the app from crashing when services are down
-    if (error.response) {
-      const errorMessage = error.response.data?.message || 'Failed to fetch profile';
+    if (error?.response) {
+      const errorMessage = error.response?.data?.message || 'Failed to fetch profile';
       logger.warn(`API error: ${errorMessage}`, error);
       throw new Error(errorMessage);
-    } else if (error.request) {
+    } else if (error?.request) {
       // Network error - service might be down
       logger.warn('Network error - service may be unavailable', error);
       throw new Error('Network error. Please check your internet connection.');
@@ -440,11 +454,11 @@ export const updateProfile = async (data: UpdateProfileRequest): Promise<UpdateP
     });
 
     // Don't crash the app if service is down
-    if (error.response) {
-      const errorMessage = error.response.data?.message || 'Failed to update profile';
+    if (error?.response) {
+      const errorMessage = error.response?.data?.message || 'Failed to update profile';
       logger.warn(`Update error: ${errorMessage}`, error);
       throw new Error(errorMessage);
-    } else if (error.request) {
+    } else if (error?.request) {
       logger.warn('Network error during update - service may be unavailable', error);
       throw new Error('Network error. Please check your internet connection.');
     } else {

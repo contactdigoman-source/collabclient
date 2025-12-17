@@ -6,6 +6,7 @@ import moment from 'moment';
 import { Marker, Region } from 'react-native-maps';
 
 import { AppText, AppMap } from '..';
+import { logger } from '../../services/logger';
 import { hp, wp, FontTypes } from '../../constants';
 import { DarkThemeColors, APP_THEMES } from '../../themes';
 import { useAppSelector } from '../../redux';
@@ -41,12 +42,9 @@ export default function AttendanceDetailModal({
   // Debug logging
   useEffect(() => {
     if (visible) {
-      console.log('[AttendanceDetailModal] Modal opened');
-      console.log('[AttendanceDetailModal] Date:', date);
-      console.log('[AttendanceDetailModal] Records count:', records?.length || 0);
-      console.log('[AttendanceDetailModal] Records:', JSON.stringify(records, null, 2));
+      logger.debug('[AttendanceDetailModal] Modal opened', { date, recordsCount: records?.length || 0 });
       if (records && records.length > 0) {
-        console.log('[AttendanceDetailModal] First record:', records[0]);
+        logger.debug('[AttendanceDetailModal] First record', { firstRecord: records[0] });
       }
     }
   }, [visible, date, records]);
@@ -54,51 +52,49 @@ export default function AttendanceDetailModal({
   // Sort records by timestamp
   const sortedRecords = useMemo(() => {
     if (!records || !Array.isArray(records) || records.length === 0) {
-      console.log('[AttendanceDetailModal] No records available');
+      logger.debug('[AttendanceDetailModal] No records available');
       return [];
     }
-    console.log('[AttendanceDetailModal] Processing records:', records.length);
+    logger.debug('[AttendanceDetailModal] Processing records', { count: records.length });
     const sorted = [...records].sort((a, b) => {
       const timeA = typeof a.Timestamp === 'string' ? parseInt(a.Timestamp, 10) : a.Timestamp;
       const timeB = typeof b.Timestamp === 'string' ? parseInt(b.Timestamp, 10) : b.Timestamp;
-      console.log('[AttendanceDetailModal] Sorting:', { timeA, timeB, diff: timeA - timeB });
       return timeA - timeB;
     });
-    console.log('[AttendanceDetailModal] Sorted records:', sorted.length);
+    logger.debug('[AttendanceDetailModal] Sorted records', { count: sorted.length });
     return sorted;
   }, [records]);
 
   // Format time (e.g., "10:30")
+  // Timestamp is UTC ticks - moment() auto-converts to local time for display
   const formatTime = (timestamp: string | number): string => {
     try {
-      // Handle both Unix timestamp (milliseconds) and ISO string
-      const timeMoment = typeof timestamp === 'string' 
-        ? moment(timestamp) 
-        : moment(timestamp);
+      // Timestamp is UTC ticks (number) - moment() auto-converts to local time
+      const timeMoment = moment(timestamp); // UTC ticks → local time
       if (!timeMoment.isValid()) {
-        console.warn('[AttendanceDetailModal] Invalid timestamp:', timestamp);
+        logger.warn('[AttendanceDetailModal] Invalid timestamp', { timestamp });
         return '--:--';
       }
       return timeMoment.format('HH:mm');
     } catch (error) {
-      console.error('[AttendanceDetailModal] Error formatting time:', error, timestamp);
+      logger.error('[AttendanceDetailModal] Error formatting time', error, undefined, { timestamp });
       return '--:--';
     }
   };
 
   // Format date with year (e.g., "7 Apr, 25")
+  // Timestamp is UTC ticks - moment() auto-converts to local time for display
   const formatDateWithYear = (timestamp: string | number): string => {
     try {
-      const timeMoment = typeof timestamp === 'string' 
-        ? moment(timestamp) 
-        : moment(timestamp);
+      // Timestamp is UTC ticks (number) - moment() auto-converts to local time
+      const timeMoment = moment(timestamp); // UTC ticks → local time
       if (!timeMoment.isValid()) {
-        console.warn('[AttendanceDetailModal] Invalid timestamp for date:', timestamp);
+        logger.warn('[AttendanceDetailModal] Invalid timestamp for date', { timestamp });
         return '--';
       }
       return timeMoment.format('D MMM, YY');
     } catch (error) {
-      console.error('[AttendanceDetailModal] Error formatting date:', error, timestamp);
+      logger.error('[AttendanceDetailModal] Error formatting date', error, undefined, { timestamp });
       return '--';
     }
   };
@@ -239,7 +235,6 @@ export default function AttendanceDetailModal({
             alwaysBounceVertical={false}
           >
             {sortedRecords.length > 0 ? sortedRecords.map((record, index) => {
-              console.log('[AttendanceDetailModal] Rendering record:', index, record);
               const coords = parseLatLon(record.LatLon);
               const mapRegion = getMapRegion(record);
               const breakLabel = getBreakLabel(record);

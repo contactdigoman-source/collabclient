@@ -9,6 +9,7 @@ import {
   AadhaarInputScreen,
   AadhaarOtpScreen,
   AttendanceLogsScreen,
+  GeoLocationsScreen,
   ChangeForgottenPassword,
   ChangePasswordScreen,
   CheckInScreen,
@@ -42,6 +43,7 @@ import {
   logoutUser,
 } from '../services';
 import { RootStackParamList } from '../types/navigation';
+import { logger } from '../services/logger';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -57,14 +59,14 @@ export default function AppNavigation(): React.JSX.Element {
     try {
       const userState = store.getState()?.userState;
       if (!userState) {
-        console.log('[Navigation] No userState, defaulting to LoginScreen');
+        logger.debug('[Navigation] No userState, defaulting to LoginScreen');
         return 'LoginScreen';
       }
 
       const userData = userState.userData;
       const expiresAt = userState.expiresAt;
       
-      console.log('[Navigation] Checking initial route:', {
+      logger.debug('[Navigation] Checking initial route', {
         hasUserData: !!userData,
         email: userData?.email,
         expiresAt,
@@ -73,33 +75,33 @@ export default function AppNavigation(): React.JSX.Element {
       
       // Check if user is logged in
       if (!userData?.email) {
-        console.log('[Navigation] No user data, going to LoginScreen');
+        logger.debug('[Navigation] No user data, going to LoginScreen');
         return 'LoginScreen';
       }
       
       // Check if session is expired (only if expiresAt is provided)
       if (expiresAt) {
         const expired = isSessionExpired(expiresAt);
-        console.log('[Navigation] Session expiration check:', { expiresAt, expired });
+        logger.debug('[Navigation] Session expiration check', { expiresAt, expired });
         if (expired) {
           // Session expired - navigate to login
           // Don't call logoutUser here as it's async and navigation isn't ready yet
           // The logout will be handled when user tries to interact with the app
-          console.log('[Navigation] Session expired, going to LoginScreen');
+          logger.debug('[Navigation] Session expired, going to LoginScreen');
           return 'LoginScreen';
         }
       } else {
         // If no expiresAt but user is logged in, allow access (might be old session)
-        console.log('[Navigation] No expiresAt, but user logged in, allowing access');
+        logger.debug('[Navigation] No expiresAt, but user logged in, allowing access');
       }
       
       // Use firstTimeLogin from userData (set by API response)
       const isFirstTime = userData.firstTimeLogin ?? false;
       const route = isFirstTime ? 'FirstTimeLoginScreen' : 'DashboardScreen';
-      console.log('[Navigation] Navigating to:', route);
+      logger.debug('[Navigation] Navigating to', { route });
       return route;
     } catch (error) {
-      console.error('[Navigation] Error determining initial route:', error);
+      logger.error('[Navigation] Error determining initial route', error);
       // Always fallback to LoginScreen if there's any error
       return 'LoginScreen';
     }
@@ -201,7 +203,7 @@ export default function AppNavigation(): React.JSX.Element {
         }}
         onError={(error) => {
           // Log navigation errors but don't crash the app
-          console.error('[Navigation] NavigationContainer error:', error);
+          logger.error('[Navigation] NavigationContainer error', error);
         }}
       >
         <Stack.Navigator
@@ -230,6 +232,10 @@ export default function AppNavigation(): React.JSX.Element {
           <Stack.Screen
             name="AttendanceLogsScreen"
             component={AttendanceLogsScreen}
+          />
+          <Stack.Screen
+            name="GeoLocationsScreen"
+            component={GeoLocationsScreen}
           />
           <Stack.Screen
             name="ViewProfileScreen"

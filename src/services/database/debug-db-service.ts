@@ -1,5 +1,6 @@
 import { getDB } from '../attendance/attendance-db-service';
 import SQLite from 'react-native-sqlite-storage';
+import { logger } from '../logger';
 
 export interface DatabaseView {
   attendance: any[];
@@ -53,14 +54,14 @@ export const getAllDatabaseData = async (): Promise<DatabaseView> => {
     // Get attendance records
     db.transaction(
       (tx: SQLite.Transaction) => {
+        // Get total count first
         tx.executeSql(
-          'SELECT * FROM attendance ORDER BY Timestamp DESC LIMIT 50',
+          'SELECT COUNT(*) as count FROM attendance',
           [],
-          (_tx: SQLite.Transaction, attendanceResults: SQLite.ResultSet) => {
-            for (let i = 0; i < attendanceResults.rows.length; i++) {
-              result.attendance.push(attendanceResults.rows.item(i));
+          (_tx: SQLite.Transaction, countResults: SQLite.ResultSet) => {
+            if (countResults.rows.length > 0) {
+              result.stats.attendanceCount = countResults.rows.item(0).count || 0;
             }
-            result.stats.attendanceCount = attendanceResults.rows.length;
             
             // Count unsynced
             tx.executeSql(
@@ -70,7 +71,19 @@ export const getAllDatabaseData = async (): Promise<DatabaseView> => {
                 if (unsyncedResults.rows.length > 0) {
                   result.stats.unsyncedAttendance = unsyncedResults.rows.item(0).count || 0;
                 }
-                checkComplete();
+                
+                // Get attendance records (limited for display)
+                tx.executeSql(
+                  'SELECT * FROM attendance ORDER BY Timestamp DESC LIMIT 100',
+                  [],
+                  (_tx3: SQLite.Transaction, attendanceResults: SQLite.ResultSet) => {
+                    for (let i = 0; i < attendanceResults.rows.length; i++) {
+                      result.attendance.push(attendanceResults.rows.item(i));
+                    }
+                    checkComplete();
+                  },
+                  () => checkComplete(),
+                );
               },
               () => checkComplete(),
             );
@@ -146,17 +159,43 @@ export const getAllDatabaseData = async (): Promise<DatabaseView> => {
     // Get sync queue
     db.transaction(
       (tx: SQLite.Transaction) => {
+        // Get total count first
         tx.executeSql(
-          'SELECT * FROM sync_queue ORDER BY createdAt DESC LIMIT 50',
+          'SELECT COUNT(*) as count FROM sync_queue',
           [],
-          (_tx: SQLite.Transaction, queueResults: SQLite.ResultSet) => {
-            for (let i = 0; i < queueResults.rows.length; i++) {
-              result.syncQueue.push(queueResults.rows.item(i));
+          (_tx: SQLite.Transaction, countResults: SQLite.ResultSet) => {
+            if (countResults.rows.length > 0) {
+              result.stats.syncQueueCount = countResults.rows.item(0).count || 0;
             }
-            result.stats.syncQueueCount = queueResults.rows.length;
-            checkComplete();
+            
+            // Get all sync queue items (removed limit to show all items)
+            tx.executeSql(
+              'SELECT * FROM sync_queue ORDER BY createdAt DESC',
+              [],
+              (_tx2: SQLite.Transaction, queueResults: SQLite.ResultSet) => {
+                for (let i = 0; i < queueResults.rows.length; i++) {
+                  result.syncQueue.push(queueResults.rows.item(i));
+                }
+                checkComplete();
+              },
+              () => checkComplete(),
+            );
           },
-          () => checkComplete(),
+          () => {
+            // Fallback: get items without count if count query fails
+            tx.executeSql(
+              'SELECT * FROM sync_queue ORDER BY createdAt DESC',
+              [],
+              (_tx2: SQLite.Transaction, queueResults: SQLite.ResultSet) => {
+                for (let i = 0; i < queueResults.rows.length; i++) {
+                  result.syncQueue.push(queueResults.rows.item(i));
+                }
+                result.stats.syncQueueCount = queueResults.rows.length;
+                checkComplete();
+              },
+              () => checkComplete(),
+            );
+          },
         );
       },
       () => checkComplete(),
@@ -196,29 +235,29 @@ export const clearAllDatabaseData = async (): Promise<void> => {
       (tx: SQLite.Transaction) => {
         // Clear all tables
         tx.executeSql('DELETE FROM attendance', [], () => {
-          console.log('Cleared attendance table');
+          logger.debug('Cleared attendance table');
         });
         
         tx.executeSql('DELETE FROM profile', [], () => {
-          console.log('Cleared profile table');
+          logger.debug('Cleared profile table');
         });
         
         tx.executeSql('DELETE FROM settings', [], () => {
-          console.log('Cleared settings table');
+          logger.debug('Cleared settings table');
         });
         
         tx.executeSql('DELETE FROM sync_queue', [], () => {
-          console.log('Cleared sync_queue table');
+          logger.debug('Cleared sync_queue table');
         });
         
         resolve();
       },
       (error: SQLite.SQLError) => {
-        console.error('Error clearing database:', error);
+        logger.error('Error clearing database', error);
         reject(error);
       },
       () => {
-        console.log('Database cleared successfully');
+        logger.debug('Database cleared successfully');
         resolve();
       },
     );

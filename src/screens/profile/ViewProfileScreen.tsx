@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, StyleSheet, ScrollView, Alert, TouchableOpacity, Image, Modal } from 'react-native';
-import { useTheme } from '@react-navigation/native';
+import { useTheme, useNavigation } from '@react-navigation/native';
 import ImagePicker, { ImageOrVideo } from 'react-native-image-crop-picker';
 
 import {
@@ -16,11 +16,14 @@ import { DarkThemeColors, APP_THEMES } from '../../themes';
 import { useTranslation } from '../../hooks/useTranslation';
 import { getProfile, updateProfile, uploadProfilePhoto } from '../../services';
 import { profileSyncService } from '../../services/sync/profile-sync-service';
+import { logger } from '../../services/logger';
+import { NavigationProp } from '../../types/navigation';
 
 const DEFAULT_VALUE = 'None';
 
 export default function ViewProfileScreen(): React.JSX.Element {
   const theme = useTheme();
+  const navigation = useNavigation<NavigationProp>();
   const colors = useMemo(() => (theme?.colors || {}) as any, [theme?.colors]);
   const { appTheme } = useAppSelector(state => state.appState);
   const { t } = useTranslation();
@@ -107,7 +110,7 @@ export default function ViewProfileScreen(): React.JSX.Element {
       } catch (error: any) {
         // Silently fail - app should work even if profile service is down
         // Use Redux data as fallback
-        console.warn('[ViewProfile] Failed to load profile (service may be down):', error.message);
+        logger.warn('[ViewProfile] Failed to load profile (service may be down)', error);
         if (userData) {
           setFirstName(userData.firstName || '');
           setLastName(userData.lastName || '');
@@ -313,7 +316,7 @@ export default function ViewProfileScreen(): React.JSX.Element {
             throw new Error('Photo upload succeeded but no URL returned');
           }
         } catch (error: any) {
-          console.error('Failed to upload photo:', error.message);
+          logger.error('Failed to upload photo', error);
           Alert.alert(t('common.error'), `Failed to upload photo: ${error.message}`);
           return; // Don't continue if photo upload fails
         }
@@ -387,7 +390,7 @@ export default function ViewProfileScreen(): React.JSX.Element {
             }
           }
         } catch (error) {
-          console.log('Error reloading profile from DB after update:', error);
+          logger.warn('Error reloading profile from DB after update', error);
           // Continue even if reload fails
         }
       }
@@ -490,8 +493,8 @@ export default function ViewProfileScreen(): React.JSX.Element {
         <View style={styles.photoContainer}>
           <UserImage
             size={hp(15)}
-            source={profilePhoto ? { uri: profilePhoto } : null}
-            userName={profilePhoto ? undefined : `${firstName || ''} ${lastName || ''}`.trim() || 'User'}
+         
+            userName={`${firstName || userData?.firstName || ''} ${lastName || userData?.lastName || ''}`.trim()}
             isAttendanceStatusVisible={false}
             charsCount={2}
           />
@@ -586,6 +589,38 @@ export default function ViewProfileScreen(): React.JSX.Element {
           label={PROFILE_ITEMS.designation}
           onChangeText={setDesignation}
         />
+
+        {/* Attendance Logs Button */}
+        <TouchableOpacity
+          style={[
+            styles.attendanceLogsButton,
+            {
+              backgroundColor: appTheme === APP_THEMES.light
+                ? (colors as any).cardBg || '#F6F6F6'
+                : DarkThemeColors.white_common + '20',
+              borderColor: appTheme === APP_THEMES.light
+                ? (colors as any).cardBorder || '#E0E0E0'
+                : DarkThemeColors.white_common + '40',
+            },
+          ]}
+          onPress={() => navigation.navigate('AttendanceLogsScreen', { filterToday: true })}
+          disabled={isEditMode}
+        >
+          <Image
+            source={Icons.attendance_logs}
+            style={[
+              styles.attendanceLogsIcon,
+              { tintColor: colors.text || DarkThemeColors.white_common },
+            ]}
+          />
+          <AppText
+            size={hp(2)}
+            color={colors.text || DarkThemeColors.white_common}
+            style={styles.attendanceLogsText}
+          >
+            {t('profile.attendanceLogs')}
+          </AppText>
+        </TouchableOpacity>
       </ScrollView>
 
       {/* Date Picker Modal */}
@@ -809,5 +844,24 @@ const styles = StyleSheet.create({
   },
   confirmModalButton: {
     backgroundColor: DarkThemeColors.primary,
+  },
+  attendanceLogsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: hp(1.5),
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: hp(2),
+    marginBottom: hp(2),
+  },
+  attendanceLogsIcon: {
+    width: 20,
+    height: 20,
+    resizeMode: 'contain',
+    marginRight: wp(2),
+  },
+  attendanceLogsText: {
+    fontFamily: 'Noto Sans',
   },
 });

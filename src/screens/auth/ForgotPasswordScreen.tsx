@@ -22,6 +22,7 @@ import { Icons, Images, MAIL_FORMAT, hp } from '../../constants';
 import { NavigationProp, RootStackParamList } from '../../types/navigation';
 import { useTranslation } from '../../hooks/useTranslation';
 import { forgotPassword } from '../../services/auth/forgot-password-service';
+import { logger } from '../../services/logger';
 
 interface ForgotPasswordScreenProps {
   route: RouteProp<RootStackParamList, 'ForgotPasswordScreen'> & {
@@ -91,7 +92,7 @@ export default function ForgotPasswordScreen({
         setEmailError(response.message || t('auth.forgotPassword.requestFailed', 'Failed to send password reset OTP. Please try again.'));
       }
     } catch (error: any) {
-      console.error('Forgot password error:', error);
+      logger.error('Forgot password error', error);
       setEmailError(error.message || t('auth.forgotPassword.requestFailed', 'Failed to send password reset OTP. Please try again.'));
     } finally {
       setIsLoading(false);

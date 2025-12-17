@@ -2,6 +2,8 @@
  * Session management utilities
  */
 
+import { logger } from '../logger';
+
 /**
  * Check if the session has expired based on expiresAt timestamp
  * Uses device's local time to compare with expiration timestamp.
@@ -14,7 +16,7 @@ export const isSessionExpired = (expiresAt: string | null): boolean => {
   // If no expiration date is provided, we can't determine if it's expired
   // Return false to allow access (might be old session format or API didn't return it)
   if (!expiresAt) {
-    console.log('[Session] No expiration date provided, allowing access');
+    logger.debug('[Session] No expiration date provided, allowing access');
     return false; // No expiration date means we can't determine, so allow access
   }
 
@@ -23,7 +25,7 @@ export const isSessionExpired = (expiresAt: string | null): boolean => {
     
     // Check if date parsing was successful
     if (isNaN(expirationDate.getTime())) {
-      console.error('[Session] Invalid expiration date format:', expiresAt);
+      logger.error('[Session] Invalid expiration date format', undefined, undefined, { expiresAt });
       return true; // Invalid date means expired
     }
     
@@ -34,7 +36,7 @@ export const isSessionExpired = (expiresAt: string | null): boolean => {
     const isExpired = currentTime >= expirationTime;
     
     // Debug logging with more details
-    console.log('[Session] Checking expiration:', {
+    logger.debug('[Session] Checking expiration', {
       expiresAt,
       expirationDateUTC: expirationDate.toISOString(),
       expirationDateLocal: expirationDate.toString(),
@@ -52,12 +54,12 @@ export const isSessionExpired = (expiresAt: string | null): boolean => {
     // Additional validation: if expiration year is in the future compared to device year,
     // but device thinks it's expired, there might be a clock issue
     if (expirationDate.getFullYear() > now.getFullYear() && isExpired) {
-      console.warn('[Session] WARNING: Expiration year is in future but marked as expired. Possible device clock issue.');
+      logger.warn('[Session] WARNING: Expiration year is in future but marked as expired. Possible device clock issue.');
     }
     
     return isExpired;
   } catch (error) {
-    console.error('[Session] Error parsing expiration date:', error, 'expiresAt:', expiresAt);
+    logger.error('[Session] Error parsing expiration date', error, undefined, { expiresAt });
     return true; // If we can't parse, consider it expired
   }
 };

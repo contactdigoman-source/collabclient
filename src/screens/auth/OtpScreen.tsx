@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { useNavigation, useTheme, RouteProp } from '@react-navigation/native';
 import { OtpInput } from 'react-native-otp-entry';
+import moment from 'moment';
 
 import {
   AppButton,
@@ -160,7 +161,7 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
       startTimer();
       setOtpError('');
     } catch (error: any) {
-      // Error is already logged in otp-service.ts via logServiceError
+      // Error is already logged in otp-service.ts via logger.error
       setOtpError(error.message || t('auth.otp.resendFailed', 'Failed to resend OTP. Please try again.'));
     }
   }, [resendActive, emailID, isPasswordReset, isPunchFlow, startTimer, t]);
@@ -264,7 +265,8 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
         if (!userAadhaarFaceValidated) {
           isAadhaarVerificationNeeded = true;
         } else if (lastAadhaarVerificationDate) {
-          const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+          // Use UTC date for consistency (stored dates are in UTC format YYYY-MM-DD)
+          const today = moment.utc().format('YYYY-MM-DD');
           if (lastAadhaarVerificationDate !== today) {
             isAadhaarVerificationNeeded = true;
           }
@@ -322,7 +324,7 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
         }
       }
     } catch (error: any) {
-      // Error is already logged in otp-service.ts via logServiceError
+      // Error is already logged in otp-service.ts via logger.error
       setOtpError(error.message || t('auth.otp.verificationFailed', 'Failed to verify OTP. Please try again.'));
       setIsVerifying(false);
     }

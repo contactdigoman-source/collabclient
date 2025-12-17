@@ -385,6 +385,30 @@ export const extendAttendanceTable = (): Promise<void> => {
             }),
               );
             }
+
+            // Add lastUpdatedAt if missing
+            if (!existing.has('lastUpdatedAt')) {
+              tx.executeSql(
+                `ALTER TABLE attendance ADD COLUMN lastUpdatedAt BIGINT;`,
+                [],
+                () => log('Added column: lastUpdatedAt'),
+                (_tx: SQLite.Transaction, error: SQLite.SQLError) =>
+            logger.error('Error adding lastUpdatedAt column', error, undefined, {
+              column: 'lastUpdatedAt',
+            }),
+              );
+              
+              // Set default lastUpdatedAt for existing records (use CreatedOn if available, otherwise current time)
+              tx.executeSql(
+                `UPDATE attendance SET lastUpdatedAt = COALESCE(CreatedOn, ?) WHERE lastUpdatedAt IS NULL;`,
+                [Date.now()],
+                () => log('Set default lastUpdatedAt for existing records'),
+                (_tx: SQLite.Transaction, error: SQLite.SQLError) =>
+            logger.error('Error setting default lastUpdatedAt', error, undefined, {
+              column: 'lastUpdatedAt',
+            }),
+              );
+            }
           },
           (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
             logger.error('PRAGMA error', error);

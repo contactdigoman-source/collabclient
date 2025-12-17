@@ -1,4 +1,5 @@
 import { Platform, PermissionsAndroid, Linking, Alert } from 'react-native';
+import { logger } from '../logger';
 
 export type PermissionType =
   | 'location'
@@ -51,7 +52,7 @@ export const checkPermission = async (
     if (Platform.OS === 'ios') {
       // iOS permissions require Info.plist configuration and may need react-native-permissions
       // For now, return a default status (can be enhanced later)
-      console.warn(`iOS permission check for ${type} - consider using react-native-permissions for full support`);
+      logger.warn(`iOS permission check for ${type} - consider using react-native-permissions for full support`);
       return { type, granted: false, canRequest: true };
     }
 
@@ -67,7 +68,7 @@ export const checkPermission = async (
       canRequest: !result, // Can request if not granted
     };
   } catch (error) {
-    console.error(`Error checking permission ${type}:`, error);
+    logger.error(`Error checking permission ${type}`, error);
     return { type, granted: false, canRequest: false };
   }
 };
@@ -83,7 +84,7 @@ export const requestPermission = async (
     if (Platform.OS === 'ios') {
       // iOS permissions require Info.plist configuration and may need react-native-permissions
       // For now, return false (can be enhanced later)
-      console.warn(`iOS permission request for ${type} - consider using react-native-permissions for full support`);
+      logger.warn(`iOS permission request for ${type} - consider using react-native-permissions for full support`);
       return false;
     }
 
@@ -95,7 +96,7 @@ export const requestPermission = async (
     const result = await PermissionsAndroid.request(permission);
     return result === PermissionsAndroid.RESULTS.GRANTED;
   } catch (error) {
-    console.error(`Error requesting permission ${type}:`, error);
+    logger.error(`Error requesting permission ${type}`, error);
     return false;
   }
 };
@@ -176,7 +177,7 @@ export const openAppSettings = (): void => {
   try {
     Linking.openSettings();
   } catch (error) {
-    console.error('Error opening app settings:', error);
+    logger.error('Error opening app settings', error);
   }
 };
 

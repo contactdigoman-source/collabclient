@@ -1,30 +1,29 @@
 import React, { useMemo, useCallback, useState } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, Modal } from 'react-native';
+import { View, StyleSheet, FlatList, TouchableOpacity, Image, Linking, Modal } from 'react-native';
 import { useFocusEffect, useRoute, RouteProp, useTheme } from '@react-navigation/native';
 import moment from 'moment';
 import {
   AppContainer,
   AppText,
-  AttendanceLogItem,
   BackHeader,
 } from '../../components';
 import { useAppSelector } from '../../redux';
 import { useTranslation } from '../../hooks/useTranslation';
-import { wp, hp, FontTypes } from '../../constants';
+import { wp, hp, Icons, FontTypes } from '../../constants';
 import { AttendanceRecord } from '../../redux/types/userTypes';
 import { getAttendanceData, getAllAttendanceRecords } from '../../services/attendance/attendance-db-service';
 import { getDaysAttendance } from '../../services/attendance/attendance-service';
 import { DarkThemeColors, APP_THEMES } from '../../themes';
 import { logger } from '../../services/logger';
 
-type AttendanceLogsRouteParams = {
+type GeoLocationsRouteParams = {
   filterToday?: boolean;
 };
 
-type AttendanceLogsRouteProp = RouteProp<{ params: AttendanceLogsRouteParams }, 'params'>;
+type GeoLocationsRouteProp = RouteProp<{ params: GeoLocationsRouteParams }, 'params'>;
 
-export default function AttendanceLogsScreen(): React.JSX.Element {
-  const route = useRoute<AttendanceLogsRouteProp>();
+export default function GeoLocationsScreen(): React.JSX.Element {
+  const route = useRoute<GeoLocationsRouteProp>();
   const filterTodayParam = route.params?.filterToday || false;
   const { t } = useTranslation();
   const { userAttendanceHistory, userData } = useAppSelector(state => state.userState);
@@ -74,7 +73,7 @@ export default function AttendanceLogsScreen(): React.JSX.Element {
 
       // If no records in range, pull from server
       if (!hasRecordsInRange) {
-        logger.debug('[AttendanceLogs] No data in SQLite for selected range, pulling from server');
+        logger.debug('[GeoLocations] No data in SQLite for selected range, pulling from server');
         // Calculate the month range - if range spans multiple months, sync each month
         const startMonth = startDate.clone().startOf('month');
         const endMonth = endDate.clone().startOf('month');
@@ -89,7 +88,7 @@ export default function AttendanceLogsScreen(): React.JSX.Element {
       // Refresh data from DB
       await getAttendanceData(userData.email);
     } catch (error) {
-      logger.error('[AttendanceLogs] Error checking/syncing date range', error);
+      logger.error('[GeoLocations] Error checking/syncing date range', error);
     } finally {
       setIsLoading(false);
     }
@@ -102,53 +101,31 @@ export default function AttendanceLogsScreen(): React.JSX.Element {
     }
   }, [startDate, endDate, userData?.email, checkAndSyncDateRange]);
 
-  /** Check if all records are synced */
-  const allSynced = useMemo(() => {
-    if (!userAttendanceHistory?.length) return true;
-    return userAttendanceHistory.every(record => record.IsSynced === 'Y');
-  }, [userAttendanceHistory]);
-
-  /** Group attendance logs by date — memoized for performance */
-  const groupedData = useMemo<AttendanceRecord[][]>(() => {
+  /** Filter records with location data and filter by date range if specified */
+  const locationRecords = useMemo<AttendanceRecord[]>(() => {
     if (!userAttendanceHistory?.length) return [];
     
+    let filtered = userAttendanceHistory.filter((record: AttendanceRecord) => {
+      // Must have location data
+      if (!record.LatLon || !record.Address) return false;
+      return true;
+    });
+
     // Filter by date range if specified
-    let filteredHistory = userAttendanceHistory;
-    
     if (startDate && endDate) {
       const startTimestamp = startDate.clone().startOf('day').valueOf();
       const endTimestamp = endDate.clone().endOf('day').valueOf();
       
-      filteredHistory = userAttendanceHistory.filter((attendance: AttendanceRecord) => {
-        const recordTimestamp = typeof attendance.Timestamp === 'string'
-          ? parseInt(attendance.Timestamp, 10)
-          : attendance.Timestamp;
+      filtered = filtered.filter((record: AttendanceRecord) => {
+        const recordTimestamp = typeof record.Timestamp === 'string'
+          ? parseInt(record.Timestamp, 10)
+          : record.Timestamp;
         return recordTimestamp >= startTimestamp && recordTimestamp <= endTimestamp;
       });
     }
     
-    const grouped: { [key: string]: AttendanceRecord[] } = filteredHistory.reduce(
-      (group: { [key: string]: AttendanceRecord[] }, attendance: AttendanceRecord) => {
-        // Group by UTC date for consistency, but will display in local time later
-        const date = attendance.DateOfPunch || 
-          (attendance.Timestamp 
-            ? moment.utc(attendance.Timestamp).format('YYYY-MM-DD')
-            : moment.utc().format('YYYY-MM-DD'));
-        if (!group[date]) group[date] = [];
-        group[date].push(attendance);
-        return group;
-      },
-      {},
-    );
-    // Reverse order (most recent first)
-    return Object.values(grouped);
+    return filtered.sort((a, b) => (b.Timestamp || 0) - (a.Timestamp || 0)); // Most recent first
   }, [userAttendanceHistory, startDate, endDate]);
-
-  /** Stable renderItem reference */
-  const renderHistoryItem = useCallback(
-    ({ item }: { item: AttendanceRecord[] }) => <AttendanceLogItem item={item} />,
-    [],
-  );
 
   /** Date selection handlers */
   const handleDatePickerOpen = useCallback((type: 'start' | 'end') => {
@@ -187,9 +164,62 @@ export default function AttendanceLogsScreen(): React.JSX.Element {
     setEndDate(null);
   }, []);
 
+  /** Open location in maps app */
+  const openInMaps = useCallback((latLon: string, address: string) => {
+    const [lat, lon] = latLon.split(',').map(Number);
+    if (!isNaN(lat) && !isNaN(lon)) {
+      const url = `https://www.google.com/maps?q=${lat},${lon}`;
+      Linking.openURL(url).catch(() => {
+        // Error opening maps - user may not have maps app installed
+      });
+    }
+  }, []);
+
+  /** Render location item */
+  const renderLocationItem = useCallback(
+    ({ item }: { item: AttendanceRecord }) => {
+      const formattedTime = moment(item.Timestamp).format('hh:mm A');
+      const formattedDate = moment(item.Timestamp).format('ddd, DD MMM YY');
+      
+      return (
+        <TouchableOpacity
+          style={[styles.locationCard, { backgroundColor: DarkThemeColors.black + '40' }]}
+          onPress={() => item.LatLon && openInMaps(item.LatLon, item.Address || '')}
+        >
+          <View style={styles.locationHeader}>
+            <View style={styles.locationIconContainer}>
+              <Image
+                source={Icons.geo_locations}
+                style={styles.locationIcon}
+                resizeMode="contain"
+              />
+            </View>
+            <View style={styles.locationInfo}>
+              <AppText size={hp(2)} style={styles.locationDate}>
+                {formattedDate}
+              </AppText>
+              <AppText size={hp(1.8)} style={styles.locationTime}>
+                {formattedTime} - {item.PunchDirection === 'IN' ? 'Check In' : 'Check Out'}
+              </AppText>
+            </View>
+          </View>
+          <View style={styles.addressContainer}>
+            <AppText size={hp(1.8)} style={styles.addressText}>
+              {item.Address}
+            </AppText>
+            <AppText size={hp(1.6)} style={styles.coordinatesText}>
+              {item.LatLon}
+            </AppText>
+          </View>
+        </TouchableOpacity>
+      );
+    },
+    [openInMaps]
+  );
+
   return (
     <AppContainer>
-      <BackHeader title={t('profile.attendanceLogs')} isTitleVisible={true} />
+      <BackHeader title={t('profile.geoLocations')} isTitleVisible={true} />
       
       {/* Date Range Selector */}
       <View style={[styles.dateRangeContainer, {
@@ -248,23 +278,12 @@ export default function AttendanceLogsScreen(): React.JSX.Element {
         </View>
       )}
 
-      {/* Sync Status Summary */}
-      {userAttendanceHistory?.length > 0 && !isLoading && (
-        <View style={styles.syncStatusContainer}>
-          <AppText style={styles.syncStatusText}>
-            {allSynced 
-              ? t('attendance.allSynced', 'All attendances are synched') 
-              : t('attendance.someUnsynced', 'Some attendances are not synced')}
-          </AppText>
-        </View>
-      )}
       <FlatList
-        data={groupedData}
-        renderItem={renderHistoryItem}
-        keyExtractor={(_, index) => String(index)}
+        data={locationRecords}
+        renderItem={renderLocationItem}
+        keyExtractor={(item) => String(item.Timestamp)}
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
-        // FlatList performance optimizations
         removeClippedSubviews
         initialNumToRender={10}
         windowSize={7}
@@ -386,7 +405,7 @@ const EmptyList = React.memo((): React.JSX.Element => {
   const { t } = useTranslation();
   return (
     <View style={styles.emptyContainer}>
-      <AppText>{t('attendance.noDataFound')}</AppText>
+      <AppText>{t('attendance.noDataFound', 'No location data found')}</AppText>
     </View>
   );
 });
@@ -394,21 +413,13 @@ const EmptyList = React.memo((): React.JSX.Element => {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    paddingHorizontal: wp(4.27), // 17px / 375px * 100 (matching DayAttendanceItem margin)
+    paddingHorizontal: wp(4.27),
+    paddingVertical: hp(1),
   },
   emptyContainer: {
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  syncStatusContainer: {
-    paddingHorizontal: wp(4.27),
-    paddingVertical: wp(2),
-    alignItems: 'center',
-  },
-  syncStatusText: {
-    fontSize: wp(3.5),
-    opacity: 0.7,
   },
   dateRangeContainer: {
     flexDirection: 'row',
@@ -447,6 +458,50 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: wp(3.5),
     opacity: 0.7,
+  },
+  locationCard: {
+    padding: hp(2),
+    marginVertical: hp(1),
+    borderRadius: hp(1.74),
+    borderWidth: 1,
+    borderColor: DarkThemeColors.white_common + '20',
+  },
+  locationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: hp(1.5),
+  },
+  locationIconContainer: {
+    marginRight: wp(3),
+  },
+  locationIcon: {
+    width: hp(3),
+    height: hp(3),
+    tintColor: DarkThemeColors.primary,
+  },
+  locationInfo: {
+    flex: 1,
+  },
+  locationDate: {
+    opacity: 0.7,
+    marginBottom: hp(0.5),
+  },
+  locationTime: {
+    opacity: 0.9,
+  },
+  addressContainer: {
+    marginTop: hp(1),
+    paddingTop: hp(1),
+    borderTopWidth: 1,
+    borderTopColor: DarkThemeColors.white_common + '10',
+  },
+  addressText: {
+    opacity: 0.9,
+    marginBottom: hp(0.5),
+  },
+  coordinatesText: {
+    opacity: 0.6,
+    fontFamily: 'monospace',
   },
   modalOverlay: {
     flex: 1,
@@ -505,3 +560,4 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8F5E9',
   },
 });
+

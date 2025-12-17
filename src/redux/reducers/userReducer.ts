@@ -1,5 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import moment from 'moment';
 import { DEFAULT_REGION } from '../../constants';
+import { logger } from '../../services/logger';
 import {
   UserState,
   UserData,
@@ -57,11 +59,11 @@ const userSlice = createSlice({
       }
     },
     setUserAadhaarFaceValidated(state, action: PayloadAction<boolean>) {
-      console.log('setUserAadhaarFaceValidated', action.payload);
+      logger.debug('setUserAadhaarFaceValidated', { payload: action.payload });
       state.userAadhaarFaceValidated = action.payload;
       if (action.payload) {
-        // Store today's date when Aadhaar is verified
-        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        // Store today's date in UTC format (YYYY-MM-DD) when Aadhaar is verified
+        const today = moment.utc().format('YYYY-MM-DD');
         state.lastAadhaarVerificationDate = today;
         state.isPanCardVerified = false;
       }
@@ -72,8 +74,8 @@ const userSlice = createSlice({
     setIsPanCardVerified(state, action: PayloadAction<boolean>) {
       state.isPanCardVerified = action.payload;
       if (action.payload) {
-        // Store today's date when PAN card is verified
-        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        // Store today's date in UTC format (YYYY-MM-DD) when PAN card is verified
+        const today = moment.utc().format('YYYY-MM-DD');
         state.lastAadhaarVerificationDate = today;
         state.userAadhaarFaceValidated = true; // Allow check-in
       }

@@ -21,3 +21,4 @@ HEALTHCHECK --interval=10s --timeout=5s --retries=5 \
 CMD ["--global-response-templating", "--verbose", "--disable-request-logging=false"]
 
 
+

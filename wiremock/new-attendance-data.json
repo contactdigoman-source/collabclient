@@ -1,0 +1,1962 @@
+[
+  {
+    "dateOfPunch": "2025-12-31",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:56",
+    "breakDuration": "00:00",
+    "records": [
+      {
+        "Timestamp": 1767172560000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-31"
+      },
+      {
+        "Timestamp": 1767204720000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-31"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-12-30",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:16",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1767086940000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-30"
+      },
+      {
+        "Timestamp": 1767099000000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-30"
+      },
+      {
+        "Timestamp": 1767102720000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-30"
+      },
+      {
+        "Timestamp": 1767116700000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-30"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-12-29",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "9:02",
+    "breakDuration": "00:00",
+    "records": [
+      {
+        "Timestamp": 1766999940000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-29"
+      },
+      {
+        "Timestamp": 1767032460000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-29"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-12-26",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:33",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1766739720000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-26"
+      },
+      {
+        "Timestamp": 1766743860000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-26"
+      },
+      {
+        "Timestamp": 1766748300000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-26"
+      },
+      {
+        "Timestamp": 1766770500000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-26"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-12-25",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "9:08",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1766653680000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-25"
+      },
+      {
+        "Timestamp": 1766661720000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-25"
+      },
+      {
+        "Timestamp": 1766666160000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-25"
+      },
+      {
+        "Timestamp": 1766686560000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-25"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-12-23",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:36",
+    "breakDuration": "00:00",
+    "records": [
+      {
+        "Timestamp": 1766480940000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-23"
+      },
+      {
+        "Timestamp": 1766511900000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-23"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-12-22",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:24",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1766394540000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-22"
+      },
+      {
+        "Timestamp": 1766399820000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-22"
+      },
+      {
+        "Timestamp": 1766404260000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-22"
+      },
+      {
+        "Timestamp": 1766424780000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-22"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-12-19",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "9:05",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1766135280000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-19"
+      },
+      {
+        "Timestamp": 1766147520000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-19"
+      },
+      {
+        "Timestamp": 1766152620000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-19"
+      },
+      {
+        "Timestamp": 1766167980000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-19"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-12-18",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:43",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1766049660000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-18"
+      },
+      {
+        "Timestamp": 1766054520000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-18"
+      },
+      {
+        "Timestamp": 1766058120000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-18"
+      },
+      {
+        "Timestamp": 1766081040000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-18"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-12-17",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "9:15",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1765962240000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-17"
+      },
+      {
+        "Timestamp": 1765967220000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-17"
+      },
+      {
+        "Timestamp": 1765972020000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-17"
+      },
+      {
+        "Timestamp": 1765995540000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-17"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-12-16",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:34",
+    "breakDuration": "00:00",
+    "records": [
+      {
+        "Timestamp": 1765876020000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-16"
+      },
+      {
+        "Timestamp": 1765906860000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-16"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-12-15",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:45",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1765789680000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-15"
+      },
+      {
+        "Timestamp": 1765797180000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-15"
+      },
+      {
+        "Timestamp": 1765801380000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-15"
+      },
+      {
+        "Timestamp": 1765821180000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-15"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-12-12",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:34",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1765531560000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-12"
+      },
+      {
+        "Timestamp": 1765536000000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-12"
+      },
+      {
+        "Timestamp": 1765541040000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-12"
+      },
+      {
+        "Timestamp": 1765562400000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-12"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-12-11",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "9:06",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1765444860000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-11"
+      },
+      {
+        "Timestamp": 1765455840000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-11"
+      },
+      {
+        "Timestamp": 1765460100000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-11"
+      },
+      {
+        "Timestamp": 1765477620000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-11"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-12-10",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "9:09",
+    "breakDuration": "00:00",
+    "records": [
+      {
+        "Timestamp": 1765357860000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-10"
+      },
+      {
+        "Timestamp": 1765390800000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-10"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-12-09",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:31",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1765272420000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-09"
+      },
+      {
+        "Timestamp": 1765281120000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-09"
+      },
+      {
+        "Timestamp": 1765286100000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-09"
+      },
+      {
+        "Timestamp": 1765303080000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-09"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-12-05",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:38",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1764926640000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-05"
+      },
+      {
+        "Timestamp": 1764930540000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-05"
+      },
+      {
+        "Timestamp": 1764935640000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-05"
+      },
+      {
+        "Timestamp": 1764957720000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-05"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-12-04",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:29",
+    "breakDuration": "00:00",
+    "records": [
+      {
+        "Timestamp": 1764840000000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-04"
+      },
+      {
+        "Timestamp": 1764870540000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-04"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-12-03",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "9:10",
+    "breakDuration": "00:00",
+    "records": [
+      {
+        "Timestamp": 1764753360000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-03"
+      },
+      {
+        "Timestamp": 1764786360000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-03"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-12-02",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:55",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1764667260000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-02"
+      },
+      {
+        "Timestamp": 1764671640000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-02"
+      },
+      {
+        "Timestamp": 1764676080000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-02"
+      },
+      {
+        "Timestamp": 1764699360000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-02"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-12-01",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:29",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1764579840000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-01"
+      },
+      {
+        "Timestamp": 1764592080000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-01"
+      },
+      {
+        "Timestamp": 1764596100000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-01"
+      },
+      {
+        "Timestamp": 1764610380000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-12-01"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-11-27",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:59",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1764235380000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-27"
+      },
+      {
+        "Timestamp": 1764246360000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-27"
+      },
+      {
+        "Timestamp": 1764250380000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-27"
+      },
+      {
+        "Timestamp": 1764267720000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-27"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-11-26",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:24",
+    "breakDuration": "00:00",
+    "records": [
+      {
+        "Timestamp": 1764149220000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-26"
+      },
+      {
+        "Timestamp": 1764179460000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-26"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-11-25",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:17",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1764062040000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-25"
+      },
+      {
+        "Timestamp": 1764067140000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-25"
+      },
+      {
+        "Timestamp": 1764072060000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-25"
+      },
+      {
+        "Timestamp": 1764091860000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-25"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-11-24",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:34",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1763975280000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-24"
+      },
+      {
+        "Timestamp": 1763987760000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-24"
+      },
+      {
+        "Timestamp": 1763991900000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-24"
+      },
+      {
+        "Timestamp": 1764006120000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-24"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-11-20",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "9:07",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1763629620000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-20"
+      },
+      {
+        "Timestamp": 1763634420000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-20"
+      },
+      {
+        "Timestamp": 1763638140000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-20"
+      },
+      {
+        "Timestamp": 1763662440000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-20"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-11-19",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:57",
+    "breakDuration": "00:00",
+    "records": [
+      {
+        "Timestamp": 1763544480000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-19"
+      },
+      {
+        "Timestamp": 1763576700000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-19"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-11-18",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "9:13",
+    "breakDuration": "00:00",
+    "records": [
+      {
+        "Timestamp": 1763456460000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-18"
+      },
+      {
+        "Timestamp": 1763489640000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-18"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-11-17",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:50",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1763370840000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-17"
+      },
+      {
+        "Timestamp": 1763375760000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-17"
+      },
+      {
+        "Timestamp": 1763379720000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-17"
+      },
+      {
+        "Timestamp": 1763402640000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-17"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-11-14",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:54",
+    "breakDuration": "00:00",
+    "records": [
+      {
+        "Timestamp": 1763112360000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-14"
+      },
+      {
+        "Timestamp": 1763144400000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-14"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-11-13",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:50",
+    "breakDuration": "00:00",
+    "records": [
+      {
+        "Timestamp": 1763024700000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-13"
+      },
+      {
+        "Timestamp": 1763056500000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-13"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-11-12",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:25",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1762938420000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-12"
+      },
+      {
+        "Timestamp": 1762947060000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-12"
+      },
+      {
+        "Timestamp": 1762950660000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-12"
+      },
+      {
+        "Timestamp": 1762968720000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-12"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-11-11",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:56",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1762852020000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-11"
+      },
+      {
+        "Timestamp": 1762859280000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-11"
+      },
+      {
+        "Timestamp": 1762863060000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-11"
+      },
+      {
+        "Timestamp": 1762884180000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-11"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-11-10",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:37",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1762765740000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-10"
+      },
+      {
+        "Timestamp": 1762777260000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-10"
+      },
+      {
+        "Timestamp": 1762782360000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-10"
+      },
+      {
+        "Timestamp": 1762796760000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-10"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-11-06",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:52",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1762421340000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-06"
+      },
+      {
+        "Timestamp": 1762426200000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-06"
+      },
+      {
+        "Timestamp": 1762430580000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-06"
+      },
+      {
+        "Timestamp": 1762453260000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-06"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-11-05",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "9:02",
+    "breakDuration": "00:00",
+    "records": [
+      {
+        "Timestamp": 1762334640000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-05"
+      },
+      {
+        "Timestamp": 1762367160000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-05"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-11-04",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:54",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1762247940000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-04"
+      },
+      {
+        "Timestamp": 1762251720000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-04"
+      },
+      {
+        "Timestamp": 1762255980000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-04"
+      },
+      {
+        "Timestamp": 1762279980000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-04"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-11-03",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "9:04",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1762161720000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-03"
+      },
+      {
+        "Timestamp": 1762166820000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-03"
+      },
+      {
+        "Timestamp": 1762170720000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-03"
+      },
+      {
+        "Timestamp": 1762194360000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-11-03"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-10-31",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:18",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1761902700000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-31"
+      },
+      {
+        "Timestamp": 1761907080000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-31"
+      },
+      {
+        "Timestamp": 1761910860000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-31"
+      },
+      {
+        "Timestamp": 1761932580000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-31"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-10-30",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:25",
+    "breakDuration": "00:00",
+    "records": [
+      {
+        "Timestamp": 1761816420000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-30"
+      },
+      {
+        "Timestamp": 1761846720000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-30"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-10-28",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:22",
+    "breakDuration": "00:00",
+    "records": [
+      {
+        "Timestamp": 1761642480000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-28"
+      },
+      {
+        "Timestamp": 1761672600000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-28"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-10-27",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "9:05",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1761556080000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-27"
+      },
+      {
+        "Timestamp": 1761564780000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-27"
+      },
+      {
+        "Timestamp": 1761569880000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-27"
+      },
+      {
+        "Timestamp": 1761588780000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-27"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-10-24",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:53",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1761296400000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-24"
+      },
+      {
+        "Timestamp": 1761300540000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-24"
+      },
+      {
+        "Timestamp": 1761305400000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-24"
+      },
+      {
+        "Timestamp": 1761328380000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-24"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-10-23",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:13",
+    "breakDuration": "00:00",
+    "records": [
+      {
+        "Timestamp": 1761211080000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-23"
+      },
+      {
+        "Timestamp": 1761240660000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-23"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-10-22",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:40",
+    "breakDuration": "00:00",
+    "records": [
+      {
+        "Timestamp": 1761124980000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-22"
+      },
+      {
+        "Timestamp": 1761156180000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-22"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-10-21",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "9:09",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1761037500000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-21"
+      },
+      {
+        "Timestamp": 1761049560000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-21"
+      },
+      {
+        "Timestamp": 1761054000000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-21"
+      },
+      {
+        "Timestamp": 1761070440000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-21"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-10-20",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:43",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1760952000000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-20"
+      },
+      {
+        "Timestamp": 1760963280000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-20"
+      },
+      {
+        "Timestamp": 1760968080000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-20"
+      },
+      {
+        "Timestamp": 1760983380000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-20"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-10-17",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:58",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1760692320000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-17"
+      },
+      {
+        "Timestamp": 1760701200000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-17"
+      },
+      {
+        "Timestamp": 1760706540000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-17"
+      },
+      {
+        "Timestamp": 1760724600000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-17"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-10-16",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:24",
+    "breakDuration": "00:00",
+    "records": [
+      {
+        "Timestamp": 1760606040000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-16"
+      },
+      {
+        "Timestamp": 1760636280000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-16"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-10-15",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:39",
+    "breakDuration": "00:00",
+    "records": [
+      {
+        "Timestamp": 1760519760000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-15"
+      },
+      {
+        "Timestamp": 1760550900000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-15"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-10-14",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "9:03",
+    "breakDuration": "00:00",
+    "records": [
+      {
+        "Timestamp": 1760433420000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-14"
+      },
+      {
+        "Timestamp": 1760466000000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-14"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-10-10",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:30",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1760086920000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-10"
+      },
+      {
+        "Timestamp": 1760091720000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-10"
+      },
+      {
+        "Timestamp": 1760095620000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-10"
+      },
+      {
+        "Timestamp": 1760117520000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-10"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-10-09",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "9:06",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1760001300000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-09"
+      },
+      {
+        "Timestamp": 1760012760000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-09"
+      },
+      {
+        "Timestamp": 1760016660000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-09"
+      },
+      {
+        "Timestamp": 1760034060000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-09"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-10-08",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "9:15",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1759914660000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-08"
+      },
+      {
+        "Timestamp": 1759918440000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-08"
+      },
+      {
+        "Timestamp": 1759922640000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-08"
+      },
+      {
+        "Timestamp": 1759947960000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-08"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-10-06",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "9:00",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1759741800000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-06"
+      },
+      {
+        "Timestamp": 1759750740000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-06"
+      },
+      {
+        "Timestamp": 1759756080000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-06"
+      },
+      {
+        "Timestamp": 1759774200000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-06"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-10-02",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "8:10",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1759397220000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-02"
+      },
+      {
+        "Timestamp": 1759401900000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-02"
+      },
+      {
+        "Timestamp": 1759406940000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-02"
+      },
+      {
+        "Timestamp": 1759426620000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-02"
+      }
+    ]
+  },
+  {
+    "dateOfPunch": "2025-10-01",
+    "attendanceStatus": "PRESENT",
+    "totalDuration": "9:00",
+    "breakDuration": "01:00",
+    "records": [
+      {
+        "Timestamp": 1759310040000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-01"
+      },
+      {
+        "Timestamp": 1759322220000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": "LUNCH",
+        "LatLon": "22.5740,88.3650",
+        "Address": "Restaurant Area, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-01"
+      },
+      {
+        "Timestamp": 1759327020000,
+        "PunchDirection": "IN",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-01"
+      },
+      {
+        "Timestamp": 1759342440000,
+        "PunchDirection": "OUT",
+        "AttendanceStatus": null,
+        "LatLon": "22.5726,88.3639",
+        "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+        "DateOfPunch": "2025-10-01"
+      }
+    ]
+  }
+]

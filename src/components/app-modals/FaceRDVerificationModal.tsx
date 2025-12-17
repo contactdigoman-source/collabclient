@@ -6,6 +6,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { DarkThemeColors, LightThemeColors } from '../../themes';
 import { useAppSelector } from '../../redux';
 import { APP_THEMES } from '../../themes';
+import { logger } from '../../services/logger';
 
 interface FaceRDVerificationModalProps {
   visible: boolean;
@@ -30,7 +31,7 @@ export default function FaceRDVerificationModal({
 
   // Debug logging
   useEffect(() => {
-    console.log('FaceRDVerificationModal: visible=', visible, 'isVerifying=', isVerifying, 'error=', error);
+    logger.debug('FaceRDVerificationModal state', { visible, isVerifying, hasError: !!error });
   }, [visible, isVerifying, error]);
 
   // Auto-dismiss on success

@@ -4,14 +4,11 @@ import Config from 'react-native-config';
 const privacyUrl = Config.PRIVACY_POLICY_URL || 'https://colab.nexaei.com/privacy-andriod';
 const termsUrl = Config.TERM_AND_CONDITIONS_URL || 'https://colab.nexaei.com/terms-andriod';
 
-console.log('Privacy Policy URL:', privacyUrl);
-console.log('Terms & Conditions URL:', termsUrl);
-
 // API Base URL for all API calls
 const apiBaseUrl = Config.API_BASE_URL || 'http://localhost:8080';
 
-// Log API URL for debugging (remove in production if needed)
-console.log('API Base URL:', apiBaseUrl);
+// Note: Removed logger calls to avoid circular dependency
+// (logger-service.ts imports Configs from this file)
 
 export const Configs = {
   apiBaseUrl: apiBaseUrl,

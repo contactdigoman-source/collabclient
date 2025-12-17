@@ -1,6 +1,6 @@
 import React, { useMemo, useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl } from 'react-native';
-import { useTheme, useFocusEffect } from '@react-navigation/native';
+import { useTheme, useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import moment from 'moment';
 
@@ -10,8 +10,12 @@ import AttendanceDetailModal from '../../components/app-modals/AttendanceDetailM
 import { useAppSelector } from '../../redux';
 import { hp, wp, FontTypes, Icons } from '../../constants';
 import { useTranslation } from '../../hooks/useTranslation';
-import { getDaysAttendance, AttendanceDay } from '../../services';
+import { AttendanceDay } from '../../services';
 import { DarkThemeColors, APP_THEMES } from '../../themes';
+import { groupAttendanceByDate } from '../../services/attendance/attendance-utils';
+import { getAttendanceData } from '../../services/attendance/attendance-db-service';
+import { getDaysAttendance } from '../../services/attendance/attendance-service';
+import { logger } from '../../services/logger';
 
 interface GroupedAttendance {
   date: string;
@@ -30,6 +34,7 @@ interface GroupedAttendance {
 
 export default function DaysBottomTabScreen(): React.JSX.Element {
   const theme = useTheme();
+  const navigation = useNavigation();
   const colors = useMemo(() => theme?.colors || {}, [theme?.colors]);
   const { appTheme } = useAppSelector(state => state.appState);
   const { t } = useTranslation();
@@ -38,13 +43,13 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
     state => state.userState.userLastAttendance,
   );
   const userData = useAppSelector(state => state.userState.userData);
+  const userAttendanceHistory = useAppSelector(
+    state => state.userState.userAttendanceHistory,
+  );
 
   const [selectedDay, setSelectedDay] = useState<GroupedAttendance | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState<moment.Moment>(moment());
-  const [showLogs, setShowLogs] = useState(false);
-  const [attendanceData, setAttendanceData] = useState<AttendanceDay[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [selectedMonth, setSelectedMonth] = useState<moment.Moment>(moment.utc());
   const [refreshing, setRefreshing] = useState(false);
 
   // Calculate header height: safe area top + padding + content height (UserImage ~10% width)
@@ -55,79 +60,96 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
     return safeAreaTop + paddingVertical + contentHeight + hp(1); // Add extra buffer
   }, [insets.top]);
 
+  // Load attendance data from database
   const loadAttendanceData = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) {
         setRefreshing(true);
-      } else {
-        setLoading(true);
+        // On refresh, sync from server to get latest data
+        if (userData?.email) {
+          await getDaysAttendance(userData.email);
+        }
       }
-      const data = await getDaysAttendance();
-      console.log('[DaysTab] Loaded attendance data:', data?.length || 0, 'days');
-      console.log('[DaysTab] Sample data:', data?.[0]);
-      setAttendanceData(data || []);
+      
+      // Refresh data from database (this will update Redux store)
+      if (userData?.email) {
+        getAttendanceData(userData.email);
+      }
+      
+      // Note: Actual data update happens via Redux selector (userAttendanceHistory)
+      // which triggers re-render when database is updated
     } catch (err: any) {
-      console.error('[DaysTab] Error loading attendance data:', err);
-      // Don't set error - just show empty state with "No data available"
-      setAttendanceData([]);
+      logger.error('[DaysTab] Error loading attendance data', err);
     } finally {
       if (isRefresh) {
         setRefreshing(false);
-      } else {
-        setLoading(false);
       }
     }
-  }, []);
+  }, [userData?.email]);
 
   const onRefresh = useCallback(() => {
     loadAttendanceData(true);
   }, [loadAttendanceData]);
 
-  // Load attendance data on mount
+  // Load attendance data from database on mount and sync from server
   useEffect(() => {
-    loadAttendanceData();
-  }, [loadAttendanceData]);
+    const loadData = async () => {
+      if (userData?.email) {
+        // Sync from server to get latest data (this also updates the database)
+        try {
+          await getDaysAttendance(userData.email);
+        } catch (error) {
+          logger.error('[DaysTab] Error syncing from server', error);
+        }
+      }
+    };
+    loadData();
+  }, [userData?.email]);
 
-  // Reset month to current month and reload data when tab is focused
+  // Reset month to current month when tab is focused and sync from server
   useFocusEffect(
     useCallback(() => {
-      const currentMonth = moment();
-      setSelectedMonth(currentMonth);
-      loadAttendanceData();
-    }, [loadAttendanceData])
+      const loadData = async () => {
+        const currentMonth = moment.utc();
+        setSelectedMonth(currentMonth);
+        // Sync from server when tab is focused (this also updates the database)
+        if (userData?.email) {
+          try {
+            await getDaysAttendance(userData.email);
+          } catch (error) {
+            logger.error('[DaysTab] Error syncing from server on focus', error);
+          }
+        }
+      };
+      loadData();
+    }, [userData?.email])
   );
 
-  // Reload data when month selection changes
-  const selectedMonthKey = useMemo(() => selectedMonth.format('YYYY-MM'), [selectedMonth]);
-  useEffect(() => {
-    loadAttendanceData();
-  }, [selectedMonthKey, loadAttendanceData]);
+  // Transform database records to grouped format
+  const attendanceData = useMemo<AttendanceDay[]>(() => {
+    if (!userAttendanceHistory || userAttendanceHistory.length === 0) {
+      return [];
+    }
+    
+    // Group and transform records from database
+    return groupAttendanceByDate(userAttendanceHistory);
+  }, [userAttendanceHistory]);
 
   // Group attendance by date and filter by selected month
   const groupedAttendance = useMemo<GroupedAttendance[]>(() => {
     if (!attendanceData?.length) {
-      console.log('[DaysTab] No attendance data available for filtering');
       return [];
     }
 
+    // Use UTC for month comparisons (selectedMonth is already UTC)
     const monthStart = selectedMonth.clone().startOf('month');
     const monthEnd = selectedMonth.clone().endOf('month');
     
-    console.log('[DaysTab] Filtering for month:', selectedMonth.format('YYYY-MM'));
-    console.log('[DaysTab] Month range:', monthStart.format('YYYY-MM-DD'), 'to', monthEnd.format('YYYY-MM-DD'));
-    console.log('[DaysTab] Total data items:', attendanceData.length);
-    console.log('[DaysTab] Available dates:', attendanceData.map(d => d.dateOfPunch).join(', '));
-    
     const filtered = attendanceData.filter((day) => {
-      const dayDate = moment(day.dateOfPunch, 'YYYY-MM-DD');
-      const isInRange = dayDate.isSameOrAfter(monthStart) && dayDate.isSameOrBefore(monthEnd);
-      if (isInRange) {
-        console.log('[DaysTab] Matched date:', day.dateOfPunch);
-      }
-      return isInRange;
+      // Compare dates using UTC for consistency
+      const dayDate = moment.utc(day.dateOfPunch, 'YYYY-MM-DD');
+      return dayDate.isSameOrAfter(monthStart) && dayDate.isSameOrBefore(monthEnd);
     });
-
-    console.log('[DaysTab] Filtered items:', filtered.length);
 
     // Convert to GroupedAttendance format and sort by date (most recent first)
     return filtered
@@ -145,11 +167,11 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
         totalDuration: day.totalDuration,
         breakDuration: day.breakDuration,
       }))
-      .sort((a, b) => moment(b.date).diff(moment(a.date)));
+      .sort((a, b) => moment.utc(b.date).diff(moment.utc(a.date)));
   }, [attendanceData, selectedMonth]);
 
   const handleDayItemPress = useCallback((item: GroupedAttendance) => {
-    console.log('[DaysTab] Opening modal for:', {
+    logger.debug('[DaysTab] Opening modal', {
       date: item.date,
       recordsCount: item.records?.length || 0,
       records: item.records,
@@ -158,17 +180,37 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
     setShowDetailModal(true);
   }, []);
 
-  const handlePreviousMonth = useCallback(() => {
-    setSelectedMonth(prev => prev.clone().subtract(1, 'month'));
-  }, []);
+  const handlePreviousMonth = useCallback(async () => {
+    const newMonth = selectedMonth.clone().subtract(1, 'month');
+    setSelectedMonth(newMonth);
+    
+    // Sync attendance data for the selected month from server
+    if (userData?.email) {
+      try {
+        await getDaysAttendance(userData.email, newMonth);
+      } catch (error) {
+        logger.error('[DaysTab] Error syncing month data', error);
+      }
+    }
+  }, [selectedMonth, userData?.email]);
 
-  const handleNextMonth = useCallback(() => {
-    setSelectedMonth(prev => prev.clone().add(1, 'month'));
-  }, []);
+  const handleNextMonth = useCallback(async () => {
+    const newMonth = selectedMonth.clone().add(1, 'month');
+    setSelectedMonth(newMonth);
+    
+    // Sync attendance data for the selected month from server
+    if (userData?.email) {
+      try {
+        await getDaysAttendance(userData.email, newMonth);
+      } catch (error) {
+        logger.error('[DaysTab] Error syncing month data', error);
+      }
+    }
+  }, [selectedMonth, userData?.email]);
 
   const handleLogsToggle = useCallback(() => {
-    setShowLogs(prev => !prev);
-  }, []);
+    navigation.navigate('AttendanceLogsScreen' as never);
+  }, [navigation]);
 
   const renderDayItem = useCallback(
     ({ item }: { item: GroupedAttendance }) => (
@@ -248,14 +290,12 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
               onPress={handleLogsToggle}
               activeOpacity={0.7}
             >
-              <View style={[styles.logsCheckbox, showLogs && styles.logsCheckboxSelected]}>
-                {showLogs && (
-                  <Image
-                    source={Icons.tick}
-                    style={[styles.logsCheckmarkIcon, { tintColor: colors.text || DarkThemeColors.white_common }]}
-                    resizeMode="contain"
-                  />
-                )}
+              <View style={styles.logsCheckbox}>
+                <Image
+                  source={Icons.tick}
+                  style={[styles.logsCheckmarkIcon, { tintColor: colors.text || DarkThemeColors.white_common }]}
+                  resizeMode="contain"
+                />
               </View>
               <AppText size={17} fontType={FontTypes.medium} color={colors.text || '#626262'} style={styles.logsText}>
                 Logs
@@ -308,32 +348,26 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
         </View>
       </View>
 
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary || DarkThemeColors.primary} />
-        </View>
-      ) : (
-        <FlatList
-          data={groupedAttendance}
-          renderItem={renderDayItem}
-          keyExtractor={keyExtractor}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={colors.primary || DarkThemeColors.primary}
-              colors={[colors.primary || DarkThemeColors.primary]}
-            />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <AppText size={hp(2)} color={colors.text}>{t('attendance.noDataFound')}</AppText>
-            </View>
-          }
-        />
-      )}
+      <FlatList
+        data={groupedAttendance}
+        renderItem={renderDayItem}
+        keyExtractor={keyExtractor}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary || DarkThemeColors.primary}
+            colors={[colors.primary || DarkThemeColors.primary]}
+          />
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <AppText size={hp(2)} color={colors.text}>{t('attendance.noDataFound')}</AppText>
+          </View>
+        }
+      />
 
       {selectedDay && (
         <AttendanceDetailModal

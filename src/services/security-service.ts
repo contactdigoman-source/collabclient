@@ -1,4 +1,5 @@
 import { NativeModules, Platform } from 'react-native';
+import { logger } from './logger';
 
 const { SecurityUtils } = NativeModules as {
   SecurityUtils?: {
@@ -24,7 +25,7 @@ export const checkUsbDebuggingStatus = (): Promise<boolean> => {
     }
 
     if (!SecurityUtils) {
-      console.warn('SecurityUtils native module not found');
+      logger.warn('SecurityUtils native module not found');
       // If module is not available, allow access (fail open for development)
       resolve(false);
       return;
@@ -32,7 +33,7 @@ export const checkUsbDebuggingStatus = (): Promise<boolean> => {
 
     SecurityUtils.isUsbDebuggingEnabled((error, isEnabled) => {
       if (error) {
-        console.error('Error checking USB debugging status:', error);
+        logger.error('Error checking USB debugging status', error);
         // On error, allow access (fail open)
         resolve(false);
         return;
@@ -60,7 +61,7 @@ export const checkDeveloperModeStatus = (): Promise<boolean> => {
 
     SecurityUtils.isDeveloperModeEnabled((error, isEnabled) => {
       if (error) {
-        console.error('Error checking developer mode status:', error);
+        logger.error('Error checking developer mode status', error);
         resolve(false);
         return;
       }

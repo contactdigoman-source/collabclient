@@ -1,4 +1,5 @@
 import { DeviceEventEmitter, Platform } from 'react-native';
+import { logger } from '../logger';
 import { startFaceAuth } from './aadhaar-facerd-service';
 import { getRawAadhaarNumber } from './aadhaar-facerd-service';
 import { store } from '../../redux';
@@ -62,7 +63,7 @@ export function verifyFaceRDForPunchWithAadhaar(aadhaarNumber: string): Promise<
       (data: any) => {
         if (isResolved) return;
         isResolved = true;
-        console.log('Face RD Success for Punch:', data);
+        logger.debug('Face RD Success for Punch:', data);
         if (timeoutId) clearTimeout(timeoutId);
         successListener.remove();
         failureListener.remove();
@@ -75,7 +76,7 @@ export function verifyFaceRDForPunchWithAadhaar(aadhaarNumber: string): Promise<
       (error: any) => {
         if (isResolved) return;
         isResolved = true;
-        console.log('Face RD Failure for Punch:', error);
+        logger.debug('Face RD Failure for Punch:', error);
         if (timeoutId) clearTimeout(timeoutId);
         successListener.remove();
         failureListener.remove();

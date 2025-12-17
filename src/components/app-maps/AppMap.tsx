@@ -6,6 +6,7 @@ import { DEFAULT_REGION, hp, Icons, wp, Region as RegionType } from '../../const
 import AppImage from '../app-images/AppImage';
 import { useTheme } from '@react-navigation/native';
 import RippleButton from '../app-buttons/RippleButton';
+import { logger } from '../../services/logger';
 
 interface AppMapProps {
   style?: ViewStyle;
@@ -58,7 +59,7 @@ const AppMap = forwardRef<MapView, AppMapProps>(({
     onRefreshPress();
   }, [onRefreshPress]);
 
-  console.log('AppMap rendered', region);
+  logger.debug('AppMap rendered', { region });
 
   return (
     <View style={style}>

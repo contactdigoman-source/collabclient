@@ -19,6 +19,8 @@ import {
 } from '../services';
 import { NavigationProp } from '../types/navigation';
 import { ImageSourcePropType } from 'react-native';
+import moment from 'moment';
+import { logger } from '../services/logger';
 
 const ATTENDANCE_ICON_SIZE = hp('9%');
 const CIRCLE_WIDTH = 60;
@@ -47,6 +49,7 @@ export default function BottomTabBar(): React.JSX.Element {
   const { appTheme } = useAppSelector(state => state.appState);
   const {
     userLastAttendance,
+    userAttendanceHistory,
     userAadhaarFaceValidated,
     lastAadhaarVerificationDate,
     userData,
@@ -75,7 +78,8 @@ export default function BottomTabBar(): React.JSX.Element {
       return true; // No date stored, need verification
     }
 
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    // Use UTC date for consistency (stored dates are in UTC format YYYY-MM-DD)
+    const today = moment.utc().format('YYYY-MM-DD');
     const lastVerificationDate = lastAadhaarVerificationDate;
 
     // If last verification was not today, need to verify again
@@ -131,23 +135,89 @@ export default function BottomTabBar(): React.JSX.Element {
     setFaceRDError(null);
 
     try {
-      console.log('onPunchButtonLongPress: Starting biometric verification');
+      logger.debug('onPunchButtonLongPress: Starting biometric verification');
       // Verify device biometric (Face ID/Touch ID/Fingerprint) for punch
       await verifyBiometricForPunch();
-      console.log('onPunchButtonLongPress: Biometric verification successful');
+      logger.debug('onPunchButtonLongPress: Biometric verification successful');
       // Success will be handled by the modal's auto-dismiss
       setIsFaceRDVerifying(false);
     } catch (error: any) {
-      console.log('onPunchButtonLongPress: Biometric verification failed:', error);
+      logger.warn('onPunchButtonLongPress: Biometric verification failed', error);
       setIsFaceRDVerifying(false);
       // Show generic error (no detailed error message)
       setFaceRDError('Biometric verification failed');
     }
   }, []);
 
+  // Get today's attendance status - check if user is currently checked in TODAY
   const isUserCheckedIn = useMemo(() => {
-    return userLastAttendance?.PunchDirection === PUNCH_DIRECTIONS.in;
-  }, [userLastAttendance?.PunchDirection]);
+    // Check today's attendance - user is checked in if they have checked in today but not checked out
+    if (!userAttendanceHistory || userAttendanceHistory.length === 0) {
+      logger.debug('isUserCheckedIn: No attendance history');
+      return false;
+    }
+    
+    const today = moment.utc().format('YYYY-MM-DD');
+    let hasCheckedInToday = false;
+    let hasCheckedOutToday = false;
+    let lastCheckoutTimestamp = 0;
+    let lastCheckInTimestamp = 0;
+    
+    logger.debug(`isUserCheckedIn: Checking ${userAttendanceHistory.length} records for today: ${today}`);
+    
+    // Find today's check-in and checkout
+    for (const record of userAttendanceHistory) {
+      let recordDate: string;
+      if (record.DateOfPunch) {
+        recordDate = record.DateOfPunch;
+      } else if (record.Timestamp) {
+        const timestamp = typeof record.Timestamp === 'string' 
+          ? parseInt(record.Timestamp, 10) 
+          : record.Timestamp;
+        recordDate = moment.utc(timestamp).format('YYYY-MM-DD');
+      } else {
+        continue;
+      }
+      
+      if (recordDate === today) {
+        const timestamp = typeof record.Timestamp === 'string' 
+          ? parseInt(record.Timestamp, 10) 
+          : record.Timestamp;
+        
+        logger.debug(`isUserCheckedIn: Found today's record - Date: ${recordDate}, PunchDirection: ${record.PunchDirection}, Timestamp: ${timestamp}`);
+        
+        if (record.PunchDirection === PUNCH_DIRECTIONS.in) {
+          hasCheckedInToday = true;
+          if (timestamp > lastCheckInTimestamp) {
+            lastCheckInTimestamp = timestamp;
+          }
+        } else if (record.PunchDirection === PUNCH_DIRECTIONS.out) {
+          hasCheckedOutToday = true;
+          if (timestamp > lastCheckoutTimestamp) {
+            lastCheckoutTimestamp = timestamp;
+          }
+        }
+      }
+    }
+    
+    logger.debug(`isUserCheckedIn: hasCheckedInToday=${hasCheckedInToday}, hasCheckedOutToday=${hasCheckedOutToday}, lastCheckIn=${lastCheckInTimestamp}, lastCheckout=${lastCheckoutTimestamp}`);
+    
+    // User is checked in if they have checked in today and either:
+    // 1. Haven't checked out yet, OR
+    // 2. Last action was check-in (check-in timestamp > checkout timestamp)
+    if (hasCheckedInToday) {
+      if (!hasCheckedOutToday) {
+        logger.debug('isUserCheckedIn: User checked in today, no checkout - returning true');
+        return true; // Checked in but not checked out
+      }
+      // Both exist - check which was last
+      const result = lastCheckInTimestamp > lastCheckoutTimestamp;
+      logger.debug(`isUserCheckedIn: Both check-in and checkout exist, lastCheckIn > lastCheckout: ${result}`);
+      return result;
+    }
+
+    return false; // Not checked in today
+  }, [userAttendanceHistory, userLastAttendance?.Timestamp]);
 
   const getAttendanceIcon = useMemo<ImageSourcePropType>(() => {
     if (isUserCheckedIn) {

@@ -25,6 +25,7 @@ import { useAppDispatch, setUserData, setJWTToken, setExpiresAt, setAccountStatu
 import { NavigationProp } from '../../types/navigation';
 import { useTranslation } from '../../hooks/useTranslation';
 import { loginUser, storeJWTToken, AccountStatus } from '../../services/auth/login-service';
+import { logger } from '../../services/logger';
 
 export default function LoginScreen(): React.JSX.Element {
   const navigation = useNavigation<NavigationProp>();
@@ -126,7 +127,7 @@ export default function LoginScreen(): React.JSX.Element {
       // OTP screen will decide whether to go to dashboard or first-time login
       navigation.replace('OtpScreen', { emailID: email });
     } catch (error: any) {
-      console.error('Login error:', error);
+      logger.error('Login error', error);
       setLoginError(error.message || t('auth.login.loginFailed') || 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);

@@ -28,6 +28,7 @@ import {
 } from '../../redux';
 import { NavigationProp } from '../../types/navigation';
 import { useTranslation } from '../../hooks/useTranslation';
+import { logger } from '../../services/logger';
 
 const AADHAAR_LENGTH = 12;
 const INPUT_LENGTH = 14;
@@ -68,7 +69,7 @@ export default function AadhaarInputScreen(): React.JSX.Element {
     const successListener = DeviceEventEmitter.addListener(
       'FaceAuthSuccess',
       (data: any) => {
-        console.log('Face RD Success:', data);
+        logger.debug('Face RD Success:', data);
         dispatch(setIsAuthenticatingFace(false));
         dispatch(setIsAadhaarFaceValidated(true));
         // Store Aadhaar number in Redux for future Face RD verifications
@@ -82,7 +83,7 @@ export default function AadhaarInputScreen(): React.JSX.Element {
     const failureListener = DeviceEventEmitter.addListener(
       'FaceAuthFailure',
       (error: any) => {
-        console.log('Face RD Failure:', error);
+        logger.debug('Face RD Failure:', error);
         dispatch(setIsAuthenticatingFace(false));
         // Hard fallback: Navigate to OTP screen ONLY when Face RD fails
         const rawAadhaar = getRawAadhaarNumber(aadhaarInput);
@@ -154,7 +155,7 @@ export default function AadhaarInputScreen(): React.JSX.Element {
       
       if (!FaceAuth) {
         // Hard fallback: Face RD module not available, use Aadhaar OTP
-        console.log('Face RD module not available, using Aadhaar OTP as hard fallback');
+        logger.debug('Face RD module not available, using Aadhaar OTP as hard fallback');
         dispatch(setIsAuthenticatingFace(false));
         navigation.navigate('AadhaarOtpScreen', {
           emailID: store.getState().userState?.userData?.email || '',

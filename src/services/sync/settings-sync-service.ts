@@ -1,11 +1,11 @@
 import SQLite from 'react-native-sqlite-storage';
+import { logger } from '../logger';
 import { getDB } from '../attendance/attendance-db-service';
 import { syncQueueService } from './sync-queue-service';
 import { networkService } from '../network/network-service';
-import { logServiceError } from '../logger';
 
 const DEBUG = true;
-const log = (...args: any[]): void => DEBUG && console.log('[SettingsSync]', ...args);
+const log = (...args: any[]): void => DEBUG && logger.debug('[SettingsSync]', ...args);
 
 export interface UnsyncedSetting {
   key: string;
@@ -49,12 +49,12 @@ class SettingsSyncService {
                     VALUES (?, ?, 0, ?, ?, ?)`,
                   [key, valueString, now, now, now],
                   () => {
-                    log(`Saved new setting: ${key}`);
+                    logger.debug(`[SettingsSync] Saved new setting: ${key}`);
                     this.queueForSync(key, value, now);
                     resolve();
                   },
                   (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
-                    console.log('Insert setting error:', error);
+                    logger.error('Insert setting error', error);
                     reject(error);
                   },
                 );
@@ -69,25 +69,25 @@ class SettingsSyncService {
                     WHERE key = ?`,
                   [valueString, now, now, key],
                   () => {
-                    log(`Updated setting: ${key}`);
+                    logger.debug(`[SettingsSync] Updated setting: ${key}`);
                     this.queueForSync(key, value, now);
                     resolve();
                   },
                   (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
-                    console.log('Update setting error:', error);
+                    logger.error('Update setting error', error);
                     reject(error);
                   },
                 );
               }
             },
             (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
-              console.log('Check setting exists error:', error);
+              logger.error('Check setting exists error', error);
               reject(error);
             },
           );
         },
         (error: SQLite.SQLError) => {
-          console.log('Save setting transaction error:', error);
+          logger.error('Save setting transaction error', error);
           reject(error);
         },
       );
@@ -108,7 +108,7 @@ class SettingsSyncService {
         timestamp,
       });
     } catch (error) {
-      console.log('Error queueing setting for sync:', error);
+      logger.error('Error queueing setting for sync', error);
     }
   }
 
@@ -136,15 +136,15 @@ class SettingsSyncService {
               resolve(unsynced);
             },
             (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
-              console.log('Get unsynced settings error:', error);
+              logger.error('Get unsynced settings error', error);
               reject(error);
             },
           );
         },
-        (error: SQLite.SQLError) => {
-          console.log('Get unsynced settings transaction error:', error);
-          reject(error);
-        },
+          (error: SQLite.SQLError) => {
+            logger.error('Get unsynced settings transaction error', error);
+            reject(error);
+          },
       );
     });
   }
@@ -158,26 +158,20 @@ class SettingsSyncService {
     try {
       const isOnline = await networkService.isConnected();
       if (!isOnline) {
-        log('Offline - cannot sync setting:', key);
+        logger.debug('Offline - cannot sync setting:', key);
         return false;
       }
 
       // TODO: Implement actual API call to sync settings
       // For now, we'll mark as synced after a delay to simulate sync
       // In production, this should call an actual API endpoint
-      log(`Would sync setting ${key} to server (API not implemented yet)`);
+      logger.debug(`[SettingsSync] Would sync setting ${key} to server (API not implemented yet)`);
       
       // Mark as synced for now (remove this when API is implemented)
       await this.markSettingAsSynced(key);
       return true;
     } catch (error: any) {
-      logServiceError(
-        'sync',
-        'settings-sync-service.ts',
-        'syncSettingToServer',
-        error,
-        { key },
-      );
+      logger.error('syncSettingToServer error', error, undefined, { key });
       return false;
     }
   }
@@ -199,7 +193,7 @@ class SettingsSyncService {
       }
     }
 
-    log(`Synced ${success} settings, ${failed} failed`);
+    logger.debug(`[SettingsSync] Synced ${success} settings, ${failed} failed`);
     return { success, failed };
   }
 
@@ -210,20 +204,15 @@ class SettingsSyncService {
     try {
       const isOnline = await networkService.isConnected();
       if (!isOnline) {
-        log('Offline - cannot pull settings');
+        logger.debug('Offline - cannot pull settings');
         return;
       }
 
       // TODO: Implement actual API call to pull settings
       // For now, this is a placeholder
-      log('Would pull settings from server (API not implemented yet)');
+      logger.debug('Would pull settings from server (API not implemented yet)');
     } catch (error: any) {
-      logServiceError(
-        'sync',
-        'settings-sync-service.ts',
-        'syncSettingsFromServer',
-        error,
-      );
+      logger.error('syncSettingsFromServer error', error);
     }
   }
 
@@ -251,9 +240,9 @@ class SettingsSyncService {
                     `INSERT INTO settings (key, value, isSynced, lastUpdatedAt, server_lastUpdatedAt, createdAt, updatedAt)
                       VALUES (?, ?, 1, ?, ?, ?, ?)`,
                     [key, valueString, now, now, now, now],
-                    () => log(`Inserted setting from server: ${key}`),
+                     () => logger.debug(`[SettingsSync] Inserted setting from server: ${key}`),
                     (_tx: SQLite.Transaction, error: SQLite.SQLError) =>
-                      console.log(`Error inserting setting ${key}:`, error),
+                      logger.error(`Error inserting setting ${key}`, error),
                   );
                 } else {
                   const row = result.rows.item(0);
@@ -275,23 +264,23 @@ class SettingsSyncService {
                           updatedAt = ?
                       WHERE key = ?`,
                     [valueString, now, now, now, key],
-                    () => log(`Updated setting from server: ${key}`),
-                    (_tx: SQLite.Transaction, error: SQLite.SQLError) =>
-                      console.log(`Error updating setting ${key}:`, error),
+                     () => logger.debug(`[SettingsSync] Updated setting from server: ${key}`),
+                      (_tx: SQLite.Transaction, error: SQLite.SQLError) =>
+                        logger.error(`Error updating setting ${key}`, error),
                   );
                 }
               },
-              (_tx: SQLite.Transaction, error: SQLite.SQLError) =>
-                console.log(`Error getting setting ${key}:`, error),
+                (_tx: SQLite.Transaction, error: SQLite.SQLError) =>
+                  logger.error(`Error getting setting ${key}`, error),
             );
           });
         },
-        (error: SQLite.SQLError) => {
-          console.log('Merge settings transaction error:', error);
-          reject(error);
-        },
+          (error: SQLite.SQLError) => {
+            logger.error('Merge settings transaction error', error);
+            reject(error);
+          },
         () => {
-          log('Merged settings from server');
+          logger.debug('Merged settings from server');
           resolve();
         },
       );
@@ -313,19 +302,19 @@ class SettingsSyncService {
               WHERE key = ?`,
             [Date.now(), key],
             () => {
-              log(`Marked ${key} as synced`);
+               logger.debug(`[SettingsSync] Marked ${key} as synced`);
               resolve();
             },
             (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
-              console.log('Mark setting as synced error:', error);
+              logger.error('Mark setting as synced error', error);
               reject(error);
             },
           );
         },
-        (error: SQLite.SQLError) => {
-          console.log('Mark setting as synced transaction error:', error);
-          reject(error);
-        },
+          (error: SQLite.SQLError) => {
+            logger.error('Mark setting as synced transaction error', error);
+            reject(error);
+          },
       );
     });
   }
@@ -356,15 +345,15 @@ class SettingsSyncService {
               resolve(statuses);
             },
             (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
-              console.log('Get settings sync status error:', error);
+              logger.error('Get settings sync status error', error);
               reject(error);
             },
           );
         },
-        (error: SQLite.SQLError) => {
-          console.log('Get settings sync status transaction error:', error);
-          reject(error);
-        },
+          (error: SQLite.SQLError) => {
+            logger.error('Get settings sync status transaction error', error);
+            reject(error);
+          },
       );
     });
   }
@@ -389,16 +378,16 @@ class SettingsSyncService {
               const value = this.safeParseJSON(result.rows.item(0).value);
               resolve(value);
             },
-            (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
-              console.log('Load setting from DB error:', error);
-              reject(error);
-            },
+              (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
+                logger.error('Load setting from DB error', error);
+                reject(error);
+              },
           );
         },
-        (error: SQLite.SQLError) => {
-          console.log('Load setting from DB transaction error:', error);
-          reject(error);
-        },
+          (error: SQLite.SQLError) => {
+            logger.error('Load setting from DB transaction error', error);
+            reject(error);
+          },
       );
     });
   }
