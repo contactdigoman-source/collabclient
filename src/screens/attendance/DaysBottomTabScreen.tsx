@@ -36,7 +36,7 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
   const theme = useTheme();
   const navigation = useNavigation();
   const colors = useMemo(() => theme?.colors || {}, [theme?.colors]);
-  const { appTheme } = useAppSelector(state => state.appState);
+  const appTheme = useAppSelector(state => state.appState.appTheme);
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const userLastAttendance = useAppSelector(
@@ -185,50 +185,70 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
     return groupAttendanceByDate(userAttendanceHistory);
   }, [userAttendanceHistory]);
 
-  // Group attendance by date and filter by selected month
-  const groupedAttendance = useMemo<GroupedAttendance[]>(() => {
+  // Pre-compute month boundaries (memoized separately to avoid recalculation)
+  const monthBoundaries = useMemo(() => {
+    const monthStart = selectedMonth.clone().startOf('month');
+    const monthEnd = selectedMonth.clone().endOf('month');
+    return { monthStart, monthEnd };
+  }, [selectedMonth]);
+
+  // Filter by selected month (separate step for better memoization)
+  const filteredAttendanceData = useMemo<AttendanceDay[]>(() => {
     if (!attendanceData?.length) {
       return [];
     }
-
-    // Use UTC for month comparisons (selectedMonth is already UTC)
-    const monthStart = selectedMonth.clone().startOf('month');
-    const monthEnd = selectedMonth.clone().endOf('month');
     
-    const filtered = attendanceData.filter((day) => {
+    return attendanceData.filter((day) => {
       // Compare dates using UTC for consistency
       const dayDate = moment.utc(day.dateOfPunch, 'YYYY-MM-DD');
-      return dayDate.isSameOrAfter(monthStart) && dayDate.isSameOrBefore(monthEnd);
+      return dayDate.isSameOrAfter(monthBoundaries.monthStart) && dayDate.isSameOrBefore(monthBoundaries.monthEnd);
     });
+  }, [attendanceData, monthBoundaries]);
 
-    // Convert to GroupedAttendance format and sort by date (most recent first)
-    return filtered
-      .map((day) => ({
-        date: day.dateOfPunch,
-        records: day.records.map((record) => ({
-          Timestamp: record.Timestamp,
-          PunchDirection: record.PunchDirection,
-          AttendanceStatus: record.AttendanceStatus === null ? undefined : record.AttendanceStatus,
-          LatLon: record.LatLon,
-          Address: record.Address,
-          DateOfPunch: record.DateOfPunch,
-        })),
-        attendanceStatus: day.attendanceStatus,
-        totalDuration: day.totalDuration,
-        breakDuration: day.breakDuration,
-      }))
-      .sort((a, b) => moment.utc(b.date).diff(moment.utc(a.date)));
-  }, [attendanceData, selectedMonth]);
+  // Transform to GroupedAttendance format (separate step)
+  const transformedAttendance = useMemo<GroupedAttendance[]>(() => {
+    return filteredAttendanceData.map((day) => ({
+      date: day.dateOfPunch,
+      records: day.records.map((record) => ({
+        Timestamp: record.Timestamp,
+        PunchDirection: record.PunchDirection,
+        AttendanceStatus: record.AttendanceStatus === null ? undefined : record.AttendanceStatus,
+        LatLon: record.LatLon,
+        Address: record.Address,
+        DateOfPunch: record.DateOfPunch,
+      })),
+      attendanceStatus: day.attendanceStatus,
+      totalDuration: day.totalDuration,
+      breakDuration: day.breakDuration,
+    }));
+  }, [filteredAttendanceData]);
 
-  const handleDayItemPress = useCallback((item: GroupedAttendance) => {
-    logger.debug('[DaysTab] Opening modal', {
-      date: item.date,
-      recordsCount: item.records?.length || 0,
-      records: item.records,
+  // Sort by date (most recent first) - final step
+  const groupedAttendance = useMemo<GroupedAttendance[]>(() => {
+    // Pre-compute date timestamps for faster sorting
+    return [...transformedAttendance].sort((a, b) => {
+      const dateA = moment.utc(a.date, 'YYYY-MM-DD').valueOf();
+      const dateB = moment.utc(b.date, 'YYYY-MM-DD').valueOf();
+      return dateB - dateA; // Most recent first
     });
-    setSelectedDay(item);
-    setShowDetailModal(true);
-  }, []);
+  }, [transformedAttendance]);
+
+  // Create a stable callback map keyed by date to avoid recreating callbacks
+  const handleDayItemPressCallbacks = useMemo(() => {
+    const callbacks = new Map<string, () => void>();
+    groupedAttendance.forEach((item) => {
+      callbacks.set(item.date, () => {
+        logger.debug('[DaysTab] Opening modal', {
+          date: item.date,
+          recordsCount: item.records?.length || 0,
+          records: item.records,
+        });
+        setSelectedDay(item);
+        setShowDetailModal(true);
+      });
+    });
+    return callbacks;
+  }, [groupedAttendance]);
 
   const handlePreviousMonth = useCallback(async () => {
     const newMonth = selectedMonth.clone().subtract(1, 'month');
@@ -267,13 +287,13 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
       <DayAttendanceItem
         date={item.date}
         records={item.records}
-        onDetailPress={() => handleDayItemPress(item)}
+        onDetailPress={handleDayItemPressCallbacks.get(item.date)}
         attendanceStatus={item.attendanceStatus}
         totalDuration={item.totalDuration}
         breakDuration={item.breakDuration}
       />
     ),
-    [handleDayItemPress],
+    [handleDayItemPressCallbacks],
   );
 
   const keyExtractor = useCallback(
@@ -411,6 +431,24 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
         keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        removeClippedSubviews={true}
+        initialNumToRender={10}
+        maxToRenderPerBatch={5}
+        windowSize={10}
+        updateCellsBatchingPeriod={50}
+        maintainVisibleContentPosition={{
+          minIndexForVisible: 0,
+        }}
+        getItemLayout={(data, index) => {
+          // Approximate item height: minHeight 117 + marginVertical 2*hp(1) ≈ 140
+          // Note: This is approximate for collapsed items. Expanded items will be measured dynamically.
+          const ITEM_HEIGHT = 140;
+          return {
+            length: ITEM_HEIGHT,
+            offset: ITEM_HEIGHT * index,
+            index,
+          };
+        }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

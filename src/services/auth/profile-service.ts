@@ -6,6 +6,7 @@ import { store } from '../../redux';
 import { setUserData } from '../../redux/reducers/userReducer';
 import { profileSyncService } from '../sync/profile-sync-service';
 import { networkService } from '../network/network-service';
+import { apiQueueService, RequestPriority } from '../api';
 
 // FormData is available globally in React Native
 declare const FormData: any;
@@ -112,16 +113,20 @@ export const getProfile = async (): Promise<ProfileResponse> => {
       throw new Error('Authentication token not found');
     }
 
-    const response = await axios.get<ProfileResponse>(
-      `${API_BASE_URL}/api/auth/profile`,
+    const response = await apiQueueService.enqueue(
       {
+        method: 'get',
+        url: `${API_BASE_URL}/api/auth/profile`,
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         timeout: 30000,
-      }
-    );
+      },
+      RequestPriority.HIGH,
+      true, // Use cache
+      60000 // 1 minute cache TTL
+    ) as any as { data: ProfileResponse };
 
     // Load local profile data with per-property timestamps
     let localProfile: any = null;

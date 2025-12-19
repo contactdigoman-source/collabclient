@@ -19,9 +19,10 @@ import { logger } from '../../services/logger';
 
 export default function AttendanceLogsScreen(): React.JSX.Element {
   const { t } = useTranslation();
-  const { userAttendanceHistory, userData } = useAppSelector(state => state.userState);
+  const userAttendanceHistory = useAppSelector(state => state.userState.userAttendanceHistory);
+  const userData = useAppSelector(state => state.userState.userData);
   const { colors } = useTheme();
-  const { appTheme } = useAppSelector(state => state.appState);
+  const appTheme = useAppSelector(state => state.appState.appTheme);
 
   // Date range state - default to today
   const [startDate, setStartDate] = useState<moment.Moment | null>(
@@ -145,11 +146,21 @@ export default function AttendanceLogsScreen(): React.JSX.Element {
   /** Date selection handlers */
   const handleDatePickerOpen = useCallback((type: 'start' | 'end') => {
     const currentDate = type === 'start' ? startDate : endDate;
-    setTempDate(currentDate ? currentDate.clone() : moment.utc());
+    const today = moment.utc().endOf('day');
+    const initialDate = currentDate ? currentDate.clone() : moment.utc();
+    // If the date is in the future, set it to today
+    const dateToSet = initialDate.isAfter(today) ? moment.utc() : initialDate;
+    setTempDate(dateToSet);
     setShowDatePicker(type);
   }, [startDate, endDate]);
 
   const handleDatePickerConfirm = useCallback(() => {
+    const today = moment.utc().endOf('day');
+    // Prevent confirming future dates
+    if (tempDate.isAfter(today)) {
+      return; // Don't confirm if date is in the future
+    }
+    
     if (showDatePicker === 'start') {
       setStartDate(tempDate.clone());
       // If end date is before start date, update end date
@@ -171,7 +182,17 @@ export default function AttendanceLogsScreen(): React.JSX.Element {
   }, []);
 
   const changeDate = useCallback((type: 'year' | 'month' | 'day', delta: number) => {
-    setTempDate(prev => prev.clone().add(delta, type));
+    setTempDate(prev => {
+      const today = moment.utc().endOf('day');
+      // Clamp current date to today if it's somehow in the future
+      const currentDate = prev.isAfter(today) ? moment.utc() : prev;
+      const newDate = currentDate.clone().add(delta, type);
+      // Prevent selecting future dates
+      if (newDate.isAfter(today)) {
+        return currentDate; // Return current date (clamped to today) if new date is in the future
+      }
+      return newDate;
+    });
   }, []);
 
   const handleResetDateRange = useCallback(() => {
@@ -260,11 +281,20 @@ export default function AttendanceLogsScreen(): React.JSX.Element {
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
         // FlatList performance optimizations
-        removeClippedSubviews
+        removeClippedSubviews={true}
         initialNumToRender={10}
-        windowSize={7}
-        maxToRenderPerBatch={10}
-        updateCellsBatchingPeriod={100}
+        windowSize={10}
+        maxToRenderPerBatch={8}
+        updateCellsBatchingPeriod={50}
+        getItemLayout={(data, index) => {
+          // Approximate item height: header + items (variable, estimate 200)
+          const ITEM_HEIGHT = 200;
+          return {
+            length: ITEM_HEIGHT,
+            offset: ITEM_HEIGHT * index,
+            index,
+          };
+        }}
         ListEmptyComponent={<EmptyList />}
       />
 
@@ -306,8 +336,10 @@ export default function AttendanceLogsScreen(): React.JSX.Element {
                 <TouchableOpacity
                   style={[styles.datePickerButton, {
                     backgroundColor: appTheme === APP_THEMES.light ? '#F0F0F0' : colors.primary,
+                    opacity: tempDate.clone().add(1, 'year').isAfter(moment.utc().endOf('day')) ? 0.3 : 1,
                   }]}
                   onPress={() => changeDate('year', 1)}
+                  disabled={tempDate.clone().add(1, 'year').isAfter(moment.utc().endOf('day'))}
                 >
                   <AppText size={hp(2)} color={appTheme === APP_THEMES.light ? colors.text : '#FFFFFF'}>+</AppText>
                 </TouchableOpacity>
@@ -331,8 +363,10 @@ export default function AttendanceLogsScreen(): React.JSX.Element {
                 <TouchableOpacity
                   style={[styles.datePickerButton, {
                     backgroundColor: appTheme === APP_THEMES.light ? '#F0F0F0' : colors.primary,
+                    opacity: tempDate.clone().add(1, 'month').isAfter(moment.utc().endOf('day')) ? 0.3 : 1,
                   }]}
                   onPress={() => changeDate('month', 1)}
+                  disabled={tempDate.clone().add(1, 'month').isAfter(moment.utc().endOf('day'))}
                 >
                   <AppText size={hp(2)} color={appTheme === APP_THEMES.light ? colors.text : '#FFFFFF'}>+</AppText>
                 </TouchableOpacity>
@@ -356,8 +390,10 @@ export default function AttendanceLogsScreen(): React.JSX.Element {
                 <TouchableOpacity
                   style={[styles.datePickerButton, {
                     backgroundColor: appTheme === APP_THEMES.light ? '#F0F0F0' : colors.primary,
+                    opacity: tempDate.clone().add(1, 'day').isAfter(moment.utc().endOf('day')) ? 0.3 : 1,
                   }]}
                   onPress={() => changeDate('day', 1)}
+                  disabled={tempDate.clone().add(1, 'day').isAfter(moment.utc().endOf('day'))}
                 >
                   <AppText size={hp(2)} color={appTheme === APP_THEMES.light ? colors.text : '#FFFFFF'}>+</AppText>
                 </TouchableOpacity>
@@ -374,8 +410,11 @@ export default function AttendanceLogsScreen(): React.JSX.Element {
                 </AppText>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalButton, styles.confirmButton]}
+                style={[styles.modalButton, styles.confirmButton, {
+                  opacity: tempDate.isAfter(moment.utc().endOf('day')) ? 0.5 : 1,
+                }]}
                 onPress={handleDatePickerConfirm}
+                disabled={tempDate.isAfter(moment.utc().endOf('day'))}
               >
                 <AppText size={hp(2)} color={colors.primary || '#62C268'}>
                   {t('common.confirm', 'Confirm')}

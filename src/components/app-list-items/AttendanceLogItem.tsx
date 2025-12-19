@@ -76,10 +76,7 @@ const AttendanceLogItem: React.FC<AttendanceLogItemProps> = ({ item }) => {
             attendanceItem;
 
           // Timestamp is UTC ticks - moment() auto-converts to local time for display
-          const formattedTime = useMemo(
-            () => moment(Timestamp).format('hh:mm A'), // UTC ticks → local time
-            [Timestamp],
-          );
+          const formattedTime = moment(Timestamp).format('hh:mm A'); // UTC ticks → local time
 
           return (
             <View key={Timestamp} style={styles.subItemList}>

@@ -46,12 +46,14 @@ export const store = configureStore({
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
-      // Disable in production for better performance
-      immutableCheck: { warnAfter: 128 },
+      // Optimize for production: disable checks in production
+      immutableCheck: __DEV__ ? { warnAfter: 128 } : false,
       thunk: true,
     }),
   // Enable Redux DevTools only in development
   devTools: __DEV__,
+  // Enhancers must be a callback function
+  enhancers: (getDefaultEnhancers) => getDefaultEnhancers(),
 });
 
 export const persistor = persistStore(store);

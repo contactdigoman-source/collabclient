@@ -321,11 +321,13 @@ export default function BottomTabBar(): React.JSX.Element {
           name="HomeTab"
           position="LEFT"
           component={HomeScreen}
+          options={{ lazy: true }}
         />
         <CurvedBottomBar.Screen
           name="DaysTab"
           component={DaysBottomTabScreen}
           position="RIGHT"
+          options={{ lazy: true }}
         />
       </CurvedBottomBar.Navigator>
 

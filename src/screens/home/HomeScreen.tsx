@@ -77,18 +77,17 @@ export default function HomeScreen(): React.JSX.Element {
   const mapRef = useRef<MapView>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
 
+  // Use granular selectors to prevent unnecessary re-renders
+  // (Combining into one object would create new object reference on every state change)
   const appTheme = useAppSelector(state => state.appState.appTheme);
-  const userLastAttendance = useAppSelector(
-    state => state.userState.userLastAttendance,
-  );
-  const userAttendanceHistory = useAppSelector(
-    state => state.userState.userAttendanceHistory,
-  );
+  const userLastAttendance = useAppSelector(state => state.userState.userLastAttendance);
+  const userAttendanceHistory = useAppSelector(state => state.userState.userAttendanceHistory);
   const userData = useAppSelector(state => state.userState.userData);
   const expiresAt = useAppSelector(state => state.userState.expiresAt);
   const displayBreakStatus = useAppSelector(state => state.userState.displayBreakStatus);
   
   // Get today's attendance records (first check-in and last checkout) in UTC date format
+  // Optimized with early returns and pre-computed today string
   const todayAttendance = useMemo(() => {
     if (!userAttendanceHistory || userAttendanceHistory.length === 0) {
       return { checkIn: null, checkout: null };
@@ -100,37 +99,44 @@ export default function HomeScreen(): React.JSX.Element {
     let checkIn: typeof userAttendanceHistory[0] | null = null;
     let checkout: typeof userAttendanceHistory[0] | null = null;
     let checkoutTimestamp = 0;
+    let checkInTimestamp = Infinity;
     
+    // Early exit optimization: if we find both and they're the only ones we need, we can break
+    // But we still need to check all records to ensure we get the first IN and last OUT
     for (const record of userAttendanceHistory) {
-      // Check DateOfPunch field first, then derive from Timestamp
+      // Check DateOfPunch field first (faster than parsing timestamp)
       let recordDate: string;
       if (record.DateOfPunch) {
         recordDate = record.DateOfPunch;
+        // Early skip if not today
+        if (recordDate !== today) continue;
       } else if (record.Timestamp) {
         const timestamp = typeof record.Timestamp === 'string' 
           ? parseInt(record.Timestamp, 10) 
           : record.Timestamp;
         recordDate = moment.utc(timestamp).format('YYYY-MM-DD');
+        // Early skip if not today
+        if (recordDate !== today) continue;
       } else {
         continue;
       }
       
-      if (recordDate === today) {
-        const timestamp = typeof record.Timestamp === 'string' 
-          ? parseInt(record.Timestamp, 10) 
-          : record.Timestamp;
-        
-        if (record.PunchDirection === 'IN') {
-          // Get first check-in of the day (earliest timestamp)
-          if (!checkIn || timestamp < (typeof checkIn.Timestamp === 'string' ? parseInt(checkIn.Timestamp, 10) : checkIn.Timestamp)) {
-            checkIn = record;
-          }
-        } else if (record.PunchDirection === 'OUT') {
-          // Get last checkout of the day (most recent/latest timestamp)
-          if (timestamp > checkoutTimestamp) {
-            checkout = record;
-            checkoutTimestamp = timestamp;
-          }
+      // Process only today's records
+      const timestamp = typeof record.Timestamp === 'string' 
+        ? parseInt(record.Timestamp, 10) 
+        : record.Timestamp;
+      
+      if (record.PunchDirection === 'IN') {
+        // Get first check-in of the day (earliest timestamp)
+        if (timestamp < checkInTimestamp) {
+          checkIn = record;
+          checkInTimestamp = timestamp;
+        }
+      } else if (record.PunchDirection === 'OUT') {
+        // Get last checkout of the day (most recent/latest timestamp)
+        if (timestamp > checkoutTimestamp) {
+          checkout = record;
+          checkoutTimestamp = timestamp;
         }
       }
     }
@@ -143,6 +149,8 @@ export default function HomeScreen(): React.JSX.Element {
     longitude: number;
   } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const lastLocationUpdateRef = useRef<number>(0);
+  const LOCATION_UPDATE_DEBOUNCE_MS = 5000; // 5 seconds
 
   // Check if user is on break
   const isOnBreak = useMemo(() => {
@@ -286,8 +294,15 @@ export default function HomeScreen(): React.JSX.Element {
     [appTheme],
   );
 
-  // Function to update current location
+  // Function to update current location (debounced)
   const updateCurrentLocation = useCallback(async () => {
+    const now = Date.now();
+    // Debounce: only update if enough time has passed since last update
+    if (now - lastLocationUpdateRef.current < LOCATION_UPDATE_DEBOUNCE_MS) {
+      logger.debug('Location update skipped (debounced)');
+      return false;
+    }
+    
     try {
       // Request permission first (on Android, iOS handles this automatically)
       const hasPermission = await requestLocationPermission(() => {
@@ -301,6 +316,7 @@ export default function HomeScreen(): React.JSX.Element {
 
       const coords = await getCurrentPositionOfUser();
       logger.debug('Current location fetched', { coords });
+      lastLocationUpdateRef.current = now;
       setCurrentLocation({
         latitude: coords.latitude,
         longitude: coords.longitude,
@@ -721,10 +737,12 @@ export default function HomeScreen(): React.JSX.Element {
         renderSectionHeader={renderSectionHeader}
         stickySectionHeadersEnabled={false}
         showsVerticalScrollIndicator={false}
-        removeClippedSubviews
+        removeClippedSubviews={true}
         windowSize={10}
-        maxToRenderPerBatch={6}
-        updateCellsBatchingPeriod={16}
+        initialNumToRender={12}
+        maxToRenderPerBatch={8}
+        updateCellsBatchingPeriod={50}
+        onEndReachedThreshold={0.5}
         contentContainerStyle={styles.sectionListContent}
         ListHeaderComponent={headerComponent}
         onScroll={Animated.event(

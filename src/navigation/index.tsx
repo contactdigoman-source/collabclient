@@ -208,7 +208,14 @@ export default function AppNavigation(): React.JSX.Element {
       >
         <Stack.Navigator
           initialRouteName={initialRouteName || 'LoginScreen'}
-          screenOptions={{ headerShown: false }}
+          screenOptions={{
+            headerShown: false,
+            animation: 'slide_from_right',
+            animationEnabled: true,
+            animationDuration: 200,
+            detachInactiveScreens: true,
+            freezeOnBlur: true,
+          }}
         >
           <Stack.Screen name="LoginScreen" component={LoginScreen} />
           <Stack.Screen
