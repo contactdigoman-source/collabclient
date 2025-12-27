@@ -1,6 +1,6 @@
-import axios from 'axios';
 import { Configs } from '../../constants/configs';
 import { logger } from '../logger';
+import apiClient from '../api/api-client';
 
 const API_BASE_URL = Configs.apiBaseUrl;
 
@@ -21,16 +21,13 @@ export interface VerifyOTPParams {
  */
 export const requestAadhaarOTP = async (params: RequestOTPParams): Promise<boolean> => {
   try {
-    const response = await axios.post(
-      `${API_BASE_URL}/api/aadhaar/request-otp`,
+    const response = await apiClient.post(
+      `/api/aadhaar/request-otp`,
       {
         aadhaarNumber: params.aadhaarNumber,
         emailID: params.emailID,
       },
       {
-        headers: {
-          'Content-Type': 'application/json',
-        },
         timeout: 30000, // 30 seconds timeout
       }
     );
@@ -67,17 +64,14 @@ export const requestAadhaarOTP = async (params: RequestOTPParams): Promise<boole
  */
 export const verifyAadhaarOTP = async (params: VerifyOTPParams): Promise<boolean> => {
   try {
-    const response = await axios.post(
-      `${API_BASE_URL}/api/aadhaar/verify-otp`,
+    const response = await apiClient.post(
+      `/api/aadhaar/verify-otp`,
       {
         aadhaarNumber: params.aadhaarNumber,
         otp: params.otp,
         emailID: params.emailID,
       },
       {
-        headers: {
-          'Content-Type': 'application/json',
-        },
         timeout: 30000, // 30 seconds timeout
       }
     );

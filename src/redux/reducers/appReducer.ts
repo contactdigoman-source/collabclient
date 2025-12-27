@@ -1,9 +1,11 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { AppState, AppTheme } from '../types';
+import { AppState, AppTheme, DeviceRegistrationData, TimeZoneData } from '../types';
 
 const initialState: AppState = {
   appTheme: 'dark',
   correlationId: null,
+  deviceRegistration: null,
+  timeZoneData: null,
 };
 
 const appSlice = createSlice({
@@ -19,8 +21,14 @@ const appSlice = createSlice({
     resetCorrelationId(state) {
       state.correlationId = null;
     },
+    setDeviceRegistration(state, action: PayloadAction<DeviceRegistrationData>) {
+      state.deviceRegistration = action.payload;
+    },
+    setTimeZoneData(state, action: PayloadAction<TimeZoneData>) {
+      state.timeZoneData = action.payload;
+    },
   },
 });
 
-export const { setAppTheme, setCorrelationId, resetCorrelationId } = appSlice.actions;
+export const { setAppTheme, setCorrelationId, resetCorrelationId, setDeviceRegistration, setTimeZoneData } = appSlice.actions;
 export default appSlice.reducer;

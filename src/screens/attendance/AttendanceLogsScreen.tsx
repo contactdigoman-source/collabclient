@@ -1,7 +1,8 @@
 import React, { useMemo, useCallback, useState } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Modal } from 'react-native';
-import { useFocusEffect, useTheme } from '@react-navigation/native';
+import { useFocusEffect, useRoute, RouteProp, useTheme } from '@react-navigation/native';
 import moment from 'moment';
+import { getDateFromUTCTimestamp } from '../../utils/time-utils';
 import {
   AppContainer,
   AppText,
@@ -14,25 +15,32 @@ import { wp, hp, FontTypes } from '../../constants';
 import { AttendanceRecord } from '../../redux/types/userTypes';
 import { getAttendanceData, getAllAttendanceRecords } from '../../services/attendance/attendance-db-service';
 import { getDaysAttendance } from '../../services/attendance/attendance-service';
-import { DarkThemeColors, APP_THEMES } from '../../themes';
+import { DarkThemeColors, LightThemeColors, APP_THEMES } from '../../themes';
 import { logger } from '../../services/logger';
 
-export default function AttendanceLogsScreen(): React.JSX.Element {
-  const { t } = useTranslation();
-  const userAttendanceHistory = useAppSelector(state => state.userState.userAttendanceHistory);
-  const userData = useAppSelector(state => state.userState.userData);
-  const { colors } = useTheme();
-  const appTheme = useAppSelector(state => state.appState.appTheme);
+type AttendanceLogsRouteParams = {
+  filterToday?: boolean;
+};
 
-  // Date range state - default to today
+type AttendanceLogsRouteProp = RouteProp<{ params: AttendanceLogsRouteParams }, 'params'>;
+
+export default function AttendanceLogsScreen(): React.JSX.Element {
+  const route = useRoute<AttendanceLogsRouteProp>();
+  const filterTodayParam = route.params?.filterToday || false;
+  const { t } = useTranslation();
+  const { userAttendanceHistory, userData } = useAppSelector(state => state.userState);
+  const { colors } = useTheme();
+  const { appTheme } = useAppSelector(state => state.appState);
+
+  // Date range state (in local timezone for filtering)
   const [startDate, setStartDate] = useState<moment.Moment | null>(
-    moment.utc()
+    filterTodayParam ? moment() : null
   );
   const [endDate, setEndDate] = useState<moment.Moment | null>(
-    moment.utc()
+    filterTodayParam ? moment() : null
   );
   const [showDatePicker, setShowDatePicker] = useState<'start' | 'end' | null>(null);
-  const [tempDate, setTempDate] = useState<moment.Moment>(moment.utc());
+  const [tempDate, setTempDate] = useState<moment.Moment>(moment());
   const [isLoading, setIsLoading] = useState(false);
 
   // Load attendance data from SQL when screen is focused
@@ -55,13 +63,17 @@ export default function AttendanceLogsScreen(): React.JSX.Element {
       const allRecords = await getAllAttendanceRecords(userData.email);
       
       // Check if any records exist in the date range
-      const startTimestamp = startDate.clone().startOf('day').valueOf();
-      const endTimestamp = endDate.clone().endOf('day').valueOf();
+      // Convert date range to UTC timestamps for comparison (records are stored as UTC)
+      const startUTC = startDate.clone().utc().startOf('day');
+      const endUTC = endDate.clone().utc().endOf('day');
+      const startTimestamp = startUTC.valueOf();
+      const endTimestamp = endUTC.valueOf();
       
       const hasRecordsInRange = allRecords.some((record) => {
         const recordTimestamp = typeof record.Timestamp === 'string'
           ? parseInt(record.Timestamp, 10)
           : record.Timestamp;
+        // Compare UTC timestamps
         return recordTimestamp >= startTimestamp && recordTimestamp <= endTimestamp;
       });
 
@@ -146,21 +158,11 @@ export default function AttendanceLogsScreen(): React.JSX.Element {
   /** Date selection handlers */
   const handleDatePickerOpen = useCallback((type: 'start' | 'end') => {
     const currentDate = type === 'start' ? startDate : endDate;
-    const today = moment.utc().endOf('day');
-    const initialDate = currentDate ? currentDate.clone() : moment.utc();
-    // If the date is in the future, set it to today
-    const dateToSet = initialDate.isAfter(today) ? moment.utc() : initialDate;
-    setTempDate(dateToSet);
+    setTempDate(currentDate ? currentDate.clone() : moment.utc());
     setShowDatePicker(type);
   }, [startDate, endDate]);
 
   const handleDatePickerConfirm = useCallback(() => {
-    const today = moment.utc().endOf('day');
-    // Prevent confirming future dates
-    if (tempDate.isAfter(today)) {
-      return; // Don't confirm if date is in the future
-    }
-    
     if (showDatePicker === 'start') {
       setStartDate(tempDate.clone());
       // If end date is before start date, update end date
@@ -182,22 +184,12 @@ export default function AttendanceLogsScreen(): React.JSX.Element {
   }, []);
 
   const changeDate = useCallback((type: 'year' | 'month' | 'day', delta: number) => {
-    setTempDate(prev => {
-      const today = moment.utc().endOf('day');
-      // Clamp current date to today if it's somehow in the future
-      const currentDate = prev.isAfter(today) ? moment.utc() : prev;
-      const newDate = currentDate.clone().add(delta, type);
-      // Prevent selecting future dates
-      if (newDate.isAfter(today)) {
-        return currentDate; // Return current date (clamped to today) if new date is in the future
-      }
-      return newDate;
-    });
+    setTempDate(prev => prev.clone().add(delta, type));
   }, []);
 
   const handleResetDateRange = useCallback(() => {
-    setStartDate(moment.utc());
-    setEndDate(moment.utc());
+    setStartDate(null);
+    setEndDate(null);
   }, []);
 
   return (
@@ -209,50 +201,79 @@ export default function AttendanceLogsScreen(): React.JSX.Element {
         backgroundColor: appTheme === APP_THEMES.light
           ? (colors as any).cardBg || '#F6F6F6'
           : DarkThemeColors.black + '40',
-        borderColor: appTheme === APP_THEMES.light
-          ? (colors as any).cardBorder || '#E0E0E0'
-          : DarkThemeColors.white_common + '40',
       }]}>
         <TouchableOpacity
           style={[styles.dateButton, {
-            borderColor: colors.primary,
-            backgroundColor: startDate 
-              ? (appTheme === APP_THEMES.light ? colors.primary + '20' : colors.primary + '30')
-              : (appTheme === APP_THEMES.light ? 'transparent' : DarkThemeColors.cardBg),
+            backgroundColor: appTheme === APP_THEMES.light
+              ? (colors as any).cardBg || LightThemeColors.white_common
+              : DarkThemeColors.black + '60',
+            borderColor: appTheme === APP_THEMES.light
+              ? (colors as any).cardBorder || '#E0E0E0'
+              : DarkThemeColors.white_common + '40',
           }]}
           onPress={() => handleDatePickerOpen('start')}
         >
-          <AppText size={hp(1.8)} color={startDate ? colors.primary : colors.text}>
+          <AppText 
+            size={hp(1.8)} 
+            color={appTheme === APP_THEMES.light 
+              ? (colors as any).text || LightThemeColors.black_common
+              : DarkThemeColors.white_common}
+          >
             {startDate ? startDate.format('DD MMM YY') : t('attendance.selectStartDate', 'Start Date')}
           </AppText>
         </TouchableOpacity>
         
-        <AppText size={hp(2)} color={colors.text} style={styles.dateSeparator}>
+        <AppText 
+          size={hp(2)} 
+          color={appTheme === APP_THEMES.light 
+            ? (colors as any).text || LightThemeColors.black_common
+            : DarkThemeColors.white_common} 
+          style={styles.dateSeparator}
+        >
           -
         </AppText>
         
         <TouchableOpacity
           style={[styles.dateButton, {
-            borderColor: colors.primary,
-            backgroundColor: endDate 
-              ? (appTheme === APP_THEMES.light ? colors.primary + '20' : colors.primary + '30')
-              : (appTheme === APP_THEMES.light ? 'transparent' : DarkThemeColors.cardBg),
+            backgroundColor: appTheme === APP_THEMES.light
+              ? (colors as any).cardBg || LightThemeColors.white_common
+              : DarkThemeColors.black + '60',
+            borderColor: appTheme === APP_THEMES.light
+              ? (colors as any).cardBorder || '#E0E0E0'
+              : DarkThemeColors.white_common + '40',
           }]}
           onPress={() => handleDatePickerOpen('end')}
         >
-          <AppText size={hp(1.8)} color={endDate ? colors.primary : colors.text}>
+          <AppText 
+            size={hp(1.8)} 
+            color={appTheme === APP_THEMES.light 
+              ? (colors as any).text || LightThemeColors.black_common
+              : DarkThemeColors.white_common}
+          >
             {endDate ? endDate.format('DD MMM YY') : t('attendance.selectEndDate', 'End Date')}
           </AppText>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.resetButton}
-          onPress={handleResetDateRange}
-        >
-          <AppText size={hp(1.6)} color={colors.text} style={{ opacity: 0.7 }}>
-            {t('common.reset', 'Reset')}
-          </AppText>
-        </TouchableOpacity>
+        {(startDate || endDate) && (
+          <TouchableOpacity
+            style={[styles.resetButton, {
+              backgroundColor: appTheme === APP_THEMES.light
+                ? (colors as any).cardBg || LightThemeColors.white_common
+                : DarkThemeColors.black + '60',
+            }]}
+            onPress={handleResetDateRange}
+          >
+            <AppText 
+              size={hp(1.6)} 
+              color={appTheme === APP_THEMES.light 
+                ? (colors as any).text || LightThemeColors.black_common
+                : DarkThemeColors.white_common} 
+              style={{ opacity: 0.7 }}
+            >
+              {t('common.reset', 'Reset')}
+            </AppText>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Loading indicator */}
@@ -281,20 +302,11 @@ export default function AttendanceLogsScreen(): React.JSX.Element {
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
         // FlatList performance optimizations
-        removeClippedSubviews={true}
+        removeClippedSubviews
         initialNumToRender={10}
-        windowSize={10}
-        maxToRenderPerBatch={8}
-        updateCellsBatchingPeriod={50}
-        getItemLayout={(data, index) => {
-          // Approximate item height: header + items (variable, estimate 200)
-          const ITEM_HEIGHT = 200;
-          return {
-            length: ITEM_HEIGHT,
-            offset: ITEM_HEIGHT * index,
-            index,
-          };
-        }}
+        windowSize={7}
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={100}
         ListEmptyComponent={<EmptyList />}
       />
 
@@ -321,102 +333,173 @@ export default function AttendanceLogsScreen(): React.JSX.Element {
               <View style={styles.datePickerRow}>
                 <TouchableOpacity
                   style={[styles.datePickerButton, {
-                    backgroundColor: appTheme === APP_THEMES.light ? '#F0F0F0' : colors.primary,
+                    backgroundColor: appTheme === APP_THEMES.light
+                      ? LightThemeColors.white_common
+                      : DarkThemeColors.white_common + '20',
                   }]}
                   onPress={() => changeDate('year', -1)}
                 >
-                  <AppText size={hp(2)} color={appTheme === APP_THEMES.light ? colors.text : '#FFFFFF'}>−</AppText>
+                  <AppText 
+                    size={hp(2)} 
+                    color={appTheme === APP_THEMES.light 
+                      ? LightThemeColors.black_common
+                      : DarkThemeColors.white_common}
+                  >−</AppText>
                 </TouchableOpacity>
                 <View style={styles.datePickerValue}>
-                  <AppText size={hp(2.5)} fontType={FontTypes.medium} color={colors.text}>
+                  <AppText 
+                    size={hp(2.5)} 
+                    fontType={FontTypes.medium} 
+                    color={colors.text}
+                  >
                     {tempDate.year()}
                   </AppText>
-                  <AppText size={hp(1.5)} color={colors.text} style={{ opacity: 0.7 }}>Year</AppText>
+                  <AppText 
+                    size={hp(1.5)} 
+                    color={colors.text} 
+                    style={{ opacity: 0.7 }}
+                  >Year</AppText>
                 </View>
                 <TouchableOpacity
                   style={[styles.datePickerButton, {
-                    backgroundColor: appTheme === APP_THEMES.light ? '#F0F0F0' : colors.primary,
-                    opacity: tempDate.clone().add(1, 'year').isAfter(moment.utc().endOf('day')) ? 0.3 : 1,
+                    backgroundColor: appTheme === APP_THEMES.light
+                      ? LightThemeColors.white_common
+                      : DarkThemeColors.white_common + '20',
                   }]}
                   onPress={() => changeDate('year', 1)}
-                  disabled={tempDate.clone().add(1, 'year').isAfter(moment.utc().endOf('day'))}
                 >
-                  <AppText size={hp(2)} color={appTheme === APP_THEMES.light ? colors.text : '#FFFFFF'}>+</AppText>
+                  <AppText 
+                    size={hp(2)} 
+                    color={appTheme === APP_THEMES.light 
+                      ? LightThemeColors.black_common
+                      : DarkThemeColors.white_common}
+                  >+</AppText>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.datePickerRow}>
                 <TouchableOpacity
                   style={[styles.datePickerButton, {
-                    backgroundColor: appTheme === APP_THEMES.light ? '#F0F0F0' : colors.primary,
+                    backgroundColor: appTheme === APP_THEMES.light
+                      ? LightThemeColors.white_common
+                      : DarkThemeColors.white_common + '20',
                   }]}
                   onPress={() => changeDate('month', -1)}
                 >
-                  <AppText size={hp(2)} color={appTheme === APP_THEMES.light ? colors.text : '#FFFFFF'}>−</AppText>
+                  <AppText 
+                    size={hp(2)} 
+                    color={appTheme === APP_THEMES.light 
+                      ? LightThemeColors.black_common
+                      : DarkThemeColors.white_common}
+                  >−</AppText>
                 </TouchableOpacity>
                 <View style={styles.datePickerValue}>
-                  <AppText size={hp(2.5)} fontType={FontTypes.medium} color={colors.text}>
+                  <AppText 
+                    size={hp(2.5)} 
+                    fontType={FontTypes.medium} 
+                    color={colors.text}
+                  >
                     {tempDate.format('MMMM')}
                   </AppText>
-                  <AppText size={hp(1.5)} color={colors.text} style={{ opacity: 0.7 }}>Month</AppText>
+                  <AppText 
+                    size={hp(1.5)} 
+                    color={colors.text} 
+                    style={{ opacity: 0.7 }}
+                  >Month</AppText>
                 </View>
                 <TouchableOpacity
                   style={[styles.datePickerButton, {
-                    backgroundColor: appTheme === APP_THEMES.light ? '#F0F0F0' : colors.primary,
-                    opacity: tempDate.clone().add(1, 'month').isAfter(moment.utc().endOf('day')) ? 0.3 : 1,
+                    backgroundColor: appTheme === APP_THEMES.light
+                      ? LightThemeColors.white_common
+                      : DarkThemeColors.white_common + '20',
                   }]}
                   onPress={() => changeDate('month', 1)}
-                  disabled={tempDate.clone().add(1, 'month').isAfter(moment.utc().endOf('day'))}
                 >
-                  <AppText size={hp(2)} color={appTheme === APP_THEMES.light ? colors.text : '#FFFFFF'}>+</AppText>
+                  <AppText 
+                    size={hp(2)} 
+                    color={appTheme === APP_THEMES.light 
+                      ? LightThemeColors.black_common
+                      : DarkThemeColors.white_common}
+                  >+</AppText>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.datePickerRow}>
                 <TouchableOpacity
                   style={[styles.datePickerButton, {
-                    backgroundColor: appTheme === APP_THEMES.light ? '#F0F0F0' : colors.primary,
+                    backgroundColor: appTheme === APP_THEMES.light
+                      ? LightThemeColors.white_common
+                      : DarkThemeColors.white_common + '20',
                   }]}
                   onPress={() => changeDate('day', -1)}
                 >
-                  <AppText size={hp(2)} color={appTheme === APP_THEMES.light ? colors.text : '#FFFFFF'}>−</AppText>
+                  <AppText 
+                    size={hp(2)} 
+                    color={appTheme === APP_THEMES.light 
+                      ? LightThemeColors.black_common
+                      : DarkThemeColors.white_common}
+                  >−</AppText>
                 </TouchableOpacity>
                 <View style={styles.datePickerValue}>
-                  <AppText size={hp(2.5)} fontType={FontTypes.medium} color={colors.text}>
+                  <AppText 
+                    size={hp(2.5)} 
+                    fontType={FontTypes.medium} 
+                    color={colors.text}
+                  >
                     {tempDate.date()}
                   </AppText>
-                  <AppText size={hp(1.5)} color={colors.text} style={{ opacity: 0.7 }}>Day</AppText>
+                  <AppText 
+                    size={hp(1.5)} 
+                    color={colors.text} 
+                    style={{ opacity: 0.7 }}
+                  >Day</AppText>
                 </View>
                 <TouchableOpacity
                   style={[styles.datePickerButton, {
-                    backgroundColor: appTheme === APP_THEMES.light ? '#F0F0F0' : colors.primary,
-                    opacity: tempDate.clone().add(1, 'day').isAfter(moment.utc().endOf('day')) ? 0.3 : 1,
+                    backgroundColor: appTheme === APP_THEMES.light
+                      ? LightThemeColors.white_common
+                      : DarkThemeColors.white_common + '20',
                   }]}
                   onPress={() => changeDate('day', 1)}
-                  disabled={tempDate.clone().add(1, 'day').isAfter(moment.utc().endOf('day'))}
                 >
-                  <AppText size={hp(2)} color={appTheme === APP_THEMES.light ? colors.text : '#FFFFFF'}>+</AppText>
+                  <AppText 
+                    size={hp(2)} 
+                    color={appTheme === APP_THEMES.light 
+                      ? LightThemeColors.black_common
+                      : DarkThemeColors.white_common}
+                  >+</AppText>
                 </TouchableOpacity>
               </View>
             </View>
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
+                style={[styles.modalButton, {
+                  backgroundColor: appTheme === APP_THEMES.light
+                    ? LightThemeColors.white_common
+                    : DarkThemeColors.white_common + '20',
+                }]}
                 onPress={handleDatePickerCancel}
               >
-                <AppText size={hp(2)} color={appTheme === APP_THEMES.light ? colors.text : '#000000'}>
+                <AppText 
+                  size={hp(2)} 
+                  color={appTheme === APP_THEMES.light 
+                    ? LightThemeColors.black_common
+                    : DarkThemeColors.white_common}
+                >
                   {t('common.cancel', 'Cancel')}
                 </AppText>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalButton, styles.confirmButton, {
-                  opacity: tempDate.isAfter(moment.utc().endOf('day')) ? 0.5 : 1,
+                style={[styles.modalButton, {
+                  backgroundColor: colors.primary || DarkThemeColors.primary,
                 }]}
                 onPress={handleDatePickerConfirm}
-                disabled={tempDate.isAfter(moment.utc().endOf('day'))}
               >
-                <AppText size={hp(2)} color={colors.primary || '#62C268'}>
+                <AppText 
+                  size={hp(2)} 
+                  color={DarkThemeColors.white_common}
+                >
                   {t('common.confirm', 'Confirm')}
                 </AppText>
               </TouchableOpacity>
@@ -522,7 +605,6 @@ const styles = StyleSheet.create({
     width: wp(12),
     height: wp(12),
     borderRadius: wp(6),
-    backgroundColor: '#F0F0F0',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -543,11 +625,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginHorizontal: wp(2),
-  },
-  cancelButton: {
-    backgroundColor: '#F0F0F0',
-  },
-  confirmButton: {
-    backgroundColor: '#E8F5E9',
   },
 });

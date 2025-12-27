@@ -9,9 +9,8 @@ import { AttendanceRecord } from '../../redux/types/userTypes';
 import { store } from '../../redux';
 import { networkService } from '../network/network-service';
 import { logger } from '../logger';
-import axios from 'axios';
 import { Configs } from '../../constants/configs';
-import { getJWTToken } from '../auth/login-service';
+import apiClient from '../api/api-client';
 import moment from 'moment';
 import { apiTimestampToTicks } from '../../utils/timestamp-utils';
 
@@ -118,22 +117,16 @@ class AttendanceSyncService {
         return false;
       }
 
-      const token = await getJWTToken(userEmail);
-      if (!token) {
-        logger.debug('[AttendanceSync] No token - cannot sync attendance record');
-        return false;
-      }
-
       // Determine API endpoint based on punch direction
       const endpoint = record.PunchDirection === 'IN'
-        ? `${API_BASE_URL}/api/attendance/punch-in`
-        : `${API_BASE_URL}/api/attendance/punch-out`;
+        ? `/api/attendance/punch-in`
+        : `/api/attendance/punch-out`;
 
       // Convert timestamp to UTC ticks (milliseconds since epoch) - backend always expects UTC
       // Ensure we're sending UTC timestamp even if local timestamp was stored
       const utcTimestamp = moment.utc(record.Timestamp).valueOf();
       
-      const response = await axios.post(
+      const response = await apiClient.post(
         endpoint,
         {
           timestamp: utcTimestamp, // UTC ticks (milliseconds since epoch)
@@ -149,10 +142,6 @@ class AttendanceSyncService {
           phoneNumber: record.PhoneNumber,
         },
         {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
           timeout: 30000,
         }
       );
@@ -227,14 +216,8 @@ class AttendanceSyncService {
         return;
       }
 
-      const token = await getJWTToken(userID);
-      if (!token) {
-        logger.debug('[AttendanceSync] No token - cannot pull attendance');
-        return;
-      }
-
       // Build API URL with optional month parameter
-      let url = `${API_BASE_URL}/api/attendance/days`;
+      let url = `/api/attendance/days`;
       if (month) {
         const monthStart = month.clone().startOf('month').format('YYYY-MM-DD');
         const monthEnd = month.clone().endOf('month').format('YYYY-MM-DD');
@@ -242,13 +225,9 @@ class AttendanceSyncService {
       }
 
       // Pull attendance data from server
-      const response = await axios.get(
+      const response = await apiClient.get(
         url,
         {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
           timeout: 30000,
         }
       );

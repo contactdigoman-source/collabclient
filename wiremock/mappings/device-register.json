@@ -1,0 +1,38 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/api/device/register",
+    "headers": {
+      "Content-Type": {
+        "equalTo": "application/json"
+      }
+    },
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": {
+          "expression": "$.deviceId",
+          "matches": ".*"
+        }
+      },
+      {
+        "matchesJsonPath": {
+          "expression": "$.platform",
+          "matches": ".*"
+        }
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "success": true,
+      "message": "Device registered successfully",
+      "deviceId": "ios-1703682000000-abc123",
+      "registeredAt": "2024-12-27T12:00:00.000Z"
+    }
+  }
+}
+

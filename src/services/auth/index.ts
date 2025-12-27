@@ -5,8 +5,11 @@ export * from './login-service';
 export {
   type VerifyOTPRequest,
   type VerifyOTPResponse,
+  type LegacyVerifyOTPRequest,
+  type LegacyVerifyOTPResponse,
   type ResendOTPRequest,
   type ResendOTPResponse,
+  verifyLoginOTP,
   verifyOTP,
   resendOTP,
 } from './otp-service';
@@ -14,7 +17,14 @@ export {
 export type { AccountStatus } from './login-service';
 
 // Export forgot password service
-export * from './forgot-password-service';
+export {
+  type ForgotPasswordRequest,
+  type ForgotPasswordResponse,
+  type ResetPasswordRequest,
+  type ResetPasswordResponse,
+  forgotPassword,
+  resetPassword,
+} from './forgot-password-service';
 
 // Export first-time login service
 export * from './first-time-login-service';
@@ -27,12 +37,10 @@ export {
   type ProfileResponse,
   type UpdateProfileRequest,
   type UpdateProfileResponse,
-  type UploadProfilePhotoResponse,
   type ChangePasswordRequest,
   type ChangePasswordResponse,
   getProfile,
   updateProfile,
-  uploadProfilePhoto,
   changePassword,
 } from './profile-service';
 

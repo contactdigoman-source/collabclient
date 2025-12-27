@@ -21,7 +21,6 @@ import Geolocation from '@react-native-community/geolocation';
 import {
   requestLocationPermission,
   watchUserLocation,
-  clearWatch,
   getLocationFromLatLon,
   isLocationEnabled,
   cancelBreakReminderNotifications,
@@ -30,10 +29,13 @@ import { useAppDispatch, useAppSelector } from '../../redux';
 import { setUserLocationRegion } from '../../redux';
 import { insertAttendancePunchRecord, getAttendanceData } from '../../services';
 import moment from 'moment';
+import { getCurrentUTCTimestamp, getCurrentUTCDate} from '../../utils/time-utils';
 import { PUNCH_DIRECTIONS } from '../../constants/location';
 import { useTranslation } from '../../hooks/useTranslation';
+import { useCheckInStatus } from '../../hooks/useCheckInStatus';
 import { APP_THEMES, DarkThemeColors, LightThemeColors } from '../../themes';
 import { logger } from '../../services/logger';
+import { getShiftEndTimestamp } from '../../utils/shift-utils';
 
 interface Coordinates {
   latitude: number;
@@ -58,54 +60,38 @@ export default function CheckInScreen(): React.JSX.Element {
   const userLastAttendance = useAppSelector(
     state => state.userState.userLastAttendance,
   );
+
   const userData = useAppSelector(state => state.userState.userData);
+
+  // Use shared hook for check-in status
+  const isUserCheckedIn = useCheckInStatus();
 
   const [isFetchingLocation, setIsFetchingLocation] = useState<boolean>(true);
   const [permissionDenied, setPermissionDenied] = useState<boolean>(false);
   const [currentAddress, setCurrentAddress] = useState<string | null>(null);
   const [isFetchingAddress, setIsFetchingAddress] = useState<boolean>(false);
   const [showEarlyCheckoutModal, setShowEarlyCheckoutModal] = useState<boolean>(false);
-  const [isProcessingCheckIn, setIsProcessingCheckIn] = useState<boolean>(false);
   
-  // Refs to prevent infinite loops and state changes during navigation
+  // Use refs to prevent unnecessary re-renders and address fetches
   const addressFetchedRef = useRef<boolean>(false);
-  const lastLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
-  const buttonStateLockedRef = useRef<boolean>(false);
-  const watchIdRef = useRef<number | null>(null);
-  const isWatchingRef = useRef<boolean>(false);
+  const lastLocationRef = useRef<{ lat: number; lon: number } | null>(null);
 
-  const isUserCheckedIn = useMemo(() => {
-    return userLastAttendance?.PunchDirection === PUNCH_DIRECTIONS.in;
-  }, [userLastAttendance?.PunchDirection]);
-
+ 
   const stopWatching = useCallback((): void => {
-    if (watchIdRef.current !== null) {
-      logger.debug('stopWatching: Clearing watch', { watchId: watchIdRef.current });
-      clearWatch(watchIdRef.current);
-      watchIdRef.current = null;
-      isWatchingRef.current = false;
-    }
+    // watchIdRef is not needed here as watchUserLocation handles it internally
+    // Just clear any existing watch
   }, []);
 
   const handleLocationUpdate = useCallback(
     (coords: Coordinates): void => {
-      logger.debug('handleLocationUpdate: Called with coords', { coords });
+      const logContext = { _context: { service: 'attendance', fileName: 'CheckInScreen.tsx', methodName: 'handleLocationUpdate' } };
+      logger.debug('handleLocationUpdate: Called with coords', { ...logContext, coords });
       if (!coords) {
-        logger.debug('handleLocationUpdate: No coords, returning');
+        logger.debug('handleLocationUpdate: No coords, returning', logContext);
         return;
       }
 
-      // Check if location has actually changed significantly (prevent unnecessary updates)
-      const hasLocationChanged = !lastLocationRef.current || 
-        Math.abs(lastLocationRef.current.latitude - coords.latitude) > 0.0001 ||
-        Math.abs(lastLocationRef.current.longitude - coords.longitude) > 0.0001;
-
-      if (!hasLocationChanged && !isFetchingLocation) {
-        logger.debug('handleLocationUpdate: Location unchanged, skipping update');
-        return;
-      }
-
-      logger.debug('handleLocationUpdate: Processing location', { latitude: coords.latitude, longitude: coords.longitude });
+      logger.debug('handleLocationUpdate: Processing location', { ...logContext, latitude: coords.latitude, longitude: coords.longitude });
       const locationRegion = {
         latitude: coords.latitude,
         longitude: coords.longitude,
@@ -113,43 +99,36 @@ export default function CheckInScreen(): React.JSX.Element {
         longitudeDelta: coords.longitudeDelta || ZOOM_IN_DELTA,
       };
 
-      // Update last location ref
-      lastLocationRef.current = {
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-      };
-
-      logger.debug('handleLocationUpdate: Dispatching location region');
+      logger.debug('handleLocationUpdate: Dispatching location region', logContext);
       dispatch(setUserLocationRegion(locationRegion));
       setIsFetchingLocation(false);
 
       // Fetch address immediately when location is available using Google API (only if not already fetched)
-      if (coords.latitude && coords.longitude && !addressFetchedRef.current && !currentAddress) {
-        logger.debug('handleLocationUpdate: Fetching address from Google API', { latitude: coords.latitude, longitude: coords.longitude });
-        addressFetchedRef.current = true;
+      if (coords.latitude && coords.longitude && !addressFetchedRef.current) {
+        logger.debug('handleLocationUpdate: Fetching address from Google API', { ...logContext, latitude: coords.latitude, longitude: coords.longitude });
         setIsFetchingAddress(true);
         getLocationFromLatLon(coords.latitude, coords.longitude)
           .then((address) => {
-            logger.debug('handleLocationUpdate: Address fetched from Google API', { address });
+            logger.debug('handleLocationUpdate: Address fetched from Google API', { ...logContext, address });
             setCurrentAddress(address);
+            addressFetchedRef.current = true; // Mark as fetched
             setIsFetchingAddress(false);
           })
           .catch((error) => {
-            logger.warn('handleLocationUpdate: Error fetching address from Google API', error);
+            logger.warn('handleLocationUpdate: Error fetching address from Google API', error, logContext);
             setCurrentAddress(null);
             setIsFetchingAddress(false);
-            addressFetchedRef.current = false; // Allow retry on error
           });
       } else {
-        logger.debug('handleLocationUpdate: Skipping address fetch', { 
-          alreadyFetched: addressFetchedRef.current, 
-          hasAddress: !!currentAddress 
-        });
+        if (addressFetchedRef.current) {
+          logger.debug('handleLocationUpdate: Address already fetched, skipping', logContext);
+        } else {
+          logger.debug('handleLocationUpdate: Missing latitude or longitude', logContext);
+        }
       }
 
-      // Only animate map on initial location or significant location change
-      if (mapRef.current && (isFetchingLocation || hasLocationChanged)) {
-        logger.debug('handleLocationUpdate: Animating map to region');
+      if (mapRef.current) {
+        logger.debug('handleLocationUpdate: Animating map to region', logContext);
         // Focus on current location when location updates
         mapRef.current.animateToRegion(
           {
@@ -161,10 +140,10 @@ export default function CheckInScreen(): React.JSX.Element {
           1000,
         );
       } else {
-        logger.debug('handleLocationUpdate: Skipping map animation');
+        logger.debug('handleLocationUpdate: mapRef.current is null', logContext);
       }
     },
-    [dispatch, isFetchingLocation, currentAddress],
+    [dispatch],
   );
 
   const onCancelPress = useCallback((): void => {
@@ -172,12 +151,6 @@ export default function CheckInScreen(): React.JSX.Element {
   }, [navigation]);
 
   const startWatching = useCallback(async (): Promise<void> => {
-    // Prevent multiple simultaneous watch starts
-    if (isWatchingRef.current) {
-      logger.debug('startWatching: Already watching, skipping');
-      return;
-    }
-
     logger.debug('startWatching: Starting location watch');
     const granted = await requestLocationPermission(onCancelPress);
     if (!granted) {
@@ -191,7 +164,6 @@ export default function CheckInScreen(): React.JSX.Element {
     if (isLocationOn) {
       logger.debug('startWatching: Location is enabled, fetching current position and starting watch');
       setIsFetchingLocation(true);
-      isWatchingRef.current = true;
       
       // Get current position first (this will call handleLocationUpdate immediately)
       Geolocation.getCurrentPosition(
@@ -201,15 +173,12 @@ export default function CheckInScreen(): React.JSX.Element {
         },
         (error) => {
           logger.warn('startWatching: Error getting current position', error);
-          setIsFetchingLocation(false);
         },
         { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 },
       );
       
       // Then start watching for updates
-      const watchId = watchUserLocation(handleLocationUpdate);
-      watchIdRef.current = watchId;
-      logger.debug('startWatching: Watch started', { watchId });
+      watchUserLocation(handleLocationUpdate);
     } else {
       logger.debug('startWatching: Location is not enabled');
       navigation.goBack();
@@ -218,41 +187,77 @@ export default function CheckInScreen(): React.JSX.Element {
 
   useEffect(() => {
     startWatching();
-    return () => {
-      stopWatching();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+    return stopWatching;
+  }, [startWatching, stopWatching]);
 
-  // Fetch address when location region changes (backup/retry mechanism) - only once on initial load
+  // Fetch address when location region changes (only once, prevent flickering)
   useEffect(() => {
     const fetchAddress = async (): Promise<void> => {
-      // Only fetch if we have location, don't have address, and haven't already fetched
+      // Only fetch if we have location and haven't fetched address yet
       if (
         userLocationRegion?.latitude &&
         userLocationRegion?.longitude &&
         !isFetchingLocation &&
-        !addressFetchedRef.current &&
-        !currentAddress
+        !addressFetchedRef.current
       ) {
+        // Check if location has changed significantly (more than 10 meters)
+        const currentLat = userLocationRegion.latitude;
+        const currentLon = userLocationRegion.longitude;
+        const lastLocation = lastLocationRef.current;
+        
+        if (lastLocation) {
+          // Calculate distance (rough approximation)
+          const latDiff = Math.abs(currentLat - lastLocation.lat);
+          const lonDiff = Math.abs(currentLon - lastLocation.lon);
+          // If location hasn't changed significantly, skip fetch
+          if (latDiff < 0.0001 && lonDiff < 0.0001) {
+            logger.debug('useEffect: Location unchanged, skipping address fetch');
+            return;
+          }
+        }
+
+        // Only fetch if we don't already have an address
+        if (currentAddress) {
+          logger.debug('useEffect: Address already exists, skipping fetch');
+          addressFetchedRef.current = true;
+          return;
+        }
+
         logger.debug('useEffect: Fetching address from Google API', { 
-          latitude: userLocationRegion.latitude, 
-          longitude: userLocationRegion.longitude 
+          latitude: currentLat, 
+          longitude: currentLon 
         });
-        addressFetchedRef.current = true;
+        
+        // Update last location
+        lastLocationRef.current = { lat: currentLat, lon: currentLon };
+        
         setIsFetchingAddress(true);
         try {
           // Use Google API to get address
           const address = await getLocationFromLatLon(
-            userLocationRegion.latitude,
-            userLocationRegion.longitude,
+            currentLat,
+            currentLon,
           );
           logger.debug('useEffect: Address fetched from Google API', { address });
           setCurrentAddress(address);
+          addressFetchedRef.current = true; // Mark as fetched
+          
+          // Focus map on current location when address is fetched (only once)
+          if (mapRef.current) {
+            mapRef.current.animateToRegion(
+              {
+                latitude: currentLat,
+                longitude: currentLon,
+                latitudeDelta: ZOOM_IN_DELTA,
+                longitudeDelta: ZOOM_IN_DELTA,
+              },
+              500,
+            );
+          }
         } catch (error) {
           logger.warn('useEffect: Error fetching address from Google API', error);
           setCurrentAddress(null);
-          addressFetchedRef.current = false; // Allow retry on error
+          // Don't mark as fetched on error, allow retry
         } finally {
           setIsFetchingAddress(false);
         }
@@ -260,8 +265,7 @@ export default function CheckInScreen(): React.JSX.Element {
         logger.debug('useEffect: Skipping address fetch', { 
           isFetchingLocation, 
           hasLocation: !!userLocationRegion?.latitude,
-          alreadyFetched: addressFetchedRef.current,
-          hasAddress: !!currentAddress
+          addressFetched: addressFetchedRef.current
         });
       }
     };
@@ -297,12 +301,151 @@ export default function CheckInScreen(): React.JSX.Element {
     }, 1000);
   }, [userLocationRegion]);
 
-  const getCurrentDate = (): string => moment.utc().format('YYYY-MM-DD');
+  /**
+   * Determine the correct date for check-in based on shift type and last attendance
+   * Rules:
+   * 1. For normal shift: 
+   *    - User can do multiple checkouts/check-ins on same day
+   *    - BUT if check-in happens on next day (compared to last checkout date), use next day's date
+   * 2. For 2-day shift:
+   *    - If checkout was on/after shift end time, next check-in uses next day
+   *    - If checkout was before shift end time, check if current check-in is on/after shift start time
+   *      - If yes, it's next day's check-in
+   *      - If no, use today
+   * 3. Otherwise: Use today
+   */
+  const getCheckInDate = useCallback((): string => {
+    const today = getCurrentUTCDate();
+    const now = moment.utc();
+    
+    // If no last attendance or last attendance is IN, use today
+    if (!userLastAttendance || userLastAttendance.PunchDirection === PUNCH_DIRECTIONS.in) {
+      return today;
+    }
+    
+    // Last attendance is OUT - check if we should use next day
+    const shiftStartTime = userData?.shiftStartTime || '09:00';
+    const shiftEndTime = userData?.shiftEndTime || '17:00';
+    
+    // Check if shift spans 2 days
+    const [startHour, startMin] = shiftStartTime.split(':').map(Number);
+    const [endHour, endMin] = shiftEndTime.split(':').map(Number);
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
+    const doesShiftSpanTwoDays = endMinutes < startMinutes;
+    
+    try {
+      const checkoutTimestamp = typeof userLastAttendance.Timestamp === 'string'
+        ? parseInt(userLastAttendance.Timestamp, 10)
+        : userLastAttendance.Timestamp;
+      
+      if (!checkoutTimestamp) {
+        return today;
+      }
+      
+      // Get checkout date
+      const checkoutDate = userLastAttendance.DateOfPunch || moment.utc(checkoutTimestamp).format('YYYY-MM-DD');
+      const checkoutUTC = moment.utc(checkoutTimestamp);
+      
+      if (!doesShiftSpanTwoDays) {
+        // Normal shift: Check if current check-in is on a different day compared to checkout date
+        // Use string comparison for reliability
+        const isDifferentDay = today !== checkoutDate;
+        
+        logger.debug('Normal shift check-in date calculation', {
+          _context: { service: 'attendance', fileName: 'CheckInScreen.tsx', methodName: 'getCheckInDate' },
+          checkoutDate,
+          today,
+          isDifferentDay,
+        });
+        
+        // If today is different from checkout date, use today (it's a new day's attendance)
+        if (isDifferentDay) {
+          logger.debug('Using today as check-in date (different day from checkout)', {
+            _context: { service: 'attendance', fileName: 'CheckInScreen.tsx', methodName: 'getCheckInDate' },
+            date: today,
+          });
+          return today;
+        }
+        
+        // Same day as checkout, use today (user can do multiple check-ins/checkouts on same day)
+        logger.debug('Using today as check-in date (same day as checkout)', {
+          _context: { service: 'attendance', fileName: 'CheckInScreen.tsx', methodName: 'getCheckInDate' },
+          date: today,
+        });
+        return today;
+      }
+      
+      // 2-day shift logic
+      // Get shift end timestamp for checkout date
+      const shiftEndTimestamp = getShiftEndTimestamp(checkoutDate, shiftEndTime);
+      
+      if (!shiftEndTimestamp) {
+        return today;
+      }
+      
+      const shiftEndUTC = moment.utc(shiftEndTimestamp);
+      
+      // Check if checkout was on or after shift end time
+      if (checkoutUTC.isSameOrAfter(shiftEndUTC)) {
+        // Checkout was on/after shift end time, next check-in should be next day
+        logger.debug('2-day shift: Checkout was on/after shift end, using next day', {
+          _context: { service: 'attendance', fileName: 'CheckInScreen.tsx', methodName: 'getCheckInDate' },
+          checkoutDate,
+          checkoutTime: checkoutUTC.format('YYYY-MM-DD HH:mm'),
+          shiftEndTime: shiftEndUTC.format('YYYY-MM-DD HH:mm'),
+          nextDay: moment.utc(today).add(1, 'day').format('YYYY-MM-DD'),
+        });
+        const nextDay = moment.utc(today).add(1, 'day').format('YYYY-MM-DD');
+        return nextDay;
+      }
+      
+      // Checkout was before shift end time
+      // Check if current check-in time is on/after shift start time
+      // If yes, it's next day's check-in (since shift time is about to start)
+      const [currentHour, currentMin] = [now.hour(), now.minute()];
+      const currentMinutes = currentHour * 60 + currentMin;
+      
+      logger.debug('2-day shift: Checking if check-in is on/after shift start', {
+        _context: { service: 'attendance', fileName: 'CheckInScreen.tsx', methodName: 'getCheckInDate' },
+        checkoutDate,
+        checkoutTime: checkoutUTC.format('YYYY-MM-DD HH:mm'),
+        shiftEndTime: shiftEndUTC.format('YYYY-MM-DD HH:mm'),
+        currentTime: now.format('YYYY-MM-DD HH:mm'),
+        currentMinutes,
+        startMinutes,
+        shiftStartTime,
+      });
+      
+      if (currentMinutes >= startMinutes) {
+        // Current check-in is on/after shift start time, it's next day's check-in
+        // (since checkout was before shift end, but we're now at/after shift start)
+        logger.debug('2-day shift: Check-in is on/after shift start, using next day', {
+          _context: { service: 'attendance', fileName: 'CheckInScreen.tsx', methodName: 'getCheckInDate' },
+          nextDay: moment.utc(today).add(1, 'day').format('YYYY-MM-DD'),
+        });
+        const nextDay = moment.utc(today).add(1, 'day').format('YYYY-MM-DD');
+        return nextDay;
+      }
+      
+      // Current check-in is before shift start time, use today
+      logger.debug('2-day shift: Check-in is before shift start, using today', {
+        _context: { service: 'attendance', fileName: 'CheckInScreen.tsx', methodName: 'getCheckInDate' },
+        date: today,
+      });
+      return today;
+    } catch (error) {
+      logger.error('Error determining check-in date', error);
+      return today;
+    }
+  }, [userLastAttendance, userData?.shiftStartTime, userData?.shiftEndTime]);
+
+  const getCurrentDate = (): string => getCurrentUTCDate();
   const getCurrentTimestamp = useCallback((): number => {
-    // Return UTC ticks (milliseconds since epoch UTC) - stored as BIGINT in SQLite
-    // Date.now() returns UTC ticks, which is what we need for backend
-    // UI will convert to local time for display using moment(timestamp)
-    return moment.utc().valueOf(); // Explicitly UTC ticks
+    // Return UTC timestamp (milliseconds since epoch)
+    // All punch records are stored in UTC
+    // UI will convert to local time for display using formatUTCForDisplay()
+    return getCurrentUTCTimestamp();
   }, []);
 
   // Calculate hours worked from check-in time
@@ -312,18 +455,18 @@ export default function CheckInScreen(): React.JSX.Element {
     }
 
     try {
-      // Parse check-in time (can be string or number)
+      // Parse check-in time (timestamp is UTC)
       let checkInTime: moment.Moment;
       if (typeof userLastAttendance.CreatedOn === 'string') {
-        checkInTime = moment.utc(userLastAttendance.CreatedOn);
+        checkInTime = moment.utc(parseInt(userLastAttendance.CreatedOn, 10));
       } else if (typeof userLastAttendance.CreatedOn === 'number') {
         checkInTime = moment.utc(userLastAttendance.CreatedOn);
       } else {
         return 0;
       }
 
-      // Calculate difference in hours (UTC)
-      const now = moment.utc();
+      // Calculate difference in hours (both in UTC)
+      const now = moment.utc(); // Current time in UTC
       const hours = now.diff(checkInTime, 'hours', true); // true for decimal precision
       return hours;
     } catch (error) {
@@ -333,26 +476,32 @@ export default function CheckInScreen(): React.JSX.Element {
   }, [isUserCheckedIn, userLastAttendance?.CreatedOn]);
 
   const onCheckInPress = useCallback(async (): Promise<void> => {
-    // Prevent multiple simultaneous check-in/out attempts
-    if (isProcessingCheckIn) {
-      logger.debug('onCheckInPress: Already processing, skipping');
-      return;
-    }
-
-    // If checking out and hours worked is less than 9, show early checkout modal
-    if (isUserCheckedIn && hoursWorked < 9) {
+    // Get minimum working hours from profile (default to 9 if not set)
+    const minimumWorkingHours = userData?.minimumWorkingHours || 9;
+    
+    // If checking out and hours worked is less than minimum working hours, show early checkout modal
+    if (isUserCheckedIn && hoursWorked < minimumWorkingHours) {
       setShowEarlyCheckoutModal(true);
       return;
     }
 
-    // Lock button state to prevent text changes during processing
-    buttonStateLockedRef.current = true;
-    setIsProcessingCheckIn(true);
-
-    // Store current state to prevent changes during navigation
-    const currentIsCheckedIn = isUserCheckedIn;
+    // Proceed with normal check-in/check-out
     const currentTimeTS = getCurrentTimestamp();
-    const currentDate = getCurrentDate();
+    // Use getCheckInDate() for check-in, getCurrentDate() for checkout
+    const currentDate = isUserCheckedIn ? getCurrentDate() : getCheckInDate();
+
+    logger.debug('Inserting attendance record', {
+      _context: { service: 'attendance', fileName: 'CheckInScreen.tsx', methodName: 'onCheckInPress' },
+      isUserCheckedIn,
+      currentDate,
+      currentTimeTS,
+      timestampDate: moment.utc(currentTimeTS).format('YYYY-MM-DD'),
+      lastAttendance: userLastAttendance ? {
+        DateOfPunch: userLastAttendance.DateOfPunch,
+        PunchDirection: userLastAttendance.PunchDirection,
+        Timestamp: userLastAttendance.Timestamp,
+      } : null,
+    });
 
     try {
       await insertAttendancePunchRecord({
@@ -360,7 +509,7 @@ export default function CheckInScreen(): React.JSX.Element {
         orgID: '123',
         userID: userData?.email || '',
         punchType: 'CHECK',
-        punchDirection: currentIsCheckedIn
+        punchDirection: isUserCheckedIn
           ? PUNCH_DIRECTIONS.out
           : PUNCH_DIRECTIONS.in,
         latLon: userLocationRegion
@@ -371,7 +520,7 @@ export default function CheckInScreen(): React.JSX.Element {
         address: currentAddress || '',
         createdOn: currentTimeTS,
         isSynced: 'N',
-        dateOfPunch: currentDate,
+        dateOfPunch: currentDate, // Explicitly set dateOfPunch to ensure correct grouping
         attendanceStatus: '',
         moduleID: '',
         tripType: '',
@@ -383,50 +532,46 @@ export default function CheckInScreen(): React.JSX.Element {
       });
 
       // Cancel break notifications when checking in (returning from break)
-      if (currentIsCheckedIn) {
+      if (isUserCheckedIn) {
         cancelBreakReminderNotifications();
       }
 
-      // Refresh attendance data from database to update Redux state
-      // Note: getAttendanceData is also called in insertAttendancePunchRecord callback,
-      // but we call it here as well to ensure state is updated before navigation
+      // Navigate immediately to prevent button flicker
+      // State will be updated in the background via insertAttendancePunchRecord callback
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'DashboardScreen' }],
+        }),
+      );
+
+      // Refresh attendance data from database to update Redux state (async, after navigation)
+      // This happens in the background and won't affect the current screen
       if (userData?.email) {
-        await getAttendanceData(userData.email);
+        getAttendanceData(userData.email).catch((error) => {
+          logger.error('Error refreshing attendance data after check-in', error);
+        });
       }
     } catch (error) {
       logger.error('Error inserting attendance record', error);
-      // Reset processing state on error
-      setIsProcessingCheckIn(false);
-      buttonStateLockedRef.current = false;
       // Show error to user or handle gracefully
       return; // Don't navigate if insert failed
     }
-
-    // Navigate immediately without waiting for state propagation
-    // The state will update in the background, but we navigate before it changes
-    navigation.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [{ name: 'DashboardScreen' }],
-      }),
-    );
   }, [
     userLocationRegion,
     isUserCheckedIn,
     userData?.email,
+    userData?.minimumWorkingHours,
     navigation,
     currentAddress,
     getCurrentTimestamp,
     hoursWorked,
-    isProcessingCheckIn,
+    getCheckInDate,
   ]);
 
   const handleBreakStatusSelect = useCallback(
     async (status: string): Promise<void> => {
       setShowEarlyCheckoutModal(false);
-      buttonStateLockedRef.current = true;
-      setIsProcessingCheckIn(true);
-      
       const currentTimeTS = getCurrentTimestamp();
       const currentDate = getCurrentDate();
 
@@ -456,22 +601,24 @@ export default function CheckInScreen(): React.JSX.Element {
           phoneNumber: '',
         });
 
-        // Refresh attendance data from database to update Redux state
-        if (userData?.email) {
-          await getAttendanceData(userData.email);
-        }
-
-        // Navigate to DashboardScreen (home) and reset the stack
+        // Navigate immediately to prevent button flicker
+        // State will be updated in the background via insertAttendancePunchRecord callback
         navigation.dispatch(
           CommonActions.reset({
             index: 0,
             routes: [{ name: 'DashboardScreen' }],
           }),
         );
+
+        // Refresh attendance data from database to update Redux state (async, after navigation)
+        // This happens in the background and won't affect the current screen
+        if (userData?.email) {
+          getAttendanceData(userData.email).catch((error) => {
+            logger.error('Error refreshing attendance data after checkout', error);
+          });
+        }
       } catch (error) {
         logger.error('Error inserting attendance record', error);
-        setIsProcessingCheckIn(false);
-        buttonStateLockedRef.current = false;
       }
     },
     [
@@ -485,9 +632,6 @@ export default function CheckInScreen(): React.JSX.Element {
 
   const handleSkip = useCallback(async (): Promise<void> => {
     setShowEarlyCheckoutModal(false);
-    buttonStateLockedRef.current = true;
-    setIsProcessingCheckIn(true);
-    
     const currentTimeTS = getCurrentTimestamp();
     const currentDate = getCurrentDate();
 
@@ -517,22 +661,24 @@ export default function CheckInScreen(): React.JSX.Element {
         phoneNumber: '',
       });
 
-      // Refresh attendance data from database to update Redux state
-      if (userData?.email) {
-        await getAttendanceData(userData.email);
-      }
-
-      // Navigate to DashboardScreen (home) and reset the stack
+      // Navigate immediately to prevent button flicker
+      // State will be updated in the background via insertAttendancePunchRecord callback
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
           routes: [{ name: 'DashboardScreen' }],
         }),
       );
+
+      // Refresh attendance data from database to update Redux state (async, after navigation)
+      // This happens in the background and won't affect the current screen
+      if (userData?.email) {
+        getAttendanceData(userData.email).catch((error) => {
+          logger.error('Error refreshing attendance data after early checkout', error);
+        });
+      }
     } catch (error) {
       logger.error('Error inserting attendance record', error);
-      setIsProcessingCheckIn(false);
-      buttonStateLockedRef.current = false;
     }
   }, [
     userLocationRegion,
@@ -543,18 +689,6 @@ export default function CheckInScreen(): React.JSX.Element {
   ]);
 
   const buttonText = useMemo(() => {
-    // If button state is locked (during check-in/out), don't change text
-    if (buttonStateLockedRef.current) {
-      // Return text based on the state when lock was applied
-      if (isUserCheckedIn) {
-        return 'Confirm Check Out';
-      }
-      return 'Confirm CheckIn';
-    }
-    
-    if (isProcessingCheckIn) {
-      return t('attendance.processing') || 'Processing...';
-    }
     if (isFetchingLocation || isFetchingAddress) {
       return t('attendance.fetchingLocation') || 'Fetching Location...';
     }
@@ -565,7 +699,7 @@ export default function CheckInScreen(): React.JSX.Element {
       return 'Confirm Check Out';
     }
     return 'Confirm CheckIn';
-  }, [isUserCheckedIn, isFetchingLocation, isFetchingAddress, permissionDenied, isProcessingCheckIn, t]);
+  }, [isUserCheckedIn, isFetchingLocation, isFetchingAddress, permissionDenied, t]);
 
   const handleClosePress = useCallback((): void => {
     navigation.goBack();
@@ -697,11 +831,11 @@ export default function CheckInScreen(): React.JSX.Element {
         </View>
 
         <AppButton
-          disabled={isFetchingLocation || permissionDenied || !userLocationRegion?.latitude || !userLocationRegion?.longitude || isProcessingCheckIn}
+          disabled={isFetchingLocation || permissionDenied || !userLocationRegion?.latitude || !userLocationRegion?.longitude}
           title={buttonText}
           titleColor={buttonTextColor}
           titleSize={hp(2.24)} // Standard button text size
-          loading={isFetchingLocation || isFetchingAddress || isProcessingCheckIn}
+          loading={isFetchingLocation || isFetchingAddress}
           style={{
             ...styles.checkInButton,
             backgroundColor: buttonStyle.backgroundColor,

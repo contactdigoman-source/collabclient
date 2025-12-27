@@ -2,6 +2,7 @@ import React, { memo, useMemo, useEffect } from 'react';
 import { StyleSheet, View, Animated, Easing } from 'react-native';
 import { useTheme } from '@react-navigation/native';
 import moment from 'moment';
+import { formatUTCForDisplay } from '../../utils/time-utils';
 
 import AppText from '../app-texts/AppText';
 import AppImage from '../app-images/AppImage';
@@ -22,13 +23,13 @@ const AttendanceLogItem: React.FC<AttendanceLogItemProps> = ({ item }) => {
   const headerDate = useMemo(() => {
     const firstItem = item?.[0];
     if (!firstItem?.Timestamp) return '';
-    // Timestamp is UTC ticks - moment() auto-converts to local time for display
-    const date = moment(firstItem.Timestamp); // UTC ticks → local time
-    const formattedDate = date.format('DD/MM/YYYY');
+    // Timestamp is in UTC - convert to local time for display
+    const date = formatUTCForDisplay(firstItem.Timestamp, 'DD/MM/YYYY');
+    const formattedDate = date;
     if (formattedDate === todayFormatted) {
       return `Today, ${moment().format('DD MMM')}`;
     }
-    return date.format('ddd, DD MMM YY');
+    return formatUTCForDisplay(firstItem.Timestamp, 'ddd, DD MMM YY');
   }, [item, todayFormatted]);
 
   /** Reusable rotating animation for unsynced icon */
@@ -75,8 +76,8 @@ const AttendanceLogItem: React.FC<AttendanceLogItemProps> = ({ item }) => {
           const { Timestamp, PunchType = '', PunchDirection = 'IN', IsSynced = 'N', CreatedOn } =
             attendanceItem;
 
-          // Timestamp is UTC ticks - moment() auto-converts to local time for display
-          const formattedTime = moment(Timestamp).format('hh:mm A'); // UTC ticks → local time
+          // Timestamp is in UTC - convert to local time for display
+          const formattedTime = formatUTCForDisplay(Timestamp, 'hh:mm A');
 
           return (
             <View key={Timestamp} style={styles.subItemList}>

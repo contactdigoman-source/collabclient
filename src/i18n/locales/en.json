@@ -154,7 +154,10 @@
     "captureFace": "Capture Face",
     "authenticating": "Authenticating...",
     "verified": "Aadhaar verified successfully",
-    "continue": "Continue"
+    "continue": "Continue",
+    "aadhaarNotAvailable": "Aadhaar not available",
+    "next": "Next",
+    "continueWithPanCard": "Continue with PAN Card"
   },
   "faceRD": {
     "verifying": "Authenticating...",
@@ -171,7 +174,11 @@
     "myFiles": "My Files",
     "announcements": "Announcements",
     "bePatient": "Be Patient",
-    "waitingMessage": "till the time your team and colleague show up"
+    "waitingMessage": "till the time your team and colleague show up",
+    "clockIncorrectTitle": "Device Clock Incorrect",
+    "clockIncorrectMessage": "Your device clock is {{difference}} off from the server time. Please enable automatic date & time setting to ensure accurate attendance tracking.",
+    "openSettings": "Open Settings",
+    "cancel": "Cancel"
   },
   "attendance": {
     "confirmCheckIn": "Confirm Check In",
@@ -221,6 +228,20 @@
     "profileDetails": "Profile Details",
     "currentPassword": "Current Password",
     "supportEmail": "support@example.com",
+    "organization": "Organization",
+    "roles": "Roles",
+    "timezone": "Timezone",
+    "aadhaarVerified": "Aadhaar Verified",
+    "panCardVerified": "PAN Card Verified",
+    "geofenceAreas": "Allowed Check-in Areas",
+    "profileUpdatedSuccessfully": "Profile updated successfully",
+    "failedToUpdateProfile": "Failed to update profile",
+    "invalidDateFormat": "Invalid date format. Please use YYYY-MM-DD",
+    "year": "Year",
+    "month": "Month",
+    "day": "Day",
+    "databaseViewer": "Database Viewer",
+    "userProfilePicture": "User profile picture",
     "language": {
       "selectLanguage": "Select Language",
       "english": "English",
@@ -257,7 +278,11 @@
     "success": "Success",
     "featureLocked": "This feature is locked!",
     "okay": "Okay",
-    "contact": "Contact us at"
+    "contact": "Contact us at",
+    "none": "None",
+    "next": "Next",
+    "continue": "Continue",
+    "uploading": "Uploading..."
   }
 }
 

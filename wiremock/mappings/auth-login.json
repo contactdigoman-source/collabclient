@@ -6,7 +6,21 @@
       "Content-Type": {
         "equalTo": "application/json"
       }
-    }
+    },
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": {
+          "expression": "$.email",
+          "matches": ".*"
+        }
+      },
+      {
+        "matchesJsonPath": {
+          "expression": "$.password",
+          "matches": ".*"
+        }
+      }
+    ]
   },
   "response": {
     "status": 200,
@@ -14,26 +28,9 @@
       "Content-Type": "application/json"
     },
     "jsonBody": {
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
-      "expiresAt": "2026-12-31T23:59:59Z",
-      "user": {
-        "id": 1,
-        "email": "user@example.com",
-        "firstName": "John",
-        "lastName": "Doe",
-        "phoneNumber": "+1234567890",
-        "isEmailVerified": true,
-        "isPhoneVerified": false,
-        "requiresPasswordChange": false,
-        "requiresEmailVerification": false,
-        "roles": ["ORGUSER"],
-        "firstTimeLogin": false,
-        "organizationId": 1,
-        "organizationName": "Example Organization"
-      },
       "accountStatus": "active",
-      "requiresPasswordChange": false,
-      "requiresEmailVerification": false
+      "idpjourneyToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZHBqb3VybmV5IjoiMTIzNDU2Nzg5MCIsImlhdCI6MTUxNjIzOTAyMn0.abc123def456ghi789jkl012mno345pqr678stu901vwx234yz",
+      "message": "Login successful. Please verify OTP to continue."
     }
   }
 }

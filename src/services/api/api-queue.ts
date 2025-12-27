@@ -1,5 +1,6 @@
 import axios, { AxiosRequestConfig, AxiosResponse, CancelTokenSource } from 'axios';
 import { logger } from '../logger';
+import apiClient from './api-client';
 
 /**
  * Request priority levels
@@ -150,12 +151,14 @@ class ApiQueueService {
 
   /**
    * Execute a request with retry logic
+   * Uses apiClient to ensure interceptors are applied
    */
   private async executeRequest(request: QueuedRequest): Promise<AxiosResponse> {
     const requestId = this.generateRequestId(request.config);
     
     try {
-      const response = await axios(request.config);
+      // Use apiClient instead of raw axios to ensure interceptors are applied
+      const response = await apiClient(request.config);
       
       // Cache successful GET requests
       if (request.config.method?.toLowerCase() === 'get' && response.status === 200) {
@@ -244,8 +247,9 @@ class ApiQueueService {
     const pending = this.findPendingRequest(requestId);
     if (pending && pending.length > 0) {
       logger.debug('[ApiQueue] Request deduplicated', { requestId, url: config.url });
-      return new Promise((resolve, reject) => {
-        const cancelToken = axios.CancelToken.source();
+        return new Promise((resolve, reject) => {
+          // Use axios for cancel token (apiClient doesn't export CancelToken)
+          const cancelToken = axios.CancelToken.source();
         const request: QueuedRequest = {
           id: requestId,
           config,
@@ -262,8 +266,9 @@ class ApiQueueService {
     }
 
     // Create new request
-    return new Promise((resolve, reject) => {
-      const cancelToken = axios.CancelToken.source();
+        return new Promise((resolve, reject) => {
+          // Use axios for cancel token (apiClient doesn't export CancelToken)
+          const cancelToken = axios.CancelToken.source();
       const request: QueuedRequest = {
         id: requestId,
         config: {
@@ -320,5 +325,7 @@ class ApiQueueService {
 }
 
 export const apiQueueService = new ApiQueueService();
+
+
 
 

@@ -8,10 +8,10 @@ import { hp, Icons, Images } from '../constants';
 import { DarkThemeColors } from '../themes';
 import { AppImage, AppText, RippleButton, FaceRDVerificationModal } from '../components';
 import { DaysBottomTabScreen, HomeScreen } from '../screens';
-import { useAppSelector } from '../redux';
+import { useAppSelector, store } from '../redux';
 import { createTableForAttendance } from '../services';
-import { PUNCH_DIRECTIONS } from '../constants/location';
 import { APP_THEMES } from '../themes';
+import { useCheckInStatus } from '../hooks/useCheckInStatus';
 import {
   isLocationEnabled,
   requestLocationPermission,
@@ -48,12 +48,13 @@ export default function BottomTabBar(): React.JSX.Element {
   const navigation = useNavigation<NavigationProp>();
   const { appTheme } = useAppSelector(state => state.appState);
   const {
-    userLastAttendance,
-    userAttendanceHistory,
     userAadhaarFaceValidated,
     lastAadhaarVerificationDate,
     userData,
   } = useAppSelector(state => state.userState);
+
+  // Use shared hook for check-in status
+  const isUserCheckedIn = useCheckInStatus();
 
   const [showFaceRDModal, setShowFaceRDModal] = useState<boolean>(false);
   const [isFaceRDVerifying, setIsFaceRDVerifying] = useState<boolean>(false);
@@ -91,7 +92,18 @@ export default function BottomTabBar(): React.JSX.Element {
     setIsFaceRDVerifying(false);
     setFaceRDError(null);
 
+    // Check profile data to see if Aadhaar is verified
+    const aadhaarVerification = userData?.aadhaarVerification;
+    const isAadhaarVerified = aadhaarVerification?.isVerified === true;
+
+    // If Aadhaar is not verified in profile, navigate to Aadhaar screen
+    if (!isAadhaarVerified) {
+      navigation.navigate('AadhaarInputScreen');
+      return;
+    }
+
     // After device biometric success, check if Aadhaar validation is needed (once per day)
+    // This checks if verification was done today (local state check)
     if (isAadhaarVerificationNeeded) {
       navigation.navigate('AadhaarInputScreen');
       return;
@@ -106,7 +118,7 @@ export default function BottomTabBar(): React.JSX.Element {
     if (isLocationOn) {
       navigation.navigate('CheckInScreen');
     }
-  }, [navigation, isAadhaarVerificationNeeded]);
+  }, [navigation, isAadhaarVerificationNeeded, userData]);
 
   const handleBiometricOTPFallback = useCallback((): void => {
     setShowFaceRDModal(false);
@@ -114,12 +126,18 @@ export default function BottomTabBar(): React.JSX.Element {
     setFaceRDError(null);
 
     // Navigate to OTP screen for punch flow
-    // After OTP success, it will check Aadhaar validation and then proceed to CheckInScreen
-    navigation.navigate('OtpScreen', {
-      emailID: userData?.email || '',
-      isPunchFlow: true,
-    });
-  }, [navigation, userData]);
+    const currentUserData = store.getState()?.userState?.userData;
+    if (currentUserData?.email) {
+      navigation.navigate('OtpScreen', {
+        emailID: currentUserData.email,
+        isPunchFlow: true,
+      });
+    } else {
+      logger.error('BottomTabBar: User email not found for OTP fallback');
+      // Fallback: navigate back to dashboard
+      navigation.navigate('DashboardScreen');
+    }
+  }, [navigation]);
 
   const handleBiometricCancel = useCallback((): void => {
     setShowFaceRDModal(false);
@@ -148,76 +166,6 @@ export default function BottomTabBar(): React.JSX.Element {
       setFaceRDError('Biometric verification failed');
     }
   }, []);
-
-  // Get today's attendance status - check if user is currently checked in TODAY
-  const isUserCheckedIn = useMemo(() => {
-    // Check today's attendance - user is checked in if they have checked in today but not checked out
-    if (!userAttendanceHistory || userAttendanceHistory.length === 0) {
-      logger.debug('isUserCheckedIn: No attendance history');
-      return false;
-    }
-    
-    const today = moment.utc().format('YYYY-MM-DD');
-    let hasCheckedInToday = false;
-    let hasCheckedOutToday = false;
-    let lastCheckoutTimestamp = 0;
-    let lastCheckInTimestamp = 0;
-    
-    logger.debug(`isUserCheckedIn: Checking ${userAttendanceHistory.length} records for today: ${today}`);
-    
-    // Find today's check-in and checkout
-    for (const record of userAttendanceHistory) {
-      let recordDate: string;
-      if (record.DateOfPunch) {
-        recordDate = record.DateOfPunch;
-      } else if (record.Timestamp) {
-        const timestamp = typeof record.Timestamp === 'string' 
-          ? parseInt(record.Timestamp, 10) 
-          : record.Timestamp;
-        recordDate = moment.utc(timestamp).format('YYYY-MM-DD');
-      } else {
-        continue;
-      }
-      
-      if (recordDate === today) {
-        const timestamp = typeof record.Timestamp === 'string' 
-          ? parseInt(record.Timestamp, 10) 
-          : record.Timestamp;
-        
-        logger.debug(`isUserCheckedIn: Found today's record - Date: ${recordDate}, PunchDirection: ${record.PunchDirection}, Timestamp: ${timestamp}`);
-        
-        if (record.PunchDirection === PUNCH_DIRECTIONS.in) {
-          hasCheckedInToday = true;
-          if (timestamp > lastCheckInTimestamp) {
-            lastCheckInTimestamp = timestamp;
-          }
-        } else if (record.PunchDirection === PUNCH_DIRECTIONS.out) {
-          hasCheckedOutToday = true;
-          if (timestamp > lastCheckoutTimestamp) {
-            lastCheckoutTimestamp = timestamp;
-          }
-        }
-      }
-    }
-    
-    logger.debug(`isUserCheckedIn: hasCheckedInToday=${hasCheckedInToday}, hasCheckedOutToday=${hasCheckedOutToday}, lastCheckIn=${lastCheckInTimestamp}, lastCheckout=${lastCheckoutTimestamp}`);
-    
-    // User is checked in if they have checked in today and either:
-    // 1. Haven't checked out yet, OR
-    // 2. Last action was check-in (check-in timestamp > checkout timestamp)
-    if (hasCheckedInToday) {
-      if (!hasCheckedOutToday) {
-        logger.debug('isUserCheckedIn: User checked in today, no checkout - returning true');
-        return true; // Checked in but not checked out
-      }
-      // Both exist - check which was last
-      const result = lastCheckInTimestamp > lastCheckoutTimestamp;
-      logger.debug(`isUserCheckedIn: Both check-in and checkout exist, lastCheckIn > lastCheckout: ${result}`);
-      return result;
-    }
-
-    return false; // Not checked in today
-  }, [userAttendanceHistory, userLastAttendance?.Timestamp]);
 
   const getAttendanceIcon = useMemo<ImageSourcePropType>(() => {
     if (isUserCheckedIn) {
@@ -257,8 +205,7 @@ export default function BottomTabBar(): React.JSX.Element {
   const renderTabBar = useCallback(
     ({ routeName, selectedTab, navigate }: TabBarProps): React.JSX.Element => (
       <RippleButton
-        rippleContainerBorderRadius={hp('5%')}
-        style={styles.tabButton}
+        {...({ style: styles.tabButton } as any)}
         accessibilityRole="button"
         accessibilityLabel={`${ROUTE_CONFIG[routeName]?.label || 'Tab'} button`}
         onPress={() => navigate(routeName)}
@@ -282,27 +229,27 @@ export default function BottomTabBar(): React.JSX.Element {
       ]}
     >
       <CurvedBottomBar.Navigator
-        type="DOWN"
-        screenOptions={{ headerShown: false }}
-        style={styles.bottomBar}
-        strokeWidth={1}
-        shadowStyle={[
-          styles.shadow,
-          { shadowColor: (colors as any).home_footer_border || DarkThemeColors.home_footer_border },
-        ]}
-        circleWidth={CIRCLE_WIDTH}
-        height={CIRCLE_WIDTH}
-        circlePosition="CENTER"
-        bgColor={(colors as any).home_footer_bg || DarkThemeColors.home_footer_bg}
-        initialRouteName="HomeTab"
+        {...({
+          type: "DOWN",
+          screenOptions: { headerShown: false },
+          style: styles.bottomBar,
+          shadowStyle: [
+            styles.shadow,
+            { shadowColor: (colors as any).home_footer_border || DarkThemeColors.home_footer_border },
+          ],
+          circleWidth: CIRCLE_WIDTH,
+          height: CIRCLE_WIDTH,
+          circlePosition: "CENTER",
+          bgColor: (colors as any).home_footer_bg || DarkThemeColors.home_footer_bg,
+          initialRouteName: "HomeTab",
+        } as any)}
         renderCircle={() => (
           <Animated.View
             style={[styles.btnCircle, { backgroundColor: (colors as any).transparent || DarkThemeColors.transparent }]}
           >
             <RippleButton
-              rippleContainerBorderRadius={ATTENDANCE_ICON_SIZE}
               rippleColor={(colors as any).black || DarkThemeColors.black}
-              style={styles.flex1}
+              {...({ style: styles.flex1 } as any)}
               onLongPress={onPunchButtonLongPress}
               accessibilityRole="button"
               accessibilityLabel="Punch Button"

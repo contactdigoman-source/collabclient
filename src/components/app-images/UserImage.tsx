@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, StyleSheet, ViewStyle, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import AppImage from './AppImage';
 import {
   FontTypes,
@@ -11,6 +11,7 @@ import AppText from '../app-texts/AppText';
 import { ImageSourcePropType } from 'react-native';
 import { useAppSelector } from '../../redux';
 import { APP_THEMES, DarkThemeColors, LightThemeColors } from '../../themes';
+import { useTranslation } from '../../hooks/useTranslation';
 
 interface UserImageProps {
   size?: number;
@@ -28,6 +29,7 @@ interface UserImageProps {
 export default function UserImage(props: UserImageProps): React.JSX.Element {
   const { appTheme } = useAppSelector(state => state.appState);
   const colors = appTheme === APP_THEMES.dark ? DarkThemeColors : LightThemeColors;
+  const { t } = useTranslation();
   const {
     size = hp('6%'),
     source = null,
@@ -43,7 +45,7 @@ export default function UserImage(props: UserImageProps): React.JSX.Element {
   
   const finalCharsColor = charsColor || colors.white;
 
-  const firstCharsOfString = (stringValue: string = '', charsCount: number = 1): string | null => {
+  const firstCharsOfString = (stringValue: string = '', charCount: number = 1): string | null => {
     const stringValue_trimmed = stringValue.trim();
     if (stringValue_trimmed.length > 0) {
       // Split by spaces to get first and last name
@@ -53,7 +55,7 @@ export default function UserImage(props: UserImageProps): React.JSX.Element {
         const firstName = parts[0]; // First part is firstname
         const lastName = parts[parts.length - 1]; // Last part is lastname
         const initials = (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
-        return initials.substring(0, charsCount);
+        return initials.substring(0, charCount);
       } else if (parts.length === 1) {
         // If only one name, show first char
         return parts[0].charAt(0).toUpperCase();
@@ -152,15 +154,20 @@ export default function UserImage(props: UserImageProps): React.JSX.Element {
             borderRadius: SUB_CONTAINER_SIZE / 2,
           }]}>
             <AppImage
-              size={size}
+              size={SUB_CONTAINER_SIZE} // Use SUB_CONTAINER_SIZE to fill the container
               isRounded
               source={source}
               isClickable={isClickable}
               onPress={onPress}
               accessibilityRole={isClickable ? 'imagebutton' : 'image'}
-              accessibilityLabel="User profile picture"
-              style={{ backgroundColor: 'transparent' }}
+              accessibilityLabel={t('profile.userProfilePicture', 'User profile picture')}
+              style={{ 
+                backgroundColor: 'transparent',
+                width: SUB_CONTAINER_SIZE,
+                height: SUB_CONTAINER_SIZE,
+              }}
               isLoadingVisible={false}
+              resizeMode="cover" // Use cover to fill the circle properly
             />
           </View>
         )}
@@ -197,6 +204,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     zIndex: 2,
     overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   clickableOverlay: {
     position: 'absolute',

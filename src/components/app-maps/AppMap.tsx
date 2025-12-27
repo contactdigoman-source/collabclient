@@ -59,7 +59,10 @@ const AppMap = forwardRef<MapView, AppMapProps>(({
     onRefreshPress();
   }, [onRefreshPress]);
 
-  logger.debug('AppMap rendered', { region });
+  logger.debug('AppMap rendered', { 
+    _context: { service: 'components', fileName: 'AppMap.tsx', methodName: 'AppMap' },
+    region 
+  });
 
   return (
     <View style={style}>

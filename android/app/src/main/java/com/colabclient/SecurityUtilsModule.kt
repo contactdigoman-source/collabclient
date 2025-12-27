@@ -63,5 +63,26 @@ class SecurityUtilsModule(reactContext: ReactApplicationContext) :
             callback.invoke(e.message, false)
         }
     }
+
+    /**
+     * Check if automatic time setting is enabled on the device
+     * Returns true if automatic time is enabled, false otherwise
+     */
+    @ReactMethod
+    fun isAutomaticTimeEnabled(callback: Callback) {
+        val context: Context? = reactApplicationContext
+        try {
+            context?.let {
+                val isAutoTimeEnabled = Settings.Global.getInt(
+                    it.contentResolver,
+                    Settings.Global.AUTO_TIME,
+                    0
+                ) == 1
+                callback.invoke(null, isAutoTimeEnabled)
+            } ?: callback.invoke(null, false)
+        } catch (e: Exception) {
+            callback.invoke(e.message, false)
+        }
+    }
 }
 

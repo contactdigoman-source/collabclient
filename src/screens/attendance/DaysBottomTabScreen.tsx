@@ -36,7 +36,7 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
   const theme = useTheme();
   const navigation = useNavigation();
   const colors = useMemo(() => theme?.colors || {}, [theme?.colors]);
-  const appTheme = useAppSelector(state => state.appState.appTheme);
+  const { appTheme } = useAppSelector(state => state.appState);
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const userLastAttendance = useAppSelector(
@@ -46,6 +46,64 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
   const userAttendanceHistory = useAppSelector(
     state => state.userState.userAttendanceHistory,
   );
+
+  // Get today's attendance records (first check-in and last checkout) in UTC date format
+  const todayAttendance = useMemo(() => {
+    if (!userAttendanceHistory || userAttendanceHistory.length === 0) {
+      return { checkIn: null, checkout: null };
+    }
+
+    const today = moment.utc().format('YYYY-MM-DD'); // Get today's date in UTC
+
+    // Find today's check-in and checkout records
+    let checkIn: (typeof userAttendanceHistory)[0] | null = null;
+    let checkout: (typeof userAttendanceHistory)[0] | null = null;
+    let checkoutTimestamp = 0;
+
+    for (const record of userAttendanceHistory) {
+      // Check DateOfPunch field first, then derive from Timestamp (timestamp is UTC)
+      let recordDate: string;
+      if (record.DateOfPunch) {
+        recordDate = record.DateOfPunch;
+      } else if (record.Timestamp) {
+        const timestamp =
+          typeof record.Timestamp === 'string'
+            ? parseInt(record.Timestamp, 10)
+            : record.Timestamp;
+        recordDate = moment.utc(timestamp).format('YYYY-MM-DD');
+      } else {
+        continue;
+      }
+
+      if (recordDate === today) {
+        const timestamp =
+          typeof record.Timestamp === 'string'
+            ? parseInt(record.Timestamp, 10)
+            : record.Timestamp;
+
+        if (record.PunchDirection === 'IN') {
+          // Get first check-in of the day (earliest timestamp)
+          if (
+            !checkIn ||
+            timestamp <
+              (typeof checkIn.Timestamp === 'string'
+                ? parseInt(checkIn.Timestamp, 10)
+                : checkIn.Timestamp)
+          ) {
+            checkIn = record;
+          }
+        } else if (record.PunchDirection === 'OUT') {
+          // Get last checkout of the day (most recent/latest timestamp)
+          if (timestamp > checkoutTimestamp) {
+            checkout = record;
+            checkoutTimestamp = timestamp;
+          }
+        }
+      }
+    }
+
+    return { checkIn, checkout };
+  }, [userAttendanceHistory]);
 
   const [selectedDay, setSelectedDay] = useState<GroupedAttendance | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -59,56 +117,6 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
     const contentHeight = wp('10%'); // UserImage size
     return safeAreaTop + paddingVertical + contentHeight + hp(1); // Add extra buffer
   }, [insets.top]);
-
-  // Get today's attendance records (first check-in and last checkout) in UTC date format
-  const todayAttendance = useMemo(() => {
-    if (!userAttendanceHistory || userAttendanceHistory.length === 0) {
-      return { checkIn: null, checkout: null };
-    }
-    
-    const today = moment.utc().format('YYYY-MM-DD');
-    
-    // Find today's check-in and checkout records
-    let checkIn: typeof userAttendanceHistory[0] | null = null;
-    let checkout: typeof userAttendanceHistory[0] | null = null;
-    let checkoutTimestamp = 0;
-    
-    for (const record of userAttendanceHistory) {
-      // Check DateOfPunch field first, then derive from Timestamp
-      let recordDate: string;
-      if (record.DateOfPunch) {
-        recordDate = record.DateOfPunch;
-      } else if (record.Timestamp) {
-        const timestamp = typeof record.Timestamp === 'string' 
-          ? parseInt(record.Timestamp, 10) 
-          : record.Timestamp;
-        recordDate = moment.utc(timestamp).format('YYYY-MM-DD');
-      } else {
-        continue;
-      }
-      
-      if (recordDate === today) {
-        const timestamp = typeof record.Timestamp === 'string' 
-          ? parseInt(record.Timestamp, 10) 
-          : record.Timestamp;
-        
-        if (record.PunchDirection === 'IN') {
-          // Get first check-in of the day (earliest timestamp)
-          if (!checkIn || timestamp < (typeof checkIn.Timestamp === 'string' ? parseInt(checkIn.Timestamp, 10) : checkIn.Timestamp)) {
-            checkIn = record;
-          }
-        } else if (record.PunchDirection === 'OUT') {
-          // Get last checkout of the day (most recent/latest timestamp)
-          if (timestamp > checkoutTimestamp) {
-            checkout = record;
-            checkoutTimestamp = timestamp;
-          }
-        }
-      }
-    }
-    
-    return { checkIn, checkout };
-  }, [userAttendanceHistory]);
 
   // Load attendance data from database
   const loadAttendanceData = useCallback(async (isRefresh = false) => {
@@ -185,70 +193,50 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
     return groupAttendanceByDate(userAttendanceHistory);
   }, [userAttendanceHistory]);
 
-  // Pre-compute month boundaries (memoized separately to avoid recalculation)
-  const monthBoundaries = useMemo(() => {
-    const monthStart = selectedMonth.clone().startOf('month');
-    const monthEnd = selectedMonth.clone().endOf('month');
-    return { monthStart, monthEnd };
-  }, [selectedMonth]);
-
-  // Filter by selected month (separate step for better memoization)
-  const filteredAttendanceData = useMemo<AttendanceDay[]>(() => {
+  // Group attendance by date and filter by selected month
+  const groupedAttendance = useMemo<GroupedAttendance[]>(() => {
     if (!attendanceData?.length) {
       return [];
     }
+
+    // Use UTC for month comparisons (selectedMonth is already UTC)
+    const monthStart = selectedMonth.clone().startOf('month');
+    const monthEnd = selectedMonth.clone().endOf('month');
     
-    return attendanceData.filter((day) => {
+    const filtered = attendanceData.filter((day) => {
       // Compare dates using UTC for consistency
       const dayDate = moment.utc(day.dateOfPunch, 'YYYY-MM-DD');
-      return dayDate.isSameOrAfter(monthBoundaries.monthStart) && dayDate.isSameOrBefore(monthBoundaries.monthEnd);
+      return dayDate.isSameOrAfter(monthStart) && dayDate.isSameOrBefore(monthEnd);
     });
-  }, [attendanceData, monthBoundaries]);
 
-  // Transform to GroupedAttendance format (separate step)
-  const transformedAttendance = useMemo<GroupedAttendance[]>(() => {
-    return filteredAttendanceData.map((day) => ({
-      date: day.dateOfPunch,
-      records: day.records.map((record) => ({
-        Timestamp: record.Timestamp,
-        PunchDirection: record.PunchDirection,
-        AttendanceStatus: record.AttendanceStatus === null ? undefined : record.AttendanceStatus,
-        LatLon: record.LatLon,
-        Address: record.Address,
-        DateOfPunch: record.DateOfPunch,
-      })),
-      attendanceStatus: day.attendanceStatus,
-      totalDuration: day.totalDuration,
-      breakDuration: day.breakDuration,
-    }));
-  }, [filteredAttendanceData]);
+    // Convert to GroupedAttendance format and sort by date (most recent first)
+    return filtered
+      .map((day) => ({
+        date: day.dateOfPunch,
+        records: day.records.map((record) => ({
+          Timestamp: record.Timestamp,
+          PunchDirection: record.PunchDirection,
+          AttendanceStatus: record.AttendanceStatus === null ? undefined : record.AttendanceStatus,
+          LatLon: record.LatLon,
+          Address: record.Address,
+          DateOfPunch: record.DateOfPunch,
+        })),
+        attendanceStatus: day.attendanceStatus,
+        totalDuration: day.totalDuration,
+        breakDuration: day.breakDuration,
+      }))
+      .sort((a, b) => moment.utc(b.date).diff(moment.utc(a.date)));
+  }, [attendanceData, selectedMonth]);
 
-  // Sort by date (most recent first) - final step
-  const groupedAttendance = useMemo<GroupedAttendance[]>(() => {
-    // Pre-compute date timestamps for faster sorting
-    return [...transformedAttendance].sort((a, b) => {
-      const dateA = moment.utc(a.date, 'YYYY-MM-DD').valueOf();
-      const dateB = moment.utc(b.date, 'YYYY-MM-DD').valueOf();
-      return dateB - dateA; // Most recent first
+  const handleDayItemPress = useCallback((item: GroupedAttendance) => {
+    logger.debug('[DaysTab] Opening modal', {
+      date: item.date,
+      recordsCount: item.records?.length || 0,
+      records: item.records,
     });
-  }, [transformedAttendance]);
-
-  // Create a stable callback map keyed by date to avoid recreating callbacks
-  const handleDayItemPressCallbacks = useMemo(() => {
-    const callbacks = new Map<string, () => void>();
-    groupedAttendance.forEach((item) => {
-      callbacks.set(item.date, () => {
-        logger.debug('[DaysTab] Opening modal', {
-          date: item.date,
-          recordsCount: item.records?.length || 0,
-          records: item.records,
-        });
-        setSelectedDay(item);
-        setShowDetailModal(true);
-      });
-    });
-    return callbacks;
-  }, [groupedAttendance]);
+    setSelectedDay(item);
+    setShowDetailModal(true);
+  }, []);
 
   const handlePreviousMonth = useCallback(async () => {
     const newMonth = selectedMonth.clone().subtract(1, 'month');
@@ -287,13 +275,13 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
       <DayAttendanceItem
         date={item.date}
         records={item.records}
-        onDetailPress={handleDayItemPressCallbacks.get(item.date)}
+        onDetailPress={() => handleDayItemPress(item)}
         attendanceStatus={item.attendanceStatus}
         totalDuration={item.totalDuration}
         breakDuration={item.breakDuration}
       />
     ),
-    [handleDayItemPressCallbacks],
+    [handleDayItemPress],
   );
 
   const keyExtractor = useCallback(
@@ -339,11 +327,11 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
         userName={`${userData?.firstName || ''} ${userData?.lastName || ''}`}
         borderBottomColor={(colors as any).home_header_border || DarkThemeColors.home_header_border}
         punchTimestamp={
-          // Only show today's check-in time (first check-in)
+          // Only show today's check-in time (active shift)
           todayAttendance.checkIn?.Timestamp || undefined
         }
         checkoutTimestamp={
-          // Only show today's checkout time (last checkout)
+          // Only show today's checkout time (active shift)
           todayAttendance.checkout?.Timestamp || undefined
         }
         punchDirection={todayAttendance.checkIn?.PunchDirection || undefined}
@@ -431,24 +419,6 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
         keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
-        removeClippedSubviews={true}
-        initialNumToRender={10}
-        maxToRenderPerBatch={5}
-        windowSize={10}
-        updateCellsBatchingPeriod={50}
-        maintainVisibleContentPosition={{
-          minIndexForVisible: 0,
-        }}
-        getItemLayout={(data, index) => {
-          // Approximate item height: minHeight 117 + marginVertical 2*hp(1) ≈ 140
-          // Note: This is approximate for collapsed items. Expanded items will be measured dynamically.
-          const ITEM_HEIGHT = 140;
-          return {
-            length: ITEM_HEIGHT,
-            offset: ITEM_HEIGHT * index,
-            index,
-          };
-        }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

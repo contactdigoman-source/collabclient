@@ -39,7 +39,7 @@ export default function PermissionsScreen(): React.JSX.Element {
   
   // Get first-time login data and user email from store
   const firstTimeLoginData = useAppSelector((state) => state.userState.firstTimeLoginData);
-  const userData = useAppSelector((state) => state.userState.userData);
+
 
   const PERMISSIONS: PermissionItem[] = [
     {
@@ -94,16 +94,6 @@ export default function PermissionsScreen(): React.JSX.Element {
       Alert.alert(
         t('auth.permissions.error', 'Error'),
         t('auth.permissions.missingData', 'First-time login data is missing. Please go back and complete the form.'),
-      );
-      return;
-    }
-
-    // Check if we have user email
-    const email = userData?.email;
-    if (!email) {
-      Alert.alert(
-        t('auth.permissions.error', 'Error'),
-        t('auth.permissions.missingEmail', 'User email is missing. Please login again.'),
       );
       return;
     }

@@ -279,9 +279,23 @@ function insertNewRecord(
 ): void {
   // Ensure DateOfPunch is set (derive from timestamp if not provided, in UTC format)
   // Note: Backend DB uses UTC, we only store necessary fields locally
+  // IMPORTANT: Always use the provided dateOfPunch if available, don't override it
   let dateOfPunch = record.dateOfPunch;
   if (!dateOfPunch && timestamp) {
     dateOfPunch = moment.utc(timestamp).format('YYYY-MM-DD');
+    logger.debug('Derived dateOfPunch from timestamp', {
+      _context: { service: 'attendance', fileName: 'attendance-db-service.ts', methodName: 'insertAttendanceRecord' },
+      timestamp,
+      derivedDate: dateOfPunch,
+      note: 'dateOfPunch was not provided in record',
+    });
+  } else if (dateOfPunch) {
+    logger.debug('Using provided dateOfPunch', {
+      _context: { service: 'attendance', fileName: 'attendance-db-service.ts', methodName: 'insertAttendanceRecord' },
+      providedDate: dateOfPunch,
+      timestamp,
+      timestampDate: moment.utc(timestamp).format('YYYY-MM-DD'),
+    });
   }
 
   // Build insert statement dynamically based on what columns exist

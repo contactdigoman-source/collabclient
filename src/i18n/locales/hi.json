@@ -150,7 +150,10 @@
     "captureFace": "चेहरा कैप्चर करें",
     "authenticating": "प्रमाणीकरण हो रहा है...",
     "verified": "आधार सफलतापूर्वक सत्यापित",
-    "continue": "जारी रखें"
+    "continue": "जारी रखें",
+    "aadhaarNotAvailable": "आधार उपलब्ध नहीं है",
+    "next": "अगला",
+    "continueWithPanCard": "PAN कार्ड के साथ जारी रखें"
   },
   "home": {
     "colleagues": "सहकर्मी",
@@ -194,6 +197,8 @@
     "preferredLanguage": "पसंदीदा भाषा",
     "attendanceLogs": "उपस्थिति लॉग",
     "viewProfile": "प्रोफ़ाइल देखें",
+    "geoLocations": "भौगोलिक स्थान",
+    "security": "सुरक्षा",
     "supportAndLearn": "सहायता और सीखें",
     "logout": "लॉगआउट",
     "firstName": "पहला नाम",
@@ -205,6 +210,20 @@
     "employmentType": "रोजगार प्रकार",
     "designation": "पदनाम",
     "profileDetails": "प्रोफ़ाइल विवरण",
+    "organization": "संगठन",
+    "roles": "भूमिकाएं",
+    "timezone": "समय क्षेत्र",
+    "aadhaarVerified": "आधार सत्यापित",
+    "panCardVerified": "PAN कार्ड सत्यापित",
+    "geofenceAreas": "अनुमतित चेक-इन क्षेत्र",
+    "profileUpdatedSuccessfully": "प्रोफ़ाइल सफलतापूर्वक अपडेट की गई",
+    "failedToUpdateProfile": "प्रोफ़ाइल अपडेट करने में विफल",
+    "invalidDateFormat": "अमान्य दिनांक प्रारूप। कृपया YYYY-MM-DD प्रारूप का उपयोग करें",
+    "year": "वर्ष",
+    "month": "महीना",
+    "day": "दिन",
+    "databaseViewer": "डेटाबेस व्यूअर",
+    "userProfilePicture": "उपयोगकर्ता प्रोफ़ाइल चित्र",
     "language": {
       "selectLanguage": "भाषा चुनें",
       "english": "अंग्रेजी",
@@ -236,7 +255,13 @@
     "loading": "लोड हो रहा है...",
     "error": "त्रुटि",
     "success": "सफलता",
-    "featureLocked": "यह सुविधा लॉक है!"
+    "featureLocked": "यह सुविधा लॉक है!",
+    "okay": "ठीक है",
+    "contact": "हमसे संपर्क करें",
+    "none": "कोई नहीं",
+    "next": "अगला",
+    "continue": "जारी रखें",
+    "uploading": "अपलोड हो रहा है..."
   }
 }
 

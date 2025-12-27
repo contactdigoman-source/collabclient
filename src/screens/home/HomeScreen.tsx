@@ -1,5 +1,23 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, StyleSheet, StatusBar, FlatList, Animated, RefreshControl, AppState, AppStateStatus } from 'react-native';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import {
+  View,
+  StyleSheet,
+  StatusBar,
+  FlatList,
+  Animated,
+  RefreshControl,
+  AppState,
+  AppStateStatus,
+  Platform,
+  Alert,
+  Linking,
+} from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { useFocusEffect, useTheme } from '@react-navigation/native';
 import {
@@ -24,8 +42,8 @@ import {
   Images,
 } from '../../constants';
 import type { Region } from 'react-native-maps';
-import { useAppSelector, useAppDispatch } from '../../redux';
-import { APP_THEMES } from '../../themes';
+import { useAppSelector, useAppDispatch, store } from '../../redux';
+import { APP_THEMES, DarkThemeColors, LightThemeColors } from '../../themes';
 import { useTranslation } from '../../hooks/useTranslation';
 import {
   isUserOnBreak,
@@ -33,22 +51,35 @@ import {
   cancelBreakReminderNotifications,
   getCurrentPositionOfUser,
   requestLocationPermission,
-  isSessionExpired,
+  checkAndRefreshSession,
   logoutUser,
   getProfile,
-  insertAttendancePunchRecord,
+  registerDevice,
+  getCurrentTimeAndZone,
+  checkClockAccuracy,
 } from '../../services';
-import { getJWTToken } from '../../services/auth/login-service';
-import { needsAutoCheckout } from '../../utils/shift-utils';
-import { setUserLastAttendance } from '../../redux/reducers/userReducer';
+// import { needsAutoCheckoutByShiftEnd } from '../../utils/shift-utils'; // Commented out - auto-checkout disabled
+import {
+  setDeviceRegistration,
+  setTimeZoneData,
+} from '../../redux/reducers/appReducer';
 import {
   profileSyncService,
   syncCoordinator,
   syncStatusService,
 } from '../../services/sync';
-import { setSyncing, setLastSyncAt, setUnsyncedItems } from '../../redux/reducers/syncReducer';
+import {
+  setSyncing,
+  setLastSyncAt,
+  setUnsyncedItems,
+} from '../../redux/reducers/syncReducer';
 import { initializeDatabaseTables } from '../../services/database';
-import moment from 'moment';
+import {
+  getCurrentUTCDate,
+  getDateFromUTCTimestamp,
+  formatUTCForDisplay,
+} from '../../utils/time-utils';
+import { getAttendanceData } from '../../services/attendance/attendance-db-service';
 import { logger } from '../../services/logger';
 
 const COLLEAGUE_NUM_COLUMNS = 4;
@@ -63,7 +94,7 @@ const SECTION_LIST_LAYOUTS = {
 interface SectionData {
   title: string;
   data: Array<{ dummy?: boolean }>;
-  layout: typeof SECTION_LIST_LAYOUTS[keyof typeof SECTION_LIST_LAYOUTS];
+  layout: (typeof SECTION_LIST_LAYOUTS)[keyof typeof SECTION_LIST_LAYOUTS];
 }
 
 interface GridItem {
@@ -77,80 +108,83 @@ export default function HomeScreen(): React.JSX.Element {
   const mapRef = useRef<MapView>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  // Use granular selectors to prevent unnecessary re-renders
-  // (Combining into one object would create new object reference on every state change)
   const appTheme = useAppSelector(state => state.appState.appTheme);
-  const userLastAttendance = useAppSelector(state => state.userState.userLastAttendance);
-  const userAttendanceHistory = useAppSelector(state => state.userState.userAttendanceHistory);
+  const userLastAttendance = useAppSelector(
+    state => state.userState.userLastAttendance,
+  );
+  const userAttendanceHistory = useAppSelector(
+    state => state.userState.userAttendanceHistory,
+  );
   const userData = useAppSelector(state => state.userState.userData);
   const expiresAt = useAppSelector(state => state.userState.expiresAt);
-  const displayBreakStatus = useAppSelector(state => state.userState.displayBreakStatus);
-  
+  const displayBreakStatus = useAppSelector(
+    state => state.userState.displayBreakStatus,
+  );
+
   // Get today's attendance records (first check-in and last checkout) in UTC date format
-  // Optimized with early returns and pre-computed today string
   const todayAttendance = useMemo(() => {
     if (!userAttendanceHistory || userAttendanceHistory.length === 0) {
       return { checkIn: null, checkout: null };
     }
-    
-    const today = moment.utc().format('YYYY-MM-DD');
-    
+
+    const today = getCurrentUTCDate(); // Get today's date in UTC
+
     // Find today's check-in and checkout records
-    let checkIn: typeof userAttendanceHistory[0] | null = null;
-    let checkout: typeof userAttendanceHistory[0] | null = null;
+    let checkIn: (typeof userAttendanceHistory)[0] | null = null;
+    let checkout: (typeof userAttendanceHistory)[0] | null = null;
     let checkoutTimestamp = 0;
-    let checkInTimestamp = Infinity;
-    
-    // Early exit optimization: if we find both and they're the only ones we need, we can break
-    // But we still need to check all records to ensure we get the first IN and last OUT
+
     for (const record of userAttendanceHistory) {
-      // Check DateOfPunch field first (faster than parsing timestamp)
+      // Check DateOfPunch field first, then derive from Timestamp (timestamp is UTC)
       let recordDate: string;
       if (record.DateOfPunch) {
         recordDate = record.DateOfPunch;
-        // Early skip if not today
-        if (recordDate !== today) continue;
       } else if (record.Timestamp) {
-        const timestamp = typeof record.Timestamp === 'string' 
-          ? parseInt(record.Timestamp, 10) 
-          : record.Timestamp;
-        recordDate = moment.utc(timestamp).format('YYYY-MM-DD');
-        // Early skip if not today
-        if (recordDate !== today) continue;
+        const timestamp =
+          typeof record.Timestamp === 'string'
+            ? parseInt(record.Timestamp, 10)
+            : record.Timestamp;
+        recordDate = getDateFromUTCTimestamp(timestamp);
       } else {
         continue;
       }
-      
-      // Process only today's records
-      const timestamp = typeof record.Timestamp === 'string' 
-        ? parseInt(record.Timestamp, 10) 
-        : record.Timestamp;
-      
-      if (record.PunchDirection === 'IN') {
-        // Get first check-in of the day (earliest timestamp)
-        if (timestamp < checkInTimestamp) {
-          checkIn = record;
-          checkInTimestamp = timestamp;
-        }
-      } else if (record.PunchDirection === 'OUT') {
-        // Get last checkout of the day (most recent/latest timestamp)
-        if (timestamp > checkoutTimestamp) {
-          checkout = record;
-          checkoutTimestamp = timestamp;
+
+      if (recordDate === today) {
+        const timestamp =
+          typeof record.Timestamp === 'string'
+            ? parseInt(record.Timestamp, 10)
+            : record.Timestamp;
+
+        if (record.PunchDirection === 'IN') {
+          // Get first check-in of the day (earliest timestamp)
+          if (
+            !checkIn ||
+            timestamp <
+              (typeof checkIn.Timestamp === 'string'
+                ? parseInt(checkIn.Timestamp, 10)
+                : checkIn.Timestamp)
+          ) {
+            checkIn = record;
+          }
+        } else if (record.PunchDirection === 'OUT') {
+          // Get last checkout of the day (most recent/latest timestamp)
+          if (timestamp > checkoutTimestamp) {
+            checkout = record;
+            checkoutTimestamp = timestamp;
+          }
         }
       }
     }
-    
+
     return { checkIn, checkout };
   }, [userAttendanceHistory]);
-  
+
   const [currentLocation, setCurrentLocation] = useState<{
     latitude: number;
     longitude: number;
   } | null>(null);
+
   const [refreshing, setRefreshing] = useState(false);
-  const lastLocationUpdateRef = useRef<number>(0);
-  const LOCATION_UPDATE_DEBOUNCE_MS = 5000; // 5 seconds
 
   // Check if user is on break
   const isOnBreak = useMemo(() => {
@@ -158,7 +192,10 @@ export default function HomeScreen(): React.JSX.Element {
       userLastAttendance?.AttendanceStatus,
       userLastAttendance?.PunchDirection,
     );
-  }, [userLastAttendance?.AttendanceStatus, userLastAttendance?.PunchDirection]);
+  }, [
+    userLastAttendance?.AttendanceStatus,
+    userLastAttendance?.PunchDirection,
+  ]);
 
   // Get break status label
   const breakStatusLabel = useMemo(() => {
@@ -170,7 +207,10 @@ export default function HomeScreen(): React.JSX.Element {
       LUNCH: t('attendance.breakStatus.atLunch', 'At Lunch'),
       SHORTBREAK: t('attendance.breakStatus.shortBreak', 'Short Break'),
       COMMUTING: t('attendance.breakStatus.commuting', 'Commuting'),
-      PERSONALTIMEOUT: t('attendance.breakStatus.personalTimeout', 'Personal Timeout'),
+      PERSONALTIMEOUT: t(
+        'attendance.breakStatus.personalTimeout',
+        'Personal Timeout',
+      ),
       OUTFORDINNER: t('attendance.breakStatus.outForDinner', 'Out for Dinner'),
     };
     return statusMap[status] || userLastAttendance.AttendanceStatus;
@@ -182,12 +222,12 @@ export default function HomeScreen(): React.JSX.Element {
       return null;
     }
     try {
-      // Convert UTC timestamp to local time for display
-      const createdOn =
+      // Timestamp is in UTC - convert to local time for display
+      const timestamp =
         typeof userLastAttendance.CreatedOn === 'string'
-          ? moment(userLastAttendance.CreatedOn)
-          : moment(userLastAttendance.CreatedOn);
-      return createdOn.format('hh:mm A');
+          ? parseInt(userLastAttendance.CreatedOn, 10)
+          : userLastAttendance.CreatedOn;
+      return formatUTCForDisplay(timestamp, 'hh:mm A');
     } catch {
       return null;
     }
@@ -195,7 +235,6 @@ export default function HomeScreen(): React.JSX.Element {
 
   // Set up notifications when user goes on break
   useEffect(() => {
-
     if (isOnBreak && userLastAttendance?.AttendanceStatus) {
       scheduleBreakReminderNotifications(userLastAttendance.AttendanceStatus);
     } else {
@@ -210,99 +249,25 @@ export default function HomeScreen(): React.JSX.Element {
     };
   }, [isOnBreak, userLastAttendance?.AttendanceStatus, userData?.shiftEndTime]);
 
-  // Auto-checkout after 3 hours if user hasn't checked out
-  useEffect(() => {
-    const performAutoCheckout = async () => {
-      // Check if user has checked in today but not checked out
-      if (!todayAttendance.checkIn || todayAttendance.checkout) {
-        return; // No check-in or already checked out
-      }
-
-      const checkInTimestamp = typeof todayAttendance.checkIn.Timestamp === 'string'
-        ? parseInt(todayAttendance.checkIn.Timestamp, 10)
-        : todayAttendance.checkIn.Timestamp;
-
-      // Check if 3 hours have passed since check-in
-      if (!needsAutoCheckout(checkInTimestamp)) {
-        return; // Not yet 3 hours
-      }
-
-      // Don't auto-checkout if user is on break
-      if (isOnBreak) {
-        return;
-      }
-
-      try {
-        // Get current location for auto-checkout
-        const hasPermission = await requestLocationPermission(() => {
-          logger.debug('Location permission denied for auto-checkout');
-        });
-
-        let latLon = '';
-        let address = '';
-
-        if (hasPermission && currentLocation) {
-          latLon = `${currentLocation.latitude.toFixed(4)},${currentLocation.longitude.toFixed(4)}`;
-          // For auto-checkout, we don't have address, but that's okay
-        }
-
-        // Get current timestamp and date in UTC
-        const currentTimeTS = Date.now();
-        const currentDate = moment.utc().format('YYYY-MM-DD');
-
-        // Perform auto-checkout
-        await insertAttendancePunchRecord({
-          timestamp: currentTimeTS,
-          orgID: '123',
-          userID: userData?.email || '',
-          punchType: 'CHECK',
-          punchDirection: 'OUT',
-          latLon,
-          address,
-          createdOn: currentTimeTS,
-          isSynced: 'N',
-          dateOfPunch: currentDate,
-          attendanceStatus: 'AUTOCHECKOUT', // Mark as auto-checkout
-          moduleID: '',
-          tripType: '',
-          passengerID: '',
-          allowanceData: JSON.stringify([]),
-          isCheckoutQrScan: 0,
-          travelerName: '',
-          phoneNumber: '',
-        });
-
-        // Cancel break notifications since user is checked out
-        cancelBreakReminderNotifications();
-
-        logger.info('Auto-checkout performed after 3 hours');
-      } catch (error) {
-        logger.error('Error performing auto-checkout', error);
-      }
-    };
-
-    performAutoCheckout();
-
-    // Check every minute for auto-checkout
-    const interval = setInterval(performAutoCheckout, 60000); // Check every minute
-
-    return () => clearInterval(interval);
-  }, [todayAttendance, isOnBreak, currentLocation, userData?.email]);
-
   const barStyle = useMemo<StatusBar['props']['barStyle']>(
     () => (appTheme === APP_THEMES.dark ? 'light-content' : 'dark-content'),
     [appTheme],
   );
 
-  // Function to update current location (debounced)
+  // ============================================================================
+  // Refs for tracking initialization state
+  // ============================================================================
+  const lastCheckedExpiresAtRef = useRef<string | null>(null);
+  const initializationDoneRef = useRef(false);
+  const lastInitializedEmailRef = useRef<string | null>(null);
+  const deviceRegistrationDoneRef = useRef(false);
+  const locationFetchedOnMountRef = useRef(false);
+
+  // ============================================================================
+  // Callbacks
+  // ============================================================================
+  // Function to update current location
   const updateCurrentLocation = useCallback(async () => {
-    const now = Date.now();
-    // Debounce: only update if enough time has passed since last update
-    if (now - lastLocationUpdateRef.current < LOCATION_UPDATE_DEBOUNCE_MS) {
-      logger.debug('Location update skipped (debounced)');
-      return false;
-    }
-    
     try {
       // Request permission first (on Android, iOS handles this automatically)
       const hasPermission = await requestLocationPermission(() => {
@@ -316,7 +281,6 @@ export default function HomeScreen(): React.JSX.Element {
 
       const coords = await getCurrentPositionOfUser();
       logger.debug('Current location fetched', { coords });
-      lastLocationUpdateRef.current = now;
       setCurrentLocation({
         latitude: coords.latitude,
         longitude: coords.longitude,
@@ -329,55 +293,117 @@ export default function HomeScreen(): React.JSX.Element {
     }
   }, []);
 
-  // Check session expiration function
-  const checkSessionExpiration = useCallback(() => {
-    if (expiresAt && isSessionExpired(expiresAt)) {
-      // Session expired, logout user
+  // Check session expiration and refresh if about to expire
+  const checkSessionExpiration = useCallback(async () => {
+    if (!expiresAt) {
+      return; // No expiration date, skip check
+    }
+
+    // Check if session is expired or about to expire, and refresh if needed
+    const isSessionValid = await checkAndRefreshSession(expiresAt, 30); // 30 minutes before expiry
+
+    if (!isSessionValid) {
+      // Session expired and couldn't be refreshed, logout user
       logoutUser().catch(error => {
         logger.error('Error during logout on home screen', error);
       });
     }
   }, [expiresAt]);
 
-  // Check session expiration on mount and when expiresAt changes
-  useEffect(() => {
-    checkSessionExpiration();
-  }, [checkSessionExpiration]);
+  // Sync unsynced items helper function
+  const syncUnsyncedItems = useCallback(
+    async (email: string, userID: string) => {
+      try {
+        dispatch(setSyncing(true));
 
-  // Check session expiration when app comes to foreground
+        // Get unsynced items and update Redux
+        const unsyncedItems = await syncStatusService.getAllUnsyncedItems(
+          email,
+          userID,
+        );
+        dispatch(setUnsyncedItems(unsyncedItems));
+
+        // Sync all unsynced items
+        const result = await syncCoordinator.syncAll(email, userID);
+
+        // Update last sync time
+        if (result.success) {
+          dispatch(setLastSyncAt(Date.now()));
+        }
+
+        // Refresh unsynced items after sync
+        const updatedUnsyncedItems =
+          await syncStatusService.getAllUnsyncedItems(email, userID);
+        dispatch(setUnsyncedItems(updatedUnsyncedItems));
+      } catch (error) {
+        logger.error('Error syncing unsynced items', error);
+      } finally {
+        dispatch(setSyncing(false));
+      }
+    },
+    [dispatch],
+  );
+
+  // ============================================================================
+  // useEffect Hooks - Grouped together
+  // ============================================================================
+
+  // 1. Check session expiration on mount
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
-      if (nextAppState === 'active') {
-        // App has come to the foreground, check if session expired
-        checkSessionExpiration();
+    // Skip if no expiration date or if we already checked this expiresAt
+    if (!expiresAt || lastCheckedExpiresAtRef.current === expiresAt) {
+      return;
+    }
+
+    // Mark as checked
+    lastCheckedExpiresAtRef.current = expiresAt;
+
+    // Check if session is expired or about to expire, and refresh if needed
+    checkAndRefreshSession(expiresAt, 30).then(isSessionValid => {
+      if (!isSessionValid) {
+        // Session expired and couldn't be refreshed, logout user
+        logoutUser().catch(error => {
+          logger.error('Error during logout on home screen', error);
+        });
       }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run on mount only - expiresAt check is handled inside with ref guard
 
-    return () => {
-      subscription.remove();
-    };
-  }, [checkSessionExpiration]);
-
-  // Initialize database tables and load profile from DB on mount
+  // 2. Initialize database tables and load profile from DB on mount
   useEffect(() => {
+    const email = userData?.email;
+    const userID = userData?.id?.toString();
+
+    // Skip if no email or if already initialized for this email
+    if (
+      !email ||
+      (initializationDoneRef.current &&
+        lastInitializedEmailRef.current === email)
+    ) {
+      return;
+    }
+
     const initializeAndLoadProfile = async () => {
       try {
-        // Initialize database tables
-        await initializeDatabaseTables();
-        
-        // Load profile from DB
-        const email = userData?.email;
-        if (email) {
-          const dbProfile = await profileSyncService.loadProfileFromDB(email);
-          if (dbProfile) {
-            // Profile loaded from DB, now sync unsynced items
-            const userID = userData?.id?.toString() || email;
-            await syncUnsyncedItems(email, userID);
-          } else {
-            // No profile in DB, sync from server
-            await syncCoordinator.syncPullOnly(email, userData?.id?.toString() || email);
-          }
+        // Initialize database tables (only once)
+        if (!initializationDoneRef.current) {
+          await initializeDatabaseTables();
+          initializationDoneRef.current = true;
         }
+
+        // Load profile from DB
+        const dbProfile = await profileSyncService.loadProfileFromDB(email);
+        if (dbProfile) {
+          // Profile loaded from DB, now sync unsynced items
+          await syncUnsyncedItems(email, userID || email);
+        } else {
+          // No profile in DB, sync from server
+          await syncCoordinator.syncPullOnly(email, userID || email);
+        }
+
+        // Mark as initialized for this email
+        lastInitializedEmailRef.current = email;
       } catch (error) {
         logger.error('Error initializing and loading profile', error);
       }
@@ -385,89 +411,208 @@ export default function HomeScreen(): React.JSX.Element {
 
     initializeAndLoadProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userData?.email, userData?.id]);
+  }, []); // Run on mount only - userData check is handled inside with ref guard
 
-  // Sync unsynced items helper function
-  const syncUnsyncedItems = useCallback(async (email: string, userID: string) => {
-    try {
-      dispatch(setSyncing(true));
-      
-      // Get unsynced items and update Redux
-      const unsyncedItems = await syncStatusService.getAllUnsyncedItems(email, userID);
-      dispatch(setUnsyncedItems(unsyncedItems));
-      
-      // Sync all unsynced items
-      const result = await syncCoordinator.syncAll(email, userID);
-      
-      // Update last sync time
-      if (result.success) {
-        dispatch(setLastSyncAt(Date.now()));
-      }
-      
-      // Refresh unsynced items after sync
-      const updatedUnsyncedItems = await syncStatusService.getAllUnsyncedItems(email, userID);
-      dispatch(setUnsyncedItems(updatedUnsyncedItems));
-    } catch (error) {
-      logger.error('Error syncing unsynced items', error);
-    } finally {
-      dispatch(setSyncing(false));
-    }
-  }, [dispatch]);
-
-  // Get current location on mount
+  // 3. Register device and fetch current time on mount
   useEffect(() => {
-    updateCurrentLocation();
-  }, [updateCurrentLocation]);
-
-  // Update location when screen is focused (e.g., after granting permissions)
-  useFocusEffect(
-    useCallback(() => {
-      updateCurrentLocation();
-    }, [updateCurrentLocation]),
-  );
-
-  // Handle pull-to-refresh
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    
-    // Check session expiration first
-    if (expiresAt && isSessionExpired(expiresAt)) {
-      // Session expired, logout user
-      setRefreshing(false);
-      logoutUser().catch(error => {
-        logger.error('Error during logout on pull-to-refresh', error);
-      });
+    // Only run once on mount
+    if (deviceRegistrationDoneRef.current) {
       return;
     }
-    
-    // Update location if session is still valid
-    await updateCurrentLocation();
-    
-    // Sync profile data from server (getProfile() will update DB only if server.lastSyncedAt >= local.lastUpdatedAt)
-    const email = userData?.email;
-    if (email) {
-      try {
-        // Check if authentication token exists before attempting to sync
-        const token = await getJWTToken(email);
-        if (token) {
-          await getProfile(); // This will sync profile data to DB
-        }
-        // If no token, skip sync silently (user might not be logged in)
-      } catch (error) {
-        logger.error('Error syncing profile on pull-to-refresh', error);
-      }
-    }
-    
-    // Sync unsynced items
-    const userID = userData?.id?.toString() || email || '';
-    if (email) {
-      await syncUnsyncedItems(email, userID);
-    }
-    
-    setRefreshing(false);
-  }, [updateCurrentLocation, expiresAt, userData, syncUnsyncedItems]);
 
-  // Animate map to current location when it's updated
+    let isMounted = true;
+
+    const registerDeviceAndFetchTime = async () => {
+      // Register device
+      try {
+        const deviceData = await registerDevice();
+        if (isMounted) {
+          dispatch(
+            setDeviceRegistration({
+              deviceId: deviceData.deviceId,
+              registeredAt: deviceData.registeredAt,
+              platform: Platform.OS,
+              platformVersion: Platform.Version?.toString() || 'unknown',
+            }),
+          );
+          logger.info('Device registered successfully', {
+            deviceId: deviceData.deviceId,
+          });
+        }
+      } catch (error) {
+        if (isMounted) {
+          logger.error('Failed to register device', error);
+        }
+      }
+
+      if (!isMounted) return;
+
+      // Fetch timezone data
+      try {
+        const timeData = await getCurrentTimeAndZone();
+        if (isMounted) {
+          dispatch(setTimeZoneData(timeData));
+          logger.info('Current time and timezone fetched', {
+            timezone: timeData.timezone,
+            currentTime: timeData.currentTime,
+          });
+        }
+
+        if (!isMounted) return;
+
+        // Check clock accuracy after fetching server time
+        const clockCheck = await checkClockAccuracy(5); // Allow 5 minutes difference
+        if (!clockCheck.isAccurate && isMounted) {
+          logger.warn('Device clock is incorrect', {
+            differenceMinutes: clockCheck.differenceMinutes,
+            differenceSeconds: clockCheck.differenceSeconds,
+            deviceTime: new Date(clockCheck.deviceTime).toISOString(),
+            serverTime: new Date(clockCheck.serverTime).toISOString(),
+          });
+
+          // Show alert to user (use hardcoded strings to avoid 't' dependency)
+          const differenceText =
+            clockCheck.differenceMinutes > 0
+              ? `${clockCheck.differenceMinutes} minute${
+                  clockCheck.differenceMinutes > 1 ? 's' : ''
+                }`
+              : `${clockCheck.differenceSeconds} second${
+                  clockCheck.differenceSeconds > 1 ? 's' : ''
+                }`;
+
+          Alert.alert(
+            'Device Clock Incorrect',
+            `Your device clock is ${differenceText} off from the server time. Please enable automatic date & time setting to ensure accurate attendance tracking.`,
+            [
+              {
+                text: 'Cancel',
+                style: 'cancel',
+              },
+              {
+                text: 'Open Settings',
+                onPress: () => {
+                  if (Platform.OS === 'android') {
+                    Linking.openSettings();
+                  } else {
+                    // iOS: Open Settings app
+                    Linking.openURL('app-settings:');
+                  }
+                },
+              },
+            ],
+            { cancelable: true },
+          );
+        }
+      } catch (error) {
+        if (isMounted) {
+          logger.error('Failed to fetch current time and timezone', error);
+        }
+      }
+
+      // Mark as done
+      if (isMounted) {
+        deviceRegistrationDoneRef.current = true;
+      }
+    };
+
+    registerDeviceAndFetchTime();
+
+    return () => {
+      isMounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run on mount only - ref guard prevents re-runs
+
+  // 4. Check clock accuracy when app comes to foreground
+  useEffect(() => {
+    const handleAppStateChange = async (
+      nextAppState: AppStateStatus,
+    ): Promise<void> => {
+      if (nextAppState === 'active') {
+        // App came to foreground - check clock accuracy
+        try {
+          const clockCheck = await checkClockAccuracy(5); // Allow 5 minutes difference
+          if (!clockCheck.isAccurate) {
+            logger.warn('Device clock is incorrect (on app foreground)', {
+              differenceMinutes: clockCheck.differenceMinutes,
+              differenceSeconds: clockCheck.differenceSeconds,
+            });
+
+            const differenceText =
+              clockCheck.differenceMinutes > 0
+                ? `${clockCheck.differenceMinutes} minute${
+                    clockCheck.differenceMinutes > 1 ? 's' : ''
+                  }`
+                : `${clockCheck.differenceSeconds} second${
+                    clockCheck.differenceSeconds > 1 ? 's' : ''
+                  }`;
+
+            Alert.alert(
+              'Device Clock Incorrect',
+              `Your device clock is ${differenceText} off from the server time. Please enable automatic date & time setting to ensure accurate attendance tracking.`,
+              [
+                {
+                  text: 'Cancel',
+                  style: 'cancel',
+                },
+                {
+                  text: 'Open Settings',
+                  onPress: () => {
+                    if (Platform.OS === 'android') {
+                      Linking.openSettings();
+                    } else {
+                      Linking.openURL('app-settings:');
+                    }
+                  },
+                },
+              ],
+              { cancelable: true },
+            );
+          }
+        } catch (error) {
+          logger.error(
+            'Failed to check clock accuracy on app foreground',
+            error,
+          );
+        }
+      }
+    };
+
+    const subscription = AppState.addEventListener(
+      'change',
+      handleAppStateChange,
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  // 5. Update location on mount
+  useEffect(() => {
+    if (!locationFetchedOnMountRef.current) {
+      locationFetchedOnMountRef.current = true;
+      updateCurrentLocation();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only run once on mount, updateCurrentLocation is stable
+
+  // 6. Update location and refresh attendance data when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      // Only update if already fetched on mount (to avoid duplicate calls on initial mount)
+      if (locationFetchedOnMountRef.current) {
+        updateCurrentLocation();
+      }
+      
+      // Refresh attendance data when screen comes into focus to update header
+      if (userData?.email) {
+        getAttendanceData(userData.email);
+      }
+    }, [updateCurrentLocation, userData?.email]),
+  );
+
+  // 7. Animate map to current location when it's updated
   useEffect(() => {
     if (currentLocation && mapRef.current) {
       const newRegion = {
@@ -479,6 +624,93 @@ export default function HomeScreen(): React.JSX.Element {
       mapRef.current.animateToRegion(newRegion, 1000);
     }
   }, [currentLocation]);
+
+  // ============================================================================
+  // Event Handlers
+  // ============================================================================
+
+  // Handle pull-to-refresh
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+
+    // Check session expiration and refresh if about to expire
+    // This will handle session expiry check, token refresh if needed, and logout if expired
+    await checkSessionExpiration();
+
+    // If session was expired, checkSessionExpiration would have logged out the user
+    // Get fresh expiresAt from store in case it was updated during refresh
+    const currentExpiresAt = store.getState().userState?.expiresAt;
+    if (!currentExpiresAt) {
+      // No expiration date or user was logged out, stop refresh
+      setRefreshing(false);
+      return;
+    }
+
+    // Register device and fetch current time on pull-to-refresh
+    try {
+      // Register device
+      const deviceData = await registerDevice();
+      dispatch(
+        setDeviceRegistration({
+          deviceId: deviceData.deviceId,
+          registeredAt: deviceData.registeredAt,
+          platform: Platform.OS,
+          platformVersion: Platform.Version?.toString() || 'unknown',
+        }),
+      );
+      logger.info('Device registered successfully on pull-to-refresh', {
+        deviceId: deviceData.deviceId,
+      });
+    } catch (error) {
+      logger.error('Failed to register device on pull-to-refresh', error);
+    }
+
+    try {
+      // Get current time and timezone
+      const timeData = await getCurrentTimeAndZone();
+      dispatch(setTimeZoneData(timeData));
+      logger.info('Current time and timezone fetched on pull-to-refresh', {
+        timezone: timeData.timezone,
+        currentTime: timeData.currentTime,
+      });
+    } catch (error) {
+      logger.error(
+        'Failed to fetch current time and timezone on pull-to-refresh',
+        error,
+      );
+    }
+
+    // Update location if session is still valid
+    await updateCurrentLocation();
+
+    // Sync profile data from server (getProfile() will update DB only if server.lastSyncedAt >= local.lastUpdatedAt)
+    const email = userData?.email;
+    if (email) {
+      try {
+        await getProfile(); // This will sync profile data to DB
+      } catch (error) {
+        logger.error('Error syncing profile on pull-to-refresh', error);
+      }
+    }
+
+    // Sync unsynced items
+    const userID = userData?.id?.toString() || email || '';
+    if (email) {
+      await syncUnsyncedItems(email, userID);
+    }
+
+    setRefreshing(false);
+  }, [
+    updateCurrentLocation,
+    userData,
+    syncUnsyncedItems,
+    dispatch,
+    checkSessionExpiration,
+  ]);
+
+  // ============================================================================
+  // Memoized Values
+  // ============================================================================
 
   // Get map region - prefer current location, fallback to last attendance, then default
   const mapRegion = useMemo<Region>(() => {
@@ -541,7 +773,7 @@ export default function HomeScreen(): React.JSX.Element {
   const renderGridSection = useCallback(
     (
       data: GridItem[],
-      layout: typeof SECTION_LIST_LAYOUTS[keyof typeof SECTION_LIST_LAYOUTS],
+      layout: (typeof SECTION_LIST_LAYOUTS)[keyof typeof SECTION_LIST_LAYOUTS],
       numColumns: number,
       itemStyle?: any,
     ) => (
@@ -583,7 +815,13 @@ export default function HomeScreen(): React.JSX.Element {
   );
 
   const renderItem = useCallback(
-    ({ section, index }: { section: SectionData; index: number }): React.ReactElement | null => {
+    ({
+      section,
+      index,
+    }: {
+      section: SectionData;
+      index: number;
+    }): React.ReactElement | null => {
       switch (section.layout) {
         case SECTION_LIST_LAYOUTS.colleagues:
           if (index === 0) {
@@ -650,20 +888,24 @@ export default function HomeScreen(): React.JSX.Element {
         </AppMap>
         {/* Break Status Banner */}
         {isOnBreak && breakStatusLabel && displayBreakStatus && (
-          <View style={[
-            styles.breakBanner,
-            {
-              backgroundColor: colors.card || '#272727',
-              borderWidth: 1,
-              borderColor: colors.border || (appTheme === APP_THEMES.dark ? '#444444' : '#E0E0E0'),
-              borderRadius: 12,
-              shadowColor: '#000000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: appTheme === APP_THEMES.dark ? 0.4 : 0.2,
-              shadowRadius: 6,
-              elevation: 6,
-            }
-          ]}>
+          <View
+            style={[
+              styles.breakBanner,
+              {
+                backgroundColor: colors.card || '#272727',
+                borderWidth: 1,
+                borderColor:
+                  colors.border ||
+                  (appTheme === APP_THEMES.dark ? '#444444' : '#E0E0E0'),
+                borderRadius: 12,
+                shadowColor: '#000000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: appTheme === APP_THEMES.dark ? 0.4 : 0.2,
+                shadowRadius: 6,
+                elevation: 6,
+              },
+            ]}
+          >
             <AppText
               size={hp(1.8)}
               fontType={FontTypes.medium}
@@ -676,17 +918,35 @@ export default function HomeScreen(): React.JSX.Element {
           </View>
         )}
         <View style={styles.mySpaceContainer}>
-          <AppIconButton title={t('home.myWorkspace')} source={Icons.my_space} />
+          <AppIconButton
+            title={t('home.myWorkspace')}
+            source={Icons.my_space}
+          />
           <AppIconButton
             title={t('home.myFiles')}
             style={styles.myFilesBtn}
             source={Icons.my_files}
           />
-          <AppIconButton title={t('home.announcements')} source={Icons.announcements} />
+          <AppIconButton
+            title={t('home.announcements')}
+            source={Icons.announcements}
+          />
         </View>
       </View>
     ),
-    [mapRegion, markerCoordinates, t, isOnBreak, breakStatusLabel, breakStartTime, displayBreakStatus, appTheme, colors.border, colors.card, colors.text],
+    [
+      mapRegion,
+      markerCoordinates,
+      t,
+      isOnBreak,
+      breakStatusLabel,
+      breakStartTime,
+      displayBreakStatus,
+      appTheme,
+      colors.border,
+      colors.card,
+      colors.text,
+    ],
   );
 
   const footerComponent = useMemo(
@@ -718,7 +978,10 @@ export default function HomeScreen(): React.JSX.Element {
 
   const headerTextColor = scrollY.interpolate({
     inputRange: [0, hp('20%')],
-    outputRange: [appTheme === APP_THEMES.dark ? '#FFFFFF' : '#000000', '#FFFFFF'],
+    outputRange: [
+      appTheme === APP_THEMES.dark ? '#FFFFFF' : '#000000',
+      '#FFFFFF',
+    ],
     extrapolate: 'clamp',
   });
 
@@ -737,12 +1000,10 @@ export default function HomeScreen(): React.JSX.Element {
         renderSectionHeader={renderSectionHeader}
         stickySectionHeadersEnabled={false}
         showsVerticalScrollIndicator={false}
-        removeClippedSubviews={true}
+        removeClippedSubviews
         windowSize={10}
-        initialNumToRender={12}
-        maxToRenderPerBatch={8}
-        updateCellsBatchingPeriod={50}
-        onEndReachedThreshold={0.5}
+        maxToRenderPerBatch={6}
+        updateCellsBatchingPeriod={16}
         contentContainerStyle={styles.sectionListContent}
         ListHeaderComponent={headerComponent}
         onScroll={Animated.event(
@@ -770,7 +1031,24 @@ export default function HomeScreen(): React.JSX.Element {
         textColor={headerTextColor}
         bgColor={headerBgColor}
       />
-      
+
+      {/* Token Expiration Info - Debug Display */}
+      {__DEV__ && expiresAt && (
+        <View style={styles.tokenInfoContainer}>
+          <AppText
+            fontType={FontTypes.regular}
+            size={10}
+            color={
+              appTheme === APP_THEMES.dark
+                ? DarkThemeColors.separator
+                : LightThemeColors.separator
+            }
+          >
+            Token expires: {new Date(expiresAt).toLocaleString()}
+          </AppText>
+        </View>
+      )}
+
       {/* Sync Status Indicator */}
       <View style={styles.syncIndicatorContainer}>
         <SyncStatusIndicator />
@@ -822,6 +1100,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: hp(2),
   },
+  tokenInfoContainer: {
+    paddingHorizontal: hp(2),
+    paddingVertical: hp(0.5),
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: hp(0.5),
+    marginHorizontal: hp(2),
+    marginTop: hp(1),
+  },
   footerSubContainer: {
     flex: 1,
     marginEnd: wp(5),
@@ -834,4 +1120,3 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
 });
-

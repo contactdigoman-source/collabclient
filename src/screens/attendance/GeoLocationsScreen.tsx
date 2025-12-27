@@ -1,42 +1,46 @@
-import React, { useMemo, useCallback, useState, useRef } from 'react';
+import React, { useMemo, useCallback, useState } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Image, Linking, Modal } from 'react-native';
-import { useFocusEffect, useTheme } from '@react-navigation/native';
+import { useFocusEffect, useRoute, RouteProp, useTheme } from '@react-navigation/native';
 import moment from 'moment';
-import { Marker, Region } from 'react-native-maps';
+import { formatUTCForDisplay } from '../../utils/time-utils';
 import {
   AppContainer,
   AppText,
   BackHeader,
-  AppMap,
 } from '../../components';
 import { useAppSelector } from '../../redux';
 import { useTranslation } from '../../hooks/useTranslation';
-import { wp, hp, Icons, FontTypes, DEFAULT_REGION } from '../../constants';
+import { wp, hp, Icons, FontTypes } from '../../constants';
 import { AttendanceRecord } from '../../redux/types/userTypes';
 import { getAttendanceData, getAllAttendanceRecords } from '../../services/attendance/attendance-db-service';
 import { getDaysAttendance } from '../../services/attendance/attendance-service';
-import { DarkThemeColors, APP_THEMES } from '../../themes';
+import { DarkThemeColors, LightThemeColors, APP_THEMES } from '../../themes';
 import { logger } from '../../services/logger';
-import MapView from 'react-native-maps';
+
+type GeoLocationsRouteParams = {
+  filterToday?: boolean;
+};
+
+type GeoLocationsRouteProp = RouteProp<{ params: GeoLocationsRouteParams }, 'params'>;
 
 export default function GeoLocationsScreen(): React.JSX.Element {
+  const route = useRoute<GeoLocationsRouteProp>();
+  const filterTodayParam = route.params?.filterToday || false;
   const { t } = useTranslation();
-  const userAttendanceHistory = useAppSelector(state => state.userState.userAttendanceHistory);
-  const userData = useAppSelector(state => state.userState.userData);
+  const { userAttendanceHistory, userData } = useAppSelector(state => state.userState);
   const { colors } = useTheme();
-  const appTheme = useAppSelector(state => state.appState.appTheme);
+  const { appTheme } = useAppSelector(state => state.appState);
 
-  // Date range state - default to today
+  // Date range state
   const [startDate, setStartDate] = useState<moment.Moment | null>(
-    moment.utc()
+    filterTodayParam ? moment.utc() : null
   );
   const [endDate, setEndDate] = useState<moment.Moment | null>(
-    moment.utc()
+    filterTodayParam ? moment.utc() : null
   );
   const [showDatePicker, setShowDatePicker] = useState<'start' | 'end' | null>(null);
   const [tempDate, setTempDate] = useState<moment.Moment>(moment.utc());
   const [isLoading, setIsLoading] = useState(false);
-  const mapRef = useRef<MapView>(null);
 
   // Load attendance data from SQL when screen is focused
   useFocusEffect(
@@ -124,58 +128,14 @@ export default function GeoLocationsScreen(): React.JSX.Element {
     return filtered.sort((a, b) => (b.Timestamp || 0) - (a.Timestamp || 0)); // Most recent first
   }, [userAttendanceHistory, startDate, endDate]);
 
-  /** Calculate map region to show all markers */
-  const mapRegion = useMemo<Region>(() => {
-    if (!locationRecords.length) return DEFAULT_REGION;
-    
-    const coordinates = locationRecords
-      .map(record => {
-        if (!record.LatLon) return null;
-        const [lat, lon] = record.LatLon.split(',').map(Number);
-        if (isNaN(lat) || isNaN(lon)) return null;
-        return { latitude: lat, longitude: lon };
-      })
-      .filter((coord): coord is { latitude: number; longitude: number } => coord !== null);
-
-    if (!coordinates.length) return DEFAULT_REGION;
-
-    const latitudes = coordinates.map(c => c.latitude);
-    const longitudes = coordinates.map(c => c.longitude);
-    
-    const minLat = Math.min(...latitudes);
-    const maxLat = Math.max(...latitudes);
-    const minLon = Math.min(...longitudes);
-    const maxLon = Math.max(...longitudes);
-
-    const latDelta = Math.max((maxLat - minLat) * 1.5, 0.01);
-    const lonDelta = Math.max((maxLon - minLon) * 1.5, 0.01);
-
-    return {
-      latitude: (minLat + maxLat) / 2,
-      longitude: (minLon + maxLon) / 2,
-      latitudeDelta: latDelta,
-      longitudeDelta: lonDelta,
-    };
-  }, [locationRecords]);
-
   /** Date selection handlers */
   const handleDatePickerOpen = useCallback((type: 'start' | 'end') => {
     const currentDate = type === 'start' ? startDate : endDate;
-    const today = moment.utc().endOf('day');
-    const initialDate = currentDate ? currentDate.clone() : moment.utc();
-    // If the date is in the future, set it to today
-    const dateToSet = initialDate.isAfter(today) ? moment.utc() : initialDate;
-    setTempDate(dateToSet);
+    setTempDate(currentDate ? currentDate.clone() : moment.utc());
     setShowDatePicker(type);
   }, [startDate, endDate]);
 
   const handleDatePickerConfirm = useCallback(() => {
-    const today = moment.utc().endOf('day');
-    // Prevent confirming future dates
-    if (tempDate.isAfter(today)) {
-      return; // Don't confirm if date is in the future
-    }
-    
     if (showDatePicker === 'start') {
       setStartDate(tempDate.clone());
       // If end date is before start date, update end date
@@ -197,26 +157,16 @@ export default function GeoLocationsScreen(): React.JSX.Element {
   }, []);
 
   const changeDate = useCallback((type: 'year' | 'month' | 'day', delta: number) => {
-    setTempDate(prev => {
-      const today = moment.utc().endOf('day');
-      // Clamp current date to today if it's somehow in the future
-      const currentDate = prev.isAfter(today) ? moment.utc() : prev;
-      const newDate = currentDate.clone().add(delta, type);
-      // Prevent selecting future dates
-      if (newDate.isAfter(today)) {
-        return currentDate; // Return current date (clamped to today) if new date is in the future
-      }
-      return newDate;
-    });
+    setTempDate(prev => prev.clone().add(delta, type));
   }, []);
 
   const handleResetDateRange = useCallback(() => {
-    setStartDate(moment.utc());
-    setEndDate(moment.utc());
+    setStartDate(null);
+    setEndDate(null);
   }, []);
 
   /** Open location in maps app */
-  const openInMaps = useCallback((latLon: string, address: string) => {
+  const openInMaps = useCallback((latLon: string, _address: string) => {
     const [lat, lon] = latLon.split(',').map(Number);
     if (!isNaN(lat) && !isNaN(lon)) {
       const url = `https://www.google.com/maps?q=${lat},${lon}`;
@@ -229,8 +179,9 @@ export default function GeoLocationsScreen(): React.JSX.Element {
   /** Render location item */
   const renderLocationItem = useCallback(
     ({ item }: { item: AttendanceRecord }) => {
-      const formattedTime = moment(item.Timestamp).format('hh:mm A');
-      const formattedDate = moment(item.Timestamp).format('ddd, DD MMM YY');
+      // Timestamp is in UTC - convert to local time for display
+      const formattedTime = formatUTCForDisplay(item.Timestamp, 'hh:mm A');
+      const formattedDate = formatUTCForDisplay(item.Timestamp, 'ddd, DD MMM YY');
       
       return (
         <TouchableOpacity
@@ -277,50 +228,79 @@ export default function GeoLocationsScreen(): React.JSX.Element {
         backgroundColor: appTheme === APP_THEMES.light
           ? (colors as any).cardBg || '#F6F6F6'
           : DarkThemeColors.black + '40',
-        borderColor: appTheme === APP_THEMES.light
-          ? (colors as any).cardBorder || '#E0E0E0'
-          : DarkThemeColors.white_common + '40',
       }]}>
         <TouchableOpacity
           style={[styles.dateButton, {
-            borderColor: colors.primary,
-            backgroundColor: startDate 
-              ? (appTheme === APP_THEMES.light ? colors.primary + '20' : colors.primary + '30')
-              : (appTheme === APP_THEMES.light ? 'transparent' : DarkThemeColors.cardBg),
+            backgroundColor: appTheme === APP_THEMES.light
+              ? (colors as any).cardBg || LightThemeColors.white_common
+              : DarkThemeColors.black + '60',
+            borderColor: appTheme === APP_THEMES.light
+              ? (colors as any).cardBorder || '#E0E0E0'
+              : DarkThemeColors.white_common + '40',
           }]}
           onPress={() => handleDatePickerOpen('start')}
         >
-          <AppText size={hp(1.8)} color={startDate ? colors.primary : colors.text}>
+          <AppText 
+            size={hp(1.8)} 
+            color={appTheme === APP_THEMES.light 
+              ? (colors as any).text || LightThemeColors.black_common
+              : DarkThemeColors.white_common}
+          >
             {startDate ? startDate.format('DD MMM YY') : t('attendance.selectStartDate', 'Start Date')}
           </AppText>
         </TouchableOpacity>
         
-        <AppText size={hp(2)} color={colors.text} style={styles.dateSeparator}>
+        <AppText 
+          size={hp(2)} 
+          color={appTheme === APP_THEMES.light 
+            ? (colors as any).text || LightThemeColors.black_common
+            : DarkThemeColors.white_common} 
+          style={styles.dateSeparator}
+        >
           -
         </AppText>
         
         <TouchableOpacity
           style={[styles.dateButton, {
-            borderColor: colors.primary,
-            backgroundColor: endDate 
-              ? (appTheme === APP_THEMES.light ? colors.primary + '20' : colors.primary + '30')
-              : (appTheme === APP_THEMES.light ? 'transparent' : DarkThemeColors.cardBg),
+            backgroundColor: appTheme === APP_THEMES.light
+              ? (colors as any).cardBg || LightThemeColors.white_common
+              : DarkThemeColors.black + '60',
+            borderColor: appTheme === APP_THEMES.light
+              ? (colors as any).cardBorder || '#E0E0E0'
+              : DarkThemeColors.white_common + '40',
           }]}
           onPress={() => handleDatePickerOpen('end')}
         >
-          <AppText size={hp(1.8)} color={endDate ? colors.primary : colors.text}>
+          <AppText 
+            size={hp(1.8)} 
+            color={appTheme === APP_THEMES.light 
+              ? (colors as any).text || LightThemeColors.black_common
+              : DarkThemeColors.white_common}
+          >
             {endDate ? endDate.format('DD MMM YY') : t('attendance.selectEndDate', 'End Date')}
           </AppText>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.resetButton}
-          onPress={handleResetDateRange}
-        >
-          <AppText size={hp(1.6)} color={colors.text} style={{ opacity: 0.7 }}>
-            {t('common.reset', 'Reset')}
-          </AppText>
-        </TouchableOpacity>
+        {(startDate || endDate) && (
+          <TouchableOpacity
+            style={[styles.resetButton, {
+              backgroundColor: appTheme === APP_THEMES.light
+                ? (colors as any).cardBg || LightThemeColors.white_common
+                : DarkThemeColors.black + '60',
+            }]}
+            onPress={handleResetDateRange}
+          >
+            <AppText 
+              size={hp(1.6)} 
+              color={appTheme === APP_THEMES.light 
+                ? (colors as any).text || LightThemeColors.black_common
+                : DarkThemeColors.white_common} 
+              style={{ opacity: 0.7 }}
+            >
+              {t('common.reset', 'Reset')}
+            </AppText>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Loading indicator */}
@@ -329,33 +309,6 @@ export default function GeoLocationsScreen(): React.JSX.Element {
           <AppText style={styles.loadingText}>
             {t('attendance.loading', 'Loading...')}
           </AppText>
-        </View>
-      )}
-
-      {/* Map View */}
-      {locationRecords.length > 0 && (
-        <View style={styles.mapContainer}>
-          <AppMap
-            ref={mapRef}
-            style={styles.map}
-            region={mapRegion}
-          >
-            {locationRecords.map((record, index) => {
-              if (!record.LatLon) return null;
-              const [lat, lon] = record.LatLon.split(',').map(Number);
-              if (isNaN(lat) || isNaN(lon)) return null;
-              
-              return (
-                <Marker
-                  key={`${record.Timestamp}-${index}`}
-                  coordinate={{ latitude: lat, longitude: lon }}
-                  title={record.Address || 'Location'}
-                  description={`${moment(record.Timestamp).format('DD MMM YY hh:mm A')} - ${record.PunchDirection === 'IN' ? 'Check In' : 'Check Out'}`}
-                  onPress={() => openInMaps(record.LatLon!, record.Address || '')}
-                />
-              );
-            })}
-          </AppMap>
         </View>
       )}
 
@@ -396,102 +349,173 @@ export default function GeoLocationsScreen(): React.JSX.Element {
               <View style={styles.datePickerRow}>
                 <TouchableOpacity
                   style={[styles.datePickerButton, {
-                    backgroundColor: appTheme === APP_THEMES.light ? '#F0F0F0' : colors.primary,
+                    backgroundColor: appTheme === APP_THEMES.light
+                      ? LightThemeColors.white_common
+                      : DarkThemeColors.white_common + '20',
                   }]}
                   onPress={() => changeDate('year', -1)}
                 >
-                  <AppText size={hp(2)} color={appTheme === APP_THEMES.light ? colors.text : '#FFFFFF'}>−</AppText>
+                  <AppText 
+                    size={hp(2)} 
+                    color={appTheme === APP_THEMES.light 
+                      ? LightThemeColors.black_common
+                      : DarkThemeColors.white_common}
+                  >−</AppText>
                 </TouchableOpacity>
                 <View style={styles.datePickerValue}>
-                  <AppText size={hp(2.5)} fontType={FontTypes.medium} color={colors.text}>
+                  <AppText 
+                    size={hp(2.5)} 
+                    fontType={FontTypes.medium} 
+                    color={colors.text}
+                  >
                     {tempDate.year()}
                   </AppText>
-                  <AppText size={hp(1.5)} color={colors.text} style={{ opacity: 0.7 }}>Year</AppText>
+                  <AppText 
+                    size={hp(1.5)} 
+                    color={colors.text} 
+                    style={{ opacity: 0.7 }}
+                  >Year</AppText>
                 </View>
                 <TouchableOpacity
                   style={[styles.datePickerButton, {
-                    backgroundColor: appTheme === APP_THEMES.light ? '#F0F0F0' : colors.primary,
-                    opacity: tempDate.clone().add(1, 'year').isAfter(moment.utc().endOf('day')) ? 0.3 : 1,
+                    backgroundColor: appTheme === APP_THEMES.light
+                      ? LightThemeColors.white_common
+                      : DarkThemeColors.white_common + '20',
                   }]}
                   onPress={() => changeDate('year', 1)}
-                  disabled={tempDate.clone().add(1, 'year').isAfter(moment.utc().endOf('day'))}
                 >
-                  <AppText size={hp(2)} color={appTheme === APP_THEMES.light ? colors.text : '#FFFFFF'}>+</AppText>
+                  <AppText 
+                    size={hp(2)} 
+                    color={appTheme === APP_THEMES.light 
+                      ? LightThemeColors.black_common
+                      : DarkThemeColors.white_common}
+                  >+</AppText>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.datePickerRow}>
                 <TouchableOpacity
                   style={[styles.datePickerButton, {
-                    backgroundColor: appTheme === APP_THEMES.light ? '#F0F0F0' : colors.primary,
+                    backgroundColor: appTheme === APP_THEMES.light
+                      ? LightThemeColors.white_common
+                      : DarkThemeColors.white_common + '20',
                   }]}
                   onPress={() => changeDate('month', -1)}
                 >
-                  <AppText size={hp(2)} color={appTheme === APP_THEMES.light ? colors.text : '#FFFFFF'}>−</AppText>
+                  <AppText 
+                    size={hp(2)} 
+                    color={appTheme === APP_THEMES.light 
+                      ? LightThemeColors.black_common
+                      : DarkThemeColors.white_common}
+                  >−</AppText>
                 </TouchableOpacity>
                 <View style={styles.datePickerValue}>
-                  <AppText size={hp(2.5)} fontType={FontTypes.medium} color={colors.text}>
+                  <AppText 
+                    size={hp(2.5)} 
+                    fontType={FontTypes.medium} 
+                    color={colors.text}
+                  >
                     {tempDate.format('MMMM')}
                   </AppText>
-                  <AppText size={hp(1.5)} color={colors.text} style={{ opacity: 0.7 }}>Month</AppText>
+                  <AppText 
+                    size={hp(1.5)} 
+                    color={colors.text} 
+                    style={{ opacity: 0.7 }}
+                  >Month</AppText>
                 </View>
                 <TouchableOpacity
                   style={[styles.datePickerButton, {
-                    backgroundColor: appTheme === APP_THEMES.light ? '#F0F0F0' : colors.primary,
-                    opacity: tempDate.clone().add(1, 'month').isAfter(moment.utc().endOf('day')) ? 0.3 : 1,
+                    backgroundColor: appTheme === APP_THEMES.light
+                      ? LightThemeColors.white_common
+                      : DarkThemeColors.white_common + '20',
                   }]}
                   onPress={() => changeDate('month', 1)}
-                  disabled={tempDate.clone().add(1, 'month').isAfter(moment.utc().endOf('day'))}
                 >
-                  <AppText size={hp(2)} color={appTheme === APP_THEMES.light ? colors.text : '#FFFFFF'}>+</AppText>
+                  <AppText 
+                    size={hp(2)} 
+                    color={appTheme === APP_THEMES.light 
+                      ? LightThemeColors.black_common
+                      : DarkThemeColors.white_common}
+                  >+</AppText>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.datePickerRow}>
                 <TouchableOpacity
                   style={[styles.datePickerButton, {
-                    backgroundColor: appTheme === APP_THEMES.light ? '#F0F0F0' : colors.primary,
+                    backgroundColor: appTheme === APP_THEMES.light
+                      ? LightThemeColors.white_common
+                      : DarkThemeColors.white_common + '20',
                   }]}
                   onPress={() => changeDate('day', -1)}
                 >
-                  <AppText size={hp(2)} color={appTheme === APP_THEMES.light ? colors.text : '#FFFFFF'}>−</AppText>
+                  <AppText 
+                    size={hp(2)} 
+                    color={appTheme === APP_THEMES.light 
+                      ? LightThemeColors.black_common
+                      : DarkThemeColors.white_common}
+                  >−</AppText>
                 </TouchableOpacity>
                 <View style={styles.datePickerValue}>
-                  <AppText size={hp(2.5)} fontType={FontTypes.medium} color={colors.text}>
+                  <AppText 
+                    size={hp(2.5)} 
+                    fontType={FontTypes.medium} 
+                    color={colors.text}
+                  >
                     {tempDate.date()}
                   </AppText>
-                  <AppText size={hp(1.5)} color={colors.text} style={{ opacity: 0.7 }}>Day</AppText>
+                  <AppText 
+                    size={hp(1.5)} 
+                    color={colors.text} 
+                    style={{ opacity: 0.7 }}
+                  >Day</AppText>
                 </View>
                 <TouchableOpacity
                   style={[styles.datePickerButton, {
-                    backgroundColor: appTheme === APP_THEMES.light ? '#F0F0F0' : colors.primary,
-                    opacity: tempDate.clone().add(1, 'day').isAfter(moment.utc().endOf('day')) ? 0.3 : 1,
+                    backgroundColor: appTheme === APP_THEMES.light
+                      ? LightThemeColors.white_common
+                      : DarkThemeColors.white_common + '20',
                   }]}
                   onPress={() => changeDate('day', 1)}
-                  disabled={tempDate.clone().add(1, 'day').isAfter(moment.utc().endOf('day'))}
                 >
-                  <AppText size={hp(2)} color={appTheme === APP_THEMES.light ? colors.text : '#FFFFFF'}>+</AppText>
+                  <AppText 
+                    size={hp(2)} 
+                    color={appTheme === APP_THEMES.light 
+                      ? LightThemeColors.black_common
+                      : DarkThemeColors.white_common}
+                  >+</AppText>
                 </TouchableOpacity>
               </View>
             </View>
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
+                style={[styles.modalButton, {
+                  backgroundColor: appTheme === APP_THEMES.light
+                    ? LightThemeColors.white_common
+                    : DarkThemeColors.white_common + '20',
+                }]}
                 onPress={handleDatePickerCancel}
               >
-                <AppText size={hp(2)} color={appTheme === APP_THEMES.light ? colors.text : '#000000'}>
+                <AppText 
+                  size={hp(2)} 
+                  color={appTheme === APP_THEMES.light 
+                    ? LightThemeColors.black_common
+                    : DarkThemeColors.white_common}
+                >
                   {t('common.cancel', 'Cancel')}
                 </AppText>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalButton, styles.confirmButton, {
-                  opacity: tempDate.isAfter(moment.utc().endOf('day')) ? 0.5 : 1,
+                style={[styles.modalButton, {
+                  backgroundColor: colors.primary || DarkThemeColors.primary,
                 }]}
                 onPress={handleDatePickerConfirm}
-                disabled={tempDate.isAfter(moment.utc().endOf('day'))}
               >
-                <AppText size={hp(2)} color={colors.primary || '#62C268'}>
+                <AppText 
+                  size={hp(2)} 
+                  color={DarkThemeColors.white_common}
+                >
                   {t('common.confirm', 'Confirm')}
                 </AppText>
               </TouchableOpacity>
@@ -560,18 +584,6 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: wp(3.5),
     opacity: 0.7,
-  },
-  mapContainer: {
-    height: hp(30),
-    marginHorizontal: wp(4.27),
-    marginTop: hp(1),
-    marginBottom: hp(1),
-    borderRadius: wp(2),
-    overflow: 'hidden',
-  },
-  map: {
-    width: '100%',
-    height: '100%',
   },
   locationCard: {
     padding: hp(2),
@@ -645,7 +657,6 @@ const styles = StyleSheet.create({
     width: wp(12),
     height: wp(12),
     borderRadius: wp(6),
-    backgroundColor: '#F0F0F0',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -666,12 +677,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginHorizontal: wp(2),
-  },
-  cancelButton: {
-    backgroundColor: '#F0F0F0',
-  },
-  confirmButton: {
-    backgroundColor: '#E8F5E9',
   },
 });
 

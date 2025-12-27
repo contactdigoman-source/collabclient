@@ -9,7 +9,7 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CommonActions, RouteProp } from '@react-navigation/native';
 import {
   AppButton,
   AppContainer,
@@ -20,18 +20,28 @@ import {
 } from '../../components';
 import { FontTypes, hp, Icons, Images, PASSWORD_FORMAT } from '../../constants';
 import { useTranslation } from '../../hooks/useTranslation';
-import { NavigationProp } from '../../types/navigation';
+import { NavigationProp, RootStackParamList } from '../../types/navigation';
 import { useAppSelector } from '../../redux';
-import { changePassword } from '../../services';
+import { changePassword, resetPassword } from '../../services';
 
 const IMAGE_SIZE = hp(18.63);
 
-const ChangePasswordScreen: React.FC = () => {
+interface ChangePasswordScreenProps {
+  route: RouteProp<RootStackParamList, 'ChangePasswordScreen'>;
+}
+
+const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({ route }) => {
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const { userData } = useAppSelector(state => state.userState);
   
-  const emailID = userData?.email || '';
+  // ChangePasswordScreen handles two cases:
+  // 1. Password expired from login flow (has token, no current password needed)
+  // 2. Change password from profile (no token, requires current password, user is logged in)
+  const routeParams = route?.params;
+  const resetToken = routeParams?.token;
+  const isPasswordExpired = !!resetToken; // If token exists, it's password expired from login flow
+  const emailID = routeParams?.emailID || userData?.email || '';
   
   const [currentPassword, setCurrentPassword] = useState<string>('');
   const [password, setPassword] = useState<string>('');
@@ -80,7 +90,8 @@ const ChangePasswordScreen: React.FC = () => {
 
   // Validation logic
   const validatePassword = useCallback((): boolean => {
-    if (!currentPassword.trim()) {
+    // Only require current password if NOT password expired from login flow
+    if (!isPasswordExpired && !currentPassword.trim()) {
       setCurrentPassError(t('auth.changePassword.passwordEmpty', 'Current password is required'));
       return false;
     }
@@ -121,7 +132,7 @@ const ChangePasswordScreen: React.FC = () => {
     }
 
     return true;
-  }, [password, confirmPassword, currentPassword, emailID, t]);
+  }, [password, confirmPassword, currentPassword, emailID, isPasswordExpired, t]);
 
   const handleDonePress = useCallback(async (): Promise<void> => {
     if (!validatePassword()) return;
@@ -132,28 +143,67 @@ const ChangePasswordScreen: React.FC = () => {
 
     try {
       setIsLoading(true);
-      await changePassword({
-        currentPassword,
-        newPassword: password,
-      });
-
-      Alert.alert(
-        t('common.success'),
-        t('auth.changePassword.done', 'Password changed successfully'),
-        [
-          {
-            text: t('common.okay', 'Okay'),
-            onPress: () => {
-              navigation.goBack();
-            },
-          },
-        ]
-      );
-    } catch (error: any) {
-      const errorMessage = error.message || 'Failed to change password';
       
-      // Check if it's a wrong current password error
-      if (errorMessage.toLowerCase().includes('current') || errorMessage.toLowerCase().includes('incorrect')) {
+      if (isPasswordExpired) {
+        // Password expired from login flow: use reset-password API
+        if (!resetToken) {
+          throw new Error('Reset token is required');
+        }
+        
+        await resetPassword({
+          token: resetToken,
+          newPassword: password,
+        });
+
+        Alert.alert(
+          t('common.success'),
+          t('auth.changePassword.done', 'Password changed successfully'),
+          [
+            {
+              text: t('common.okay', 'Okay'),
+              onPress: () => {
+                // Clear navigation stack and navigate to LoginScreen
+                navigation.dispatch(
+                  CommonActions.reset({
+                    index: 0,
+                    routes: [{ name: 'LoginScreen' }],
+                  })
+                );
+              },
+            },
+          ]
+        );
+      } else {
+        // Change password from profile: use change-password API
+        await changePassword({
+          currentPassword,
+          newPassword: password,
+        });
+
+        Alert.alert(
+          t('common.success'),
+          t('auth.changePassword.done', 'Password changed successfully'),
+          [
+            {
+              text: t('common.okay', 'Okay'),
+              onPress: () => {
+                // Clear navigation stack and navigate to LoginScreen
+                navigation.dispatch(
+                  CommonActions.reset({
+                    index: 0,
+                    routes: [{ name: 'LoginScreen' }],
+                  })
+                );
+              },
+            },
+          ]
+        );
+      }
+    } catch (error: any) {
+      const errorMessage = error.message || (isPasswordExpired ? 'Failed to change password' : 'Failed to change password');
+      
+      // Check if it's a wrong current password error (only for profile change password)
+      if (!isPasswordExpired && (errorMessage.toLowerCase().includes('current') || errorMessage.toLowerCase().includes('incorrect'))) {
         setCurrentPassError(errorMessage);
       } else {
         Alert.alert(t('common.error'), errorMessage);
@@ -161,7 +211,7 @@ const ChangePasswordScreen: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [validatePassword, currentPassword, password, t, navigation]);
+  }, [validatePassword, currentPassword, password, isPasswordExpired, resetToken, t, navigation]);
 
   return (
     <AppContainer>
@@ -190,18 +240,21 @@ const ChangePasswordScreen: React.FC = () => {
               </AppText>
             </View>
 
-            <AppInput
-              refName={currentPasswordRef}
-              icon={Icons.password}
-              isBorderFocused={!!currentPassError}
-              value={currentPassword}
-              placeholder={t('profile.currentPassword', 'Current Password')}
-              onChangeText={handleCurrentPasswordChange}
-              secureTextEntry
-              returnKeyType="next"
-              error={currentPassError}
-              onSubmitEditing={() => passwordRef.current?.focus()}
-            />
+            {/* Only show current password field if NOT password expired from login flow */}
+            {!isPasswordExpired && (
+              <AppInput
+                refName={currentPasswordRef}
+                icon={Icons.password}
+                isBorderFocused={!!currentPassError}
+                value={currentPassword}
+                placeholder={t('profile.currentPassword', 'Current Password')}
+                onChangeText={handleCurrentPasswordChange}
+                secureTextEntry
+                returnKeyType="next"
+                error={currentPassError}
+                onSubmitEditing={() => passwordRef.current?.focus()}
+              />
+            )}
 
             <AppInput
               refName={passwordRef}

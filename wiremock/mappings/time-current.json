@@ -1,0 +1,19 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "/api/time/current"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "currentTime": "2024-12-27T12:00:00.000Z",
+      "timezone": "Asia/Kolkata",
+      "timezoneOffset": 330,
+      "timestamp": 1703682000000
+    }
+  }
+}
+

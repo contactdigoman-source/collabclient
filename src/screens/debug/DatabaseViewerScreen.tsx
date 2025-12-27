@@ -15,6 +15,7 @@ import { hp, wp, FontTypes } from '../../constants';
 import { getAllDatabaseData, clearAllDatabaseData, DatabaseView } from '../../services/database/debug-db-service';
 import { APP_THEMES, DarkThemeColors, LightThemeColors } from '../../themes';
 import { useAppSelector } from '../../redux';
+import { useTranslation } from '../../hooks/useTranslation';
 import moment from 'moment';
 import { logger } from '../../services/logger';
 
@@ -24,6 +25,7 @@ export default function DatabaseViewerScreen(): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const { appTheme } = useAppSelector(state => state.appState);
   const themeColors = appTheme === APP_THEMES.dark ? DarkThemeColors : LightThemeColors;
+  const { t } = useTranslation();
 
   const [data, setData] = useState<DatabaseView | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -1380,7 +1382,7 @@ export default function DatabaseViewerScreen(): React.JSX.Element {
   return (
     <AppContainer>
       <BackHeader 
-        title="Database Viewer" 
+        title={t('profile.databaseViewer')} 
         isTitleVisible
         rightContent={
           <TouchableOpacity

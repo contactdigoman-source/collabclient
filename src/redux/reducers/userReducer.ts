@@ -14,6 +14,7 @@ import {
 const initialState: UserState = {
   userData: null,
   jwtToken: null,
+  idpjourneyToken: null,
   expiresAt: null,
   accountStatus: null,
   userLocationRegion: DEFAULT_REGION,
@@ -25,6 +26,7 @@ const initialState: UserState = {
   storedAadhaarNumber: null,
   firstTimeLoginData: null,
   displayBreakStatus: false,
+  isAuthenticatingFace: false, // UI loading state during Aadhaar authentication
 };
 
 const userSlice = createSlice({
@@ -36,6 +38,9 @@ const userSlice = createSlice({
     },
     setJWTToken(state, action: PayloadAction<string | null>) {
       state.jwtToken = action.payload;
+    },
+    setIdpjourneyToken(state, action: PayloadAction<string | null>) {
+      state.idpjourneyToken = action.payload;
     },
     setExpiresAt(state, action: PayloadAction<string | null>) {
       state.expiresAt = action.payload;
@@ -89,8 +94,11 @@ const userSlice = createSlice({
     setDisplayBreakStatus(state, action: PayloadAction<boolean>) {
       state.displayBreakStatus = action.payload;
     },
+    setIsAuthenticatingFace(state, action: PayloadAction<boolean>) {
+      state.isAuthenticatingFace = action.payload;
+    },
     // Reset user state to initial state (for logout)
-    resetUserState(state) {
+    resetUserState(_state) {
       return initialState;
     },
   },
@@ -99,6 +107,7 @@ const userSlice = createSlice({
 export const {
   setUserData,
   setJWTToken,
+  setIdpjourneyToken,
   setExpiresAt,
   setAccountStatus,
   setUserLocationRegion,
@@ -110,6 +119,7 @@ export const {
   setStoredAadhaarNumber,
   setFirstTimeLoginData,
   setDisplayBreakStatus,
+  setIsAuthenticatingFace,
   resetUserState,
 } = userSlice.actions;
 export default userSlice.reducer;

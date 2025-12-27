@@ -1,6 +1,6 @@
-import axios from 'axios';
 import { Configs } from '../../constants/configs';
 import { logger } from '../logger';
+import apiClient from '../api/api-client';
 import { getDeviceUniqueIdentifier } from '../device/device-identifier-service';
 import { store } from '../../redux';
 import { setUserData, setJWTToken, setExpiresAt } from '../../redux/reducers/userReducer';
@@ -17,6 +17,7 @@ export interface FirstTimeLoginRequest {
   firstName: string;
   lastName: string;
   newPassword: string;
+  idpjourneyToken: string; // IDP journey token from OTP verification
   consent: {
     agreed: boolean;
     timestamp: string; // ISO 8601 format
@@ -29,21 +30,16 @@ export interface FirstTimeLoginRequest {
 export interface FirstTimeLoginResponse {
   success: boolean;
   message: string;
-  token?: string; // JWT token
-  expiresAt?: string;
-  user?: {
-    id: number;
-    email: string;
-    firstName: string;
-    lastName: string;
-    phoneNumber?: string;
-    isEmailVerified: boolean;
-    isPhoneVerified: boolean;
-    requiresPasswordChange: boolean;
-    roles: string[];
-    firstTimeLogin: boolean;
-    profilePhotoUrl?: string; // Profile photo URL from server
-  };
+  idpjourneyToken?: string; // IDP journey token (if needed for further steps)
+  jwt?: string; // JWT access token
+  expiresAt?: string; // JWT expiration timestamp (ISO 8601 format)
+  refreshToken?: string; // Refresh token for getting new JWT
+  firstName?: string; // User's first name
+  lastName?: string; // User's last name
+  email?: string; // User's email
+  contact?: string; // User's phone number
+  organization?: string; // User's organization name
+  role?: string; // User's role (e.g., "ORGUSER")
 }
 
 /**
@@ -64,6 +60,7 @@ export const submitFirstTimeLogin = async (data: {
   permissions: string[];
   permissionsTimestamp?: string; // Optional: timestamp when permissions were granted
   profilePhoto?: string; // Optional: path to profile photo file
+  idpjourneyToken: string; // IDP journey token from OTP verification
 }): Promise<FirstTimeLoginResponse> => {
   try {
     // Get device unique identifier
@@ -75,7 +72,7 @@ export const submitFirstTimeLogin = async (data: {
     // Use provided permissions timestamp or current timestamp
     const consentTimestamp = data.permissionsTimestamp || timestamp;
 
-    let response: axios.AxiosResponse<FirstTimeLoginResponse>;
+    let response;
 
     // If profile photo is provided, use FormData (multipart/form-data)
     if (data.profilePhoto) {
@@ -89,6 +86,7 @@ export const submitFirstTimeLogin = async (data: {
       formData.append('newPassword', data.newPassword);
       formData.append('deviceIdentifier', deviceIdentifier);
       formData.append('timestamp', timestamp);
+      formData.append('idpjourneyToken', data.idpjourneyToken);
       formData.append('consent[agreed]', 'true');
       formData.append('consent[timestamp]', consentTimestamp);
       formData.append('consent[permissions]', JSON.stringify(data.permissions));
@@ -101,9 +99,9 @@ export const submitFirstTimeLogin = async (data: {
       } as any);
 
       // Make API call with FormData
-      // Note: Don't set Content-Type header - axios will set it automatically with boundary
-      response = await axios.post<FirstTimeLoginResponse>(
-        `${API_BASE_URL}/api/auth/first-time-login`,
+      // Note: Content-Type will be set automatically by apiClient interceptor
+      response = await apiClient.post<FirstTimeLoginResponse>(
+        `/api/auth/first-time-login`,
         formData,
         {
           headers: {
@@ -118,6 +116,7 @@ export const submitFirstTimeLogin = async (data: {
         firstName: data.firstName,
         lastName: data.lastName,
         newPassword: data.newPassword,
+        idpjourneyToken: data.idpjourneyToken,
         consent: {
           agreed: true,
           timestamp: consentTimestamp,
@@ -128,51 +127,49 @@ export const submitFirstTimeLogin = async (data: {
       };
 
       // Make API call
-      response = await axios.post<FirstTimeLoginResponse>(
-        `${API_BASE_URL}/api/auth/first-time-login`,
+      response = await apiClient.post<FirstTimeLoginResponse>(
+        `/api/auth/first-time-login`,
         requestData,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        },
       );
     }
 
     // If successful, update Redux store and SQLite
-    if (response.data.success && response.data.user) {
-      const userEmail = response.data.user.email;
+    if (response.data.success) {
+      const userEmail = response.data.email || data.email;
       
-      // Determine which profile photo to use: server URL (preferred) or local path
-      const profilePhotoToSave = response.data.user.profilePhotoUrl || data.profilePhoto;
-      
-      // Save profile photo to SQLite (prefer server URL over local path)
-      if (profilePhotoToSave && userEmail) {
+      // Save profile photo to SQLite if provided
+      if (data.profilePhoto && userEmail) {
         try {
-          await profileSyncService.saveProfileProperty(userEmail, 'profilePhoto', profilePhotoToSave);
-          // Mark as synced if we got a server URL
-          if (response.data.user.profilePhotoUrl) {
-            await profileSyncService.markPropertyAsSynced(userEmail, 'profilePhoto');
-          }
+          await profileSyncService.saveProfileProperty(userEmail, 'profilePhoto', data.profilePhoto);
         } catch (dbError) {
           logger.error('Error saving profile photo to SQLite', dbError as Error);
           // Continue even if SQLite save fails
         }
       }
       
-      // Update user data
-      const updatedUserData = {
-        ...response.data.user,
-        firstTimeLogin: false, // Mark as completed
-        profilePhoto: profilePhotoToSave,
-        profilePhotoUrl: response.data.user.profilePhotoUrl || profilePhotoToSave,
-      };
-      
-      store.dispatch(setUserData(updatedUserData));
+      // Update user data from response
+      if (userEmail) {
+        const updatedUserData = {
+          id: 0, // ID not provided in new response structure
+          email: response.data.email || userEmail,
+          firstName: response.data.firstName || data.firstName,
+          lastName: response.data.lastName || data.lastName,
+          phoneNumber: response.data.contact,
+          isEmailVerified: true, // Assumed after first-time login
+          isPhoneVerified: false,
+          requiresPasswordChange: false,
+          roles: response.data.role ? [response.data.role] : [],
+          firstTimeLogin: false, // Mark as completed
+          profilePhoto: data.profilePhoto,
+          profilePhotoUrl: data.profilePhoto,
+        };
+        
+        store.dispatch(setUserData(updatedUserData));
+      }
 
       // Store JWT token if provided
-      if (response.data.token) {
-        store.dispatch(setJWTToken(response.data.token));
+      if (response.data.jwt) {
+        store.dispatch(setJWTToken(response.data.jwt));
       }
       
       // Store expiration time if provided

@@ -15,9 +15,8 @@ import {
   Keyboard,
   Alert,
 } from 'react-native';
-import { useNavigation, useTheme, RouteProp } from '@react-navigation/native';
+import { useNavigation, useTheme, RouteProp, CommonActions } from '@react-navigation/native';
 import { OtpInput } from 'react-native-otp-entry';
-import moment from 'moment';
 
 import {
   AppButton,
@@ -26,21 +25,17 @@ import {
   AppText,
   BackHeader,
   AccountLockedModal,
+  AccountInactiveModal,
   PasswordExpiryModal,
 } from '../../components';
 import { FontTypes, hp, wp, Images } from '../../constants';
-import { useAppDispatch, useAppSelector } from '../../redux';
+import { useAppDispatch, useAppSelector, store } from '../../redux';
 import { DarkThemeColors, LightThemeColors } from '../../themes';
-// Removed Aadhaar OTP imports - now handled in AadhaarOtpScreen
-import {
-  requestLocationPermission,
-  isLocationEnabled,
-} from '../../services';
 import { verifyOTP, resendOTP } from '../../services/auth/otp-service';
-import { storeJWTToken } from '../../services/auth/login-service';
-import { setJWTToken, setExpiresAt, setUserData, setAccountStatus } from '../../redux';
+import { setAccountStatus } from '../../redux';
 import { NavigationProp, RootStackParamList } from '../../types/navigation';
 import { useTranslation } from '../../hooks/useTranslation';
+import { logger } from '../../services/logger';
 
 const IMAGE_SIZE = hp(18.63);
 const RESEND_TIMEOUT = 120; // seconds
@@ -89,7 +84,9 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
   const [otpError, setOtpError] = useState<string>('');
   const [isAccountLockedModalVisible, setIsAccountLockedModalVisible] = useState<boolean>(false);
+  const [isAccountInactiveModalVisible, setIsAccountInactiveModalVisible] = useState<boolean>(false);
   const [isPasswordExpiryModalVisible, setIsPasswordExpiryModalVisible] = useState<boolean>(false);
+  const [resetToken, setResetToken] = useState<string | null>(null); // Store token from OTP verification
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const emailMessage = useMemo(() => {
@@ -137,12 +134,13 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
     };
   }, [startTimer]);
 
-  // Request OTP when screen loads (for login/password reset flows)
+  // Request OTP when screen loads (for password reset or punch flow)
   useEffect(() => {
-    if (emailID && !isPasswordReset && !isPunchFlow) {
-      // For login flow, OTP is typically sent after login attempt
-      // So we don't request it here, it should already be sent
-      // For password reset and punch flow, OTP should be requested from previous screen
+    // OTP should be requested from previous screen for password reset or punch flow
+    if (isPunchFlow && emailID) {
+      // For punch flow, OTP might need to be requested here if not already requested
+      // This depends on your API design - check if OTP is auto-sent or needs to be requested
+      logger.debug('[OtpScreen] Punch flow - OTP screen loaded', { emailID });
     }
   }, [emailID, isPasswordReset, isPunchFlow]);
 
@@ -150,9 +148,8 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
     if (!resendActive || !emailID) return;
     
     try {
-      // Determine flow type for resend
-      const flowType = isPasswordReset ? 'password-reset' : isPunchFlow ? 'punch' : 'login';
-      
+      // Resend OTP based on flow type
+      const flowType = isPunchFlow ? 'punch' : (isPasswordReset ? 'password-reset' : 'login');
       await resendOTP({
         email: emailID,
         flowType: flowType as 'login' | 'password-reset' | 'punch',
@@ -164,7 +161,7 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
       // Error is already logged in otp-service.ts via logger.error
       setOtpError(error.message || t('auth.otp.resendFailed', 'Failed to resend OTP. Please try again.'));
     }
-  }, [resendActive, emailID, isPasswordReset, isPunchFlow, startTimer, t]);
+  }, [resendActive, emailID, startTimer, t, isPunchFlow, isPasswordReset]);
 
   const onConfirmButtonPress = useCallback(async (): Promise<void> => {
     if (otpValue.trim().length !== 6) {
@@ -180,10 +177,8 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
     setOtpError('');
 
     try {
-      // Determine flow type for verification
-      const flowType = isPasswordReset ? 'password-reset' : isPunchFlow ? 'punch' : 'login';
-      
-      // Verify OTP with API
+      // Verify OTP based on flow type
+      const flowType = isPunchFlow ? 'punch' : (isPasswordReset ? 'password-reset' : 'login');
       const verifyResponse = await verifyOTP({
         email: emailID,
         otp: otpValue,
@@ -203,9 +198,9 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
         return;
       }
 
-      // Handle account status from response
+      // Handle account status from response (for password reset and punch flows)
       const accountStatus = verifyResponse.accountStatus;
-      if (accountStatus) {
+      if (accountStatus && (isPasswordReset || isPunchFlow)) {
         dispatch(setAccountStatus(accountStatus));
 
         if (accountStatus === 'locked') {
@@ -214,91 +209,43 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
           return;
         }
 
-        if (accountStatus === 'password expired') {
+        if (accountStatus === 'passwordExpired') {
+          // Store token from OTP verification response for password reset
+          if (verifyResponse.token) {
+            setResetToken(verifyResponse.token);
+          }
           setIsPasswordExpiryModalVisible(true);
           setIsVerifying(false);
           return;
         }
 
         if (accountStatus === 'inactive') {
-          setOtpError(t('auth.otp.accountInactive', 'Your account is inactive. Please contact support.'));
+          setIsAccountInactiveModalVisible(true);
           setIsVerifying(false);
           return;
         }
       }
 
-      // Store user data if returned in response
-      if (verifyResponse.user) {
-        dispatch(setUserData({
-          id: verifyResponse.user.id,
-          firstName: verifyResponse.user.firstName,
-          lastName: verifyResponse.user.lastName,
-          email: verifyResponse.user.email,
-          phoneNumber: verifyResponse.user.phoneNumber,
-          isEmailVerified: verifyResponse.user.isEmailVerified,
-          isPhoneVerified: verifyResponse.user.isPhoneVerified,
-          requiresPasswordChange: verifyResponse.user.requiresPasswordChange,
-          roles: verifyResponse.user.roles,
-          firstTimeLogin: verifyResponse.user.firstTimeLogin,
-        }));
-      }
-
-      // If token is returned (login flow), store it securely
-      if (verifyResponse.token) {
-        await storeJWTToken(verifyResponse.token, emailID);
-        dispatch(setJWTToken(verifyResponse.token));
-        if (verifyResponse.expiresAt) {
-          dispatch(setExpiresAt(verifyResponse.expiresAt));
-        }
-      }
-
       // Handle navigation based on flow type
       if (isPunchFlow) {
-        // Handle punch flow OTP: After OTP success, check Aadhaar validation, then proceed to CheckInScreen
-        // TODO: Verify OTP with backend before proceeding
+        // Punch flow: Check if Aadhaar is verified before navigating
+        setIsVerifying(false);
         
-        // Check if Aadhaar validation is needed (once per day)
-        const { store } = require('../../redux');
-        const { userAadhaarFaceValidated, lastAadhaarVerificationDate } = store.getState().userState;
-        
-        let isAadhaarVerificationNeeded = false;
-        if (!userAadhaarFaceValidated) {
-          isAadhaarVerificationNeeded = true;
-        } else if (lastAadhaarVerificationDate) {
-          // Use UTC date for consistency (stored dates are in UTC format YYYY-MM-DD)
-          const today = moment.utc().format('YYYY-MM-DD');
-          if (lastAadhaarVerificationDate !== today) {
-            isAadhaarVerificationNeeded = true;
-          }
-        } else {
-          isAadhaarVerificationNeeded = true;
-        }
-        
-        if (isAadhaarVerificationNeeded) {
-          // Navigate to Aadhaar input screen
-          navigation.replace('AadhaarInputScreen');
+        // Check profile data to see if Aadhaar is verified
+        const currentUserData = store.getState()?.userState?.userData;
+        const aadhaarVerification = currentUserData?.aadhaarVerification;
+        const isAadhaarVerified = aadhaarVerification?.isVerified === true;
+
+        // If Aadhaar is not verified in profile, navigate to Aadhaar screen
+        if (!isAadhaarVerified) {
+          navigation.navigate('AadhaarInputScreen');
           return;
         }
-        
-        // If Aadhaar is validated, proceed with location permission check and CheckInScreen
-        const onCancelPress = (): void => {
-          navigation.replace('DashboardScreen');
-        };
-        
-        const granted = await requestLocationPermission(onCancelPress);
-        
-        if (granted) {
-          const isLocationOn = await isLocationEnabled();
-          if (isLocationOn) {
-            navigation.replace('CheckInScreen');
-          } else {
-            navigation.replace('DashboardScreen');
-          }
-        } else {
-          navigation.replace('DashboardScreen');
-        }
+
+        // If Aadhaar is verified, proceed to CheckInScreen
+        navigation.navigate('CheckInScreen');
       } else if (isPasswordReset) {
-        // Password reset flow: Show success message and navigate to login
+        // Password reset flow: Show success message and clear stack to navigate to login
         Alert.alert(
           t('auth.otp.success', 'Success'),
           t('auth.otp.passwordResetSuccess', 'Password reset OTP verified successfully. You can now login with your new password.'),
@@ -306,29 +253,29 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
             {
               text: t('auth.otp.ok', 'OK'),
               onPress: () => {
-                navigation.replace('LoginScreen');
+                // Clear navigation stack and navigate to LoginScreen
+                navigation.dispatch(
+                  CommonActions.reset({
+                    index: 0,
+                    routes: [{ name: 'LoginScreen' }],
+                  })
+                );
               },
             },
           ],
           { cancelable: false }
         );
-      } else if (emailID) {
-        // Login flow: Use API response to decide navigation
-        // Priority: 1. Response firstTimeLogin field, 2. User object firstTimeLogin
-        const isFirstTime = verifyResponse.firstTimeLogin ?? verifyResponse.user?.firstTimeLogin ?? false;
-        
-        if (isFirstTime) {
-          navigation.replace('FirstTimeLoginScreen');
-        } else {
-          navigation.replace('DashboardScreen');
-        }
+      } else {
+        // Fallback: if not password reset or punch flow, show error
+        setOtpError(t('auth.otp.verificationFailed', 'Failed to verify OTP. Please try again.'));
+        setIsVerifying(false);
       }
     } catch (error: any) {
       // Error is already logged in otp-service.ts via logger.error
       setOtpError(error.message || t('auth.otp.verificationFailed', 'Failed to verify OTP. Please try again.'));
       setIsVerifying(false);
     }
-  }, [otpValue, isPunchFlow, isPasswordReset, emailID, dispatch, navigation, t]);
+  }, [otpValue, isPasswordReset, isPunchFlow, emailID, dispatch, navigation, t]);
 
   // memoized otp styles and theme to avoid re-render
   const otpTheme = useMemo(
@@ -371,7 +318,10 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
               <AppText size={hp(2.5)} fontType={FontTypes.medium} color={colors.text || themeColors.white_common}>
                 {(() => {
                   try {
-                    if (isPasswordReset) {
+                    if (isPunchFlow) {
+                      const text = t('auth.otp.verifyPunch', 'Verify for Punch');
+                      return text && text !== 'auth.otp.verifyPunch' ? text : 'Verify for Punch';
+                    } else if (isPasswordReset) {
                       const text = t('auth.otp.verifyEmail');
                       return text && text !== 'auth.otp.verifyEmail' ? text : 'Verify Email';
                     } else {
@@ -379,25 +329,13 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
                       return text && text !== 'auth.otp.authenticateAccount' ? text : 'Authenticate Account';
                     }
                   } catch (error) {
+                    if (isPunchFlow) return 'Verify for Punch';
                     return isPasswordReset ? 'Verify Email' : 'Authenticate Account';
                   }
                 })()}
               </AppText>
               <AppText style={styles.description} color={colors.text || themeColors.white_common}>
-                {(() => {
-                  try {
-                    if (isPasswordReset) {
-                      return emailMessage;
-                    } else if (emailID) {
-                      const text = t('auth.otp.loginDescription');
-                      return text && text !== 'auth.otp.loginDescription' ? text : emailMessage;
-                    } else {
-                      return emailMessage;
-                    }
-                  } catch (error) {
-                    return emailMessage || 'Enter the OTP sent to your email';
-                  }
-                })()}
+                {emailMessage || 'Enter the OTP sent to your email'}
               </AppText>
             </View>
 
@@ -464,12 +402,22 @@ const OtpScreen: React.FC<OtpScreenProps> = ({ route }) => {
         onClose={() => setIsAccountLockedModalVisible(false)}
       />
 
+      {/* Account Inactive Modal */}
+      <AccountInactiveModal
+        visible={isAccountInactiveModalVisible}
+        onClose={() => setIsAccountInactiveModalVisible(false)}
+      />
+
       {/* Password Expiry Modal */}
       <PasswordExpiryModal
         visible={isPasswordExpiryModalVisible}
         onReset={() => {
           setIsPasswordExpiryModalVisible(false);
-          navigation.navigate('ChangeForgottenPassword', { emailID });
+          // Navigate to ChangePasswordScreen with token (password expired from password reset flow)
+          navigation.navigate('ChangePasswordScreen', { 
+            emailID,
+            token: resetToken || undefined,
+          });
         }}
         onDismiss={() => setIsPasswordExpiryModalVisible(false)}
       />

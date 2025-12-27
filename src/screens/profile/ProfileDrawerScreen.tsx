@@ -1,6 +1,6 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { StyleSheet, View, Alert, ScrollView, RefreshControl } from 'react-native';
-import { useNavigation, useTheme } from '@react-navigation/native';
+import { useNavigation, useTheme, useFocusEffect } from '@react-navigation/native';
 
 import {
   AnimatedSwitch,
@@ -14,7 +14,7 @@ import {
 import { hp, Icons } from '../../constants';
 import { useAppDispatch, useAppSelector, setDisplayBreakStatus } from '../../redux';
 import { setAppTheme } from '../../redux';
-import { APP_THEMES, DarkThemeColors } from '../../themes';
+import { APP_THEMES, DarkThemeColors, LightThemeColors } from '../../themes';
 import { logoutUser, getProfile } from '../../services';
 import { profileSyncService } from '../../services/sync/profile-sync-service';
 import { logger } from '../../services/logger';
@@ -55,10 +55,17 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
     }
   }, [userData?.email, userData?.profilePhoto, userData?.profilePhotoUrl]);
 
-  // Load profile data on mount - load from DB
+  // Load profile data on mount and when userData changes - load from DB
   useEffect(() => {
     loadProfileFromDB();
-  }, [loadProfileFromDB]);
+  }, [loadProfileFromDB, userData?.profilePhotoUrl, userData?.profilePhoto]);
+
+  // Reload profile photo when screen comes into focus (e.g., after returning from ViewProfileScreen)
+  useFocusEffect(
+    useCallback(() => {
+      loadProfileFromDB();
+    }, [loadProfileFromDB])
+  );
 
   // Handle pull-to-refresh - sync profile from server
   const onRefresh = useCallback(async () => {
@@ -177,7 +184,11 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
       >
         <View style={styles.profileContainer}>
           <View style={styles.avatarContainer}>
-            <View style={styles.avatarBorder}>
+            <View style={[styles.avatarBorder, {
+              borderColor: appTheme === APP_THEMES.light
+                ? LightThemeColors.primary || '#62C268'
+                : DarkThemeColors.primary || '#62C268',
+            }]}>
               <UserImage
                 size={hp(15.6)} // 127px equivalent
                 source={profilePhoto ? { uri: profilePhoto } : null}
@@ -260,7 +271,7 @@ export default function ProfileDrawerScreen(): React.JSX.Element {
         {/* Database Viewer (Debug - Dev Mode Only) */}
         {__DEV__ && (
           <ProfileDrawerItem
-            title="Database Viewer"
+            title={t('profile.databaseViewer')}
             icon={Icons.profile_circle}
             iconColor={colors.text}
             onPress={onDatabaseViewerPress}
@@ -337,7 +348,6 @@ const styles = StyleSheet.create({
   },
   avatarBorder: {
     borderWidth: 4,
-    borderColor: '#62C268',
     borderRadius: hp(15.6) / 2,
     overflow: 'hidden',
   },

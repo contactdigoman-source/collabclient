@@ -1,6 +1,6 @@
 // store.ts
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
-import { userReducer, appReducer, aadhaarReducer, syncReducer } from '../reducers';
+import { userReducer, appReducer, syncReducer } from '../reducers';
 import {
   FLUSH,
   PAUSE,
@@ -16,7 +16,6 @@ import reduxStorage from './storage';
 const appReducers = combineReducers({
   userState: userReducer,
   appState: appReducer,
-  aadhaarState: aadhaarReducer,
   syncState: syncReducer,
 });
 
@@ -46,18 +45,15 @@ export const store = configureStore({
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
-      // Optimize for production: disable checks in production
-      immutableCheck: __DEV__ ? { warnAfter: 128 } : false,
+      // Disable in production for better performance
+      immutableCheck: { warnAfter: 128 },
       thunk: true,
     }),
   // Enable Redux DevTools only in development
   devTools: __DEV__,
-  // Enhancers must be a callback function
-  enhancers: (getDefaultEnhancers) => getDefaultEnhancers(),
 });
 
 export const persistor = persistStore(store);
-
 export type AppDispatch = typeof store.dispatch;
 export type RootState = ReturnType<typeof store.getState>;
 

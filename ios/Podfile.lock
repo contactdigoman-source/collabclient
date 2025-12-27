@@ -2597,6 +2597,35 @@ PODS:
     - RNNotifee/NotifeeCore (= 9.1.8)
   - RNNotifee/NotifeeCore (9.1.8):
     - React-Core
+  - RNPermissions (5.4.4):
+    - boost
+    - DoubleConversion
+    - fast_float
+    - fmt
+    - glog
+    - hermes-engine
+    - RCT-Folly
+    - RCT-Folly/Fabric
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-hermes
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - SocketRocket
+    - Yoga
   - RNReanimated (4.1.5):
     - boost
     - DoubleConversion
@@ -2997,6 +3026,7 @@ DEPENDENCIES:
   - RNKeychain (from `../node_modules/react-native-keychain`)
   - RNLocalize (from `../node_modules/react-native-localize`)
   - "RNNotifee (from `../node_modules/@notifee/react-native`)"
+  - RNPermissions (from `../node_modules/react-native-permissions`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNSVG (from `../node_modules/react-native-svg`)
@@ -3188,6 +3218,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-localize"
   RNNotifee:
     :path: "../node_modules/@notifee/react-native"
+  RNPermissions:
+    :path: "../node_modules/react-native-permissions"
   RNReanimated:
     :path: "../node_modules/react-native-reanimated"
   RNScreens:
@@ -3288,6 +3320,7 @@ SPEC CHECKSUMS:
   RNKeychain: 9c0d0b73682506249067e6b0a13ef65635c241fa
   RNLocalize: 777c6683a9f83cf53186f43c2258ba0e8bbae6de
   RNNotifee: 5e3b271e8ea7456a36eec994085543c9adca9168
+  RNPermissions: cae8d1f0a7eb41a25bae6d5001db00ab26228b74
   RNReanimated: d9b3c88b7a722ce8129ca8c96abd06d822ed315e
   RNScreens: f35bcc83b6e3a871635b1c28728e63c9560f159a
   RNSVG: 1adedbdb9108898c4d6a9606aac746789ba7330b
@@ -3298,6 +3331,6 @@ SPEC CHECKSUMS:
   TOCropViewController: 797deaf39c90e6e9ddd848d88817f6b9a8a09888
   Yoga: daa1e4de4b971b977b23bc842aaa3e135324f1f3
 
-PODFILE CHECKSUM: 170a7bb3d7d09e893a6d0369f918385d3b18c83c
+PODFILE CHECKSUM: e78822f4e5798b9f927dd925b14cc3915ff9dbd1
 
 COCOAPODS: 1.16.2

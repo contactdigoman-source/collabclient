@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { Platform } from 'react-native';
 import { Configs } from '../../constants/configs';
 import { store } from '../../redux';
@@ -98,23 +97,124 @@ const getCallingContext = (): { service: string; fileName: string; methodName: s
 
     const stackLines = stack.split('\n');
     
-    // Skip the first line (Error message) and the second line (this function)
-    // The third line should be the logger method (info/warn/error)
-    // The fourth line should be the actual caller
-    let callerLine = stackLines[3] || stackLines[2] || '';
+    // Find the first stack line that contains our source code (not node_modules or React internals)
+    // Skip: Error message (line 0), getCallingContext (line 1), logger method (line 2-3)
+    // Look for lines with our source files
+    let callerLine = '';
+    let callerIndex = -1;
     
+    for (let i = 2; i < Math.min(stackLines.length, 15); i++) {
+      const line = stackLines[i];
+      // Skip React internals, node_modules, and logger internals
+      if (line && 
+          !line.includes('node_modules') && 
+          !line.includes('logger-service') &&
+          !line.includes('getCallingContext') &&
+          !line.includes('logEntry') &&
+          !line.includes('logger.debug') &&
+          !line.includes('logger.info') &&
+          !line.includes('logger.warn') &&
+          !line.includes('logger.error') &&
+          !line.includes('logger.fatal') &&
+          (line.includes('services/') || line.includes('screens/') || line.includes('components/') || line.includes('utils/'))) {
+        callerLine = line;
+        callerIndex = i;
+        break;
+      }
+    }
+    
+    // If we found a caller line, try to get more context from surrounding lines
+    // Sometimes the actual function name is in the previous line
+    if (callerLine && callerIndex > 2) {
+      // Check previous line for function name context
+      const prevLine = stackLines[callerIndex - 1];
+      if (prevLine && (prevLine.includes('at ') || prevLine.includes('Object.'))) {
+        // Use previous line if it has better context
+        if (prevLine.includes('services/') || prevLine.includes('screens/') || prevLine.includes('components/') || prevLine.includes('utils/')) {
+          callerLine = prevLine;
+        }
+      }
+    }
+    
+    if (!callerLine) {
+      // Fallback to first non-internal line
+      callerLine = stackLines[3] || stackLines[2] || '';
+    }
     
     // Extract service name from file path (e.g., /services/auth/login-service.ts -> auth)
-    const serviceMatch = callerLine.match(/services\/([^/]+)\//);
-    const service = serviceMatch ? serviceMatch[1] : 'unknown';
+    // Also check for screens/, components/, and utils/
+    let service = 'unknown';
+    const serviceMatch = callerLine.match(/(?:services|screens|components|utils)\/([^/]+)\//);
+    if (serviceMatch) {
+      service = serviceMatch[1];
+    } else {
+      // Try to extract from full path (e.g., src/services/location/location-service.ts)
+      const pathMatch = callerLine.match(/(?:src\/)?(?:services|screens|components|utils)\/([^/]+)\//);
+      if (pathMatch) {
+        service = pathMatch[1];
+      } else {
+        // Try alternative: look for any directory before the file
+        const altPathMatch = callerLine.match(/([^/\\]+)\/([^/\\]+\.(ts|tsx|js|jsx))/);
+        if (altPathMatch && !altPathMatch[1].includes('node_modules')) {
+          service = altPathMatch[1];
+        }
+      }
+    }
     
-    // Extract file name (e.g., login-service.ts)
+    // Extract file name (e.g., login-service.ts or device-registration-service.ts)
+    // Try multiple patterns to catch different formats
+    let fileName = 'unknown';
     const fileMatch = callerLine.match(/([^/\\]+\.(ts|tsx|js|jsx))(?::\d+)?/);
-    const fileName = fileMatch ? fileMatch[1] : 'unknown';
+    if (fileMatch) {
+      fileName = fileMatch[1];
+    } else {
+      // Try pattern with path
+      const pathFileMatch = callerLine.match(/([^/\\]+\.(ts|tsx|js|jsx))(?:\?|:)/);
+      if (pathFileMatch) {
+        fileName = pathFileMatch[1];
+      }
+    }
     
-    // Extract method name (e.g., at loginUser or at Object.loginUser)
-    const methodMatch = callerLine.match(/at\s+(?:Object\.)?(\w+)/);
-    const methodName = methodMatch ? methodMatch[1] : 'unknown';
+    // Extract method name (e.g., at registerDevice, at Object.registerDevice, at async registerDevice)
+    // Handle anonymous functions, arrow functions, and async functions
+    let methodName = 'unknown';
+    
+    // Try to extract from the caller line itself
+    const methodMatch = callerLine.match(/at\s+(?:async\s+)?(?:Object\.)?(\w+)/);
+    if (methodMatch && methodMatch[1] !== 'anonymous' && methodMatch[1] !== 'anon') {
+      methodName = methodMatch[1];
+    } else {
+      // Try alternative patterns for arrow functions and anonymous functions
+      const arrowMatch = callerLine.match(/(\w+)\s*=>/);
+      if (arrowMatch) {
+        methodName = arrowMatch[1];
+      } else {
+        // Try to extract from function call pattern
+        const funcMatch = callerLine.match(/(\w+)\s*\(/);
+        if (funcMatch && funcMatch[1] !== 'at' && funcMatch[1] !== 'Object') {
+          methodName = funcMatch[1];
+        } else {
+          // For anonymous functions, try to get context from surrounding lines
+          if (callerIndex > 2) {
+            const contextLine = stackLines[callerIndex - 1];
+            if (contextLine) {
+              const contextMatch = contextLine.match(/(?:at\s+)?(?:async\s+)?(?:Object\.)?(\w+)/);
+              if (contextMatch && contextMatch[1] !== 'anonymous' && contextMatch[1] !== 'anon') {
+                methodName = contextMatch[1];
+              }
+            }
+          }
+          
+          // If still unknown and we have a file name, try to infer from file name
+          if (methodName === 'unknown' && fileName !== 'unknown') {
+            // Remove extension and use file name as method name hint
+            const baseName = fileName.replace(/\.(ts|tsx|js|jsx)$/, '');
+            // Convert kebab-case to camelCase for method names
+            methodName = baseName.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+          }
+        }
+      }
+    }
     
     return { service, fileName, methodName };
   } catch (error) {
@@ -221,9 +321,14 @@ const logToConsole = (entry: LogEntry): void => {
 
 /**
  * Send log entry to logging API
+ * Uses raw axios to avoid circular dependency with api-client (which uses logger)
  */
 const sendLogToAPI = async (entry: LogEntry): Promise<void> => {
   try {
+    // Use raw axios here to avoid circular dependency
+    // api-client uses logger, and logger uses api-client would create a circular dependency
+    // This is a low-risk endpoint that doesn't need interceptors
+    const axios = require('axios').default;
     await axios.post(
       `${API_BASE_URL}/api/logs`,
       entry,
@@ -239,6 +344,14 @@ const sendLogToAPI = async (entry: LogEntry): Promise<void> => {
     // But log to console as fallback
     console.error('Failed to send log to API:', error);
   }
+};
+
+/**
+ * Send log entry to logging API (public function for external use)
+ * This can be called from services that need to log to the API
+ */
+export const sendLogToLoggerAPI = async (entry: LogEntry): Promise<void> => {
+  return sendLogToAPI(entry);
 };
 
 /**
@@ -295,8 +408,8 @@ export const logEntry = async (params: {
   // Always log to console (only in dev mode)
   logToConsole(entry);
   
-  // Send to API only for FATAL level
-  if (params.level === LogLevel.FATAL) {
+  // Send to API for ERROR and FATAL levels
+  if (params.level === LogLevel.ERROR || params.level === LogLevel.FATAL) {
     // Don't await - send async to not block execution
     sendLogToAPI(entry).catch(() => {
       // Silently handle API logging failures
@@ -307,47 +420,80 @@ export const logEntry = async (params: {
 /**
  * Convenience methods for different log levels
  * These methods automatically extract calling context from stack trace
+ * 
+ * For better context in logs, you can also pass a context object as the second parameter:
+ * logger.debug('Message', { _context: { service: 'location', fileName: 'location-service.ts', methodName: 'getLocationFromLatLon' }, ...otherMetadata })
  */
 export const logger = {
   /**
    * Log debug message
    * Usage: logger.debug('Debug message', { key: 'value' })
+   * Or with explicit context: logger.debug('Debug message', { _context: { service: 'location', fileName: 'location-service.ts', methodName: 'getLocationFromLatLon' }, ...otherMetadata })
    */
   debug: (message: string, metadata?: Record<string, any>) => {
-    const context = getCallingContext();
+    // Check if explicit context is provided
+    let context = getCallingContext();
+    let finalMetadata = metadata;
+    if (metadata?._context) {
+      context = { ...context, ...metadata._context };
+      // Remove _context from metadata before logging
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { _context, ...restMetadata } = metadata;
+      finalMetadata = restMetadata;
+    }
     return logEntry({
       level: LogLevel.DEBUG,
       service: context.service,
       fileName: context.fileName,
       methodName: context.methodName,
       message,
-      metadata,
+      metadata: finalMetadata,
     });
   },
   
   /**
    * Log info message
    * Usage: logger.info('Info message', { key: 'value' })
+   * Or with explicit context: logger.info('Info message', { _context: { service: 'location', fileName: 'location-service.ts', methodName: 'getLocationFromLatLon' }, ...otherMetadata })
    */
   info: (message: string, metadata?: Record<string, any>) => {
-    const context = getCallingContext();
+    // Check if explicit context is provided
+    let context = getCallingContext();
+    let finalMetadata = metadata;
+    if (metadata?._context) {
+      context = { ...context, ...metadata._context };
+      // Remove _context from metadata before logging
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { _context, ...restMetadata } = metadata;
+      finalMetadata = restMetadata;
+    }
     return logEntry({
       level: LogLevel.INFO,
       service: context.service,
       fileName: context.fileName,
       methodName: context.methodName,
       message,
-      metadata,
+      metadata: finalMetadata,
     });
   },
   
   /**
    * Log warning message
    * Usage: logger.warn('Warning message', error, { key: 'value' })
+   * Or with explicit context: logger.warn('Warning message', error, { _context: { service: 'location', fileName: 'location-service.ts', methodName: 'getLocationFromLatLon' }, ...otherMetadata })
    * If error is provided, automatically determines it's a warning and logs internally
    */
   warn: (message: string, error?: Error | any, metadata?: Record<string, any>) => {
-    const context = getCallingContext();
+    // Check if explicit context is provided
+    let context = getCallingContext();
+    let finalMetadata = metadata;
+    if (metadata?._context) {
+      context = { ...context, ...metadata._context };
+      // Remove _context from metadata before logging
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { _context, ...restMetadata } = metadata;
+      finalMetadata = restMetadata;
+    }
     return logEntry({
       level: LogLevel.WARN,
       service: context.service,
@@ -355,13 +501,14 @@ export const logger = {
       methodName: context.methodName,
       message,
       error,
-      metadata,
+      metadata: finalMetadata,
     });
   },
   
   /**
    * Log error message
    * Usage: logger.error('Error message', error, request, { key: 'value' })
+   * Or with explicit context: logger.error('Error message', error, request, { _context: { service: 'api', fileName: 'api-client.ts', methodName: 'requestInterceptor' }, ...otherMetadata })
    * If error is provided, automatically determines it's an error and logs internally
    */
   error: (
@@ -376,7 +523,16 @@ export const logger = {
     },
     metadata?: Record<string, any>
   ) => {
-    const context = getCallingContext();
+    // Check if explicit context is provided
+    let context = getCallingContext();
+    let finalMetadata = metadata;
+    if (metadata?._context) {
+      context = { ...context, ...metadata._context };
+      // Remove _context from metadata before logging
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { _context, ...restMetadata } = metadata;
+      finalMetadata = restMetadata;
+    }
     return logEntry({
       level: LogLevel.ERROR,
       service: context.service,
@@ -385,13 +541,14 @@ export const logger = {
       message,
       error,
       request,
-      metadata,
+      metadata: finalMetadata,
     });
   },
   
   /**
    * Log fatal error message
    * Usage: logger.fatal('Fatal error message', error, request, { key: 'value' })
+   * Or with explicit context: logger.fatal('Fatal error message', error, request, { _context: { service: 'api', fileName: 'api-client.ts', methodName: 'requestInterceptor' }, ...otherMetadata })
    * If error is provided, automatically determines it's fatal and logs internally
    * Fatal errors are always sent to the logging API service
    */
@@ -407,7 +564,16 @@ export const logger = {
     },
     metadata?: Record<string, any>
   ) => {
-    const context = getCallingContext();
+    // Check if explicit context is provided
+    let context = getCallingContext();
+    let finalMetadata = metadata;
+    if (metadata?._context) {
+      context = { ...context, ...metadata._context };
+      // Remove _context from metadata before logging
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { _context, ...restMetadata } = metadata;
+      finalMetadata = restMetadata;
+    }
     return logEntry({
       level: LogLevel.FATAL,
       service: context.service,
@@ -416,7 +582,7 @@ export const logger = {
       message,
       error,
       request,
-      metadata,
+      metadata: finalMetadata,
     });
   },
 };

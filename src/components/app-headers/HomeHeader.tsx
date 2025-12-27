@@ -3,6 +3,7 @@ import { Animated, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useTheme } from '@react-navigation/native';
 import moment from 'moment';
+import { formatUTCForDisplay, getCurrentUTCDate } from '../../utils/time-utils';
 
 import { hp, Icons, wp } from '../../constants';
 import { UserImage } from '../../components';
@@ -11,7 +12,6 @@ import { PUNCH_DIRECTIONS } from '../../constants';
 import { useAppSelector } from '../../redux';
 import { profileSyncService } from '../../services/sync/profile-sync-service';
 import { getProfile } from '../../services';
-import { getJWTToken } from '../../services/auth/login-service';
 import { logger } from '../../services/logger';
 
 interface HomeHeaderProps {
@@ -61,7 +61,7 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
     };
     
     loadProfilePhoto();
-  }, [userData?.email, userData?.profilePhotoUrl]);
+  }, [userData?.email, userData?.profilePhotoUrl, userData?.profilePhoto]);
 
   // Always show today's date (not from punch timestamp)
   const formattedDate = useMemo(
@@ -73,24 +73,28 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
   const formattedTime = useMemo(
     () => {
       // Date comparisons use UTC for logic, display uses local time
-      const todayUTC = moment.utc().format('YYYY-MM-DD');
+      const todayUTC = getCurrentUTCDate();
       
       let checkInTimeStr = '';
       let checkoutTimeStr = '';
       
-      // Get first check-in time if available and from today
+      // Get first check-in time if available and from today (timestamp is UTC)
       if (punchTimestamp) {
-        const checkInDateUTC = moment.utc(punchTimestamp).format('YYYY-MM-DD');
+        const timestamp = typeof punchTimestamp === 'string' ? parseInt(punchTimestamp, 10) : punchTimestamp;
+        const checkInDateUTC = moment.utc(timestamp).format('YYYY-MM-DD');
         if (checkInDateUTC === todayUTC) {
-          checkInTimeStr = moment(punchTimestamp).format('hh:mm A');
+          // Convert UTC timestamp to local time for display
+          checkInTimeStr = formatUTCForDisplay(timestamp, 'hh:mm A');
         }
       }
       
-      // Get last checkout time if available and from today
+      // Get last checkout time if available and from today (timestamp is UTC)
       if (checkoutTimestamp) {
-        const checkoutDateUTC = moment.utc(checkoutTimestamp).format('YYYY-MM-DD');
+        const timestamp = typeof checkoutTimestamp === 'string' ? parseInt(checkoutTimestamp, 10) : checkoutTimestamp;
+        const checkoutDateUTC = moment.utc(timestamp).format('YYYY-MM-DD');
         if (checkoutDateUTC === todayUTC) {
-          checkoutTimeStr = moment(checkoutTimestamp).format('hh:mm A');
+          // Convert UTC timestamp to local time for display
+          checkoutTimeStr = formatUTCForDisplay(timestamp, 'hh:mm A');
         }
       }
       
@@ -124,38 +128,18 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
   );
 
   const onProfilePress = useCallback(async (): Promise<void> => {
-    // Sync profile from server when profile icon is clicked (only if authenticated)
+    // Sync profile from server when profile icon is clicked
     if (userData?.email) {
       try {
-        // Check if authentication token exists before attempting to sync
-        const token = await getJWTToken(userData.email);
-        if (token) {
-          await getProfile(); // This will sync profile data to DB
-          
-          // Reload profile photo from DB after sync
-          const dbProfile = await profileSyncService.loadProfileFromDB(userData.email);
-          if (dbProfile) {
-            setProfilePhoto(dbProfile.profilePhotoUrl || null);
-          }
-        } else {
-          // No token - just load from DB without syncing
-          const dbProfile = await profileSyncService.loadProfileFromDB(userData.email);
-          if (dbProfile) {
-            setProfilePhoto(dbProfile.profilePhotoUrl || null);
-          }
+        await getProfile(); // This will sync profile data to DB
+        
+        // Reload profile photo from DB after sync
+        const dbProfile = await profileSyncService.loadProfileFromDB(userData.email);
+        if (dbProfile) {
+          setProfilePhoto(dbProfile.profilePhotoUrl || null);
         }
       } catch (error) {
-        // Log error but don't prevent navigation
         logger.warn('Error syncing profile on icon click', error);
-        // Still try to load from DB as fallback
-        try {
-          const dbProfile = await profileSyncService.loadProfileFromDB(userData.email);
-          if (dbProfile) {
-            setProfilePhoto(dbProfile.profilePhotoUrl || null);
-          }
-        } catch (dbError) {
-          // Ignore DB errors - just use existing state
-        }
       }
     }
     

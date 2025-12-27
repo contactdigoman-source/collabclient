@@ -3,7 +3,7 @@ import { getDB } from '../attendance/attendance-db-service';
 import { PROFILE_PROPERTIES, ProfileProperty } from '../database/database-service';
 import { syncQueueService } from './sync-queue-service';
 import { networkService } from '../network/network-service';
-import { updateProfile, uploadProfilePhoto, getProfile, ProfileResponse } from '../auth/profile-service';
+import { updateProfile, getProfile, ProfileResponse } from '../auth/profile-service';
 import { logger } from '../logger';
 
 const DEBUG = true;
@@ -264,14 +264,26 @@ class ProfileSyncService {
         return false;
       }
 
-      // Special handling for profilePhoto
+      // Special handling for profilePhoto - use updateProfile to upload photo
       if (property === 'profilePhoto') {
-        const response = await uploadProfilePhoto(value);
-        if (response.success) {
-          await this.markPropertyAsSynced(email, property);
-          return true;
+        // Check if it's a local file path
+        const isLocalFile = typeof value === 'string' && (value.startsWith('/') || value.startsWith('file://'));
+        if (isLocalFile) {
+          const response = await updateProfile({ profilePhoto: value });
+          if (response) {
+            await this.markPropertyAsSynced(email, property);
+            return true;
+          }
+          return false;
+        } else {
+          // It's already a server URL, use regular updateProfile
+          const response = await updateProfile({ profilePhotoUrl: value });
+          if (response) {
+            await this.markPropertyAsSynced(email, property);
+            return true;
+          }
+          return false;
         }
-        return false;
       }
 
       // For other properties, use updateProfile

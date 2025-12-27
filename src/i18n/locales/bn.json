@@ -150,7 +150,10 @@
     "captureFace": "মুখ ক্যাপচার করুন",
     "authenticating": "প্রমাণীকরণ হচ্ছে...",
     "verified": "আধার সফলভাবে যাচাই করা হয়েছে",
-    "continue": "চালিয়ে যান"
+    "continue": "চালিয়ে যান",
+    "aadhaarNotAvailable": "আধার উপলব্ধ নয়",
+    "next": "পরবর্তী",
+    "continueWithPanCard": "PAN কার্ড দিয়ে চালিয়ে যান"
   },
   "home": {
     "colleagues": "সহকর্মী",
@@ -194,6 +197,8 @@
     "preferredLanguage": "পছন্দের ভাষা",
     "attendanceLogs": "উপস্থিতি লগ",
     "viewProfile": "প্রোফাইল দেখুন",
+    "geoLocations": "ভৌগোলিক অবস্থান",
+    "security": "নিরাপত্তা",
     "supportAndLearn": "সহায়তা এবং শিখুন",
     "logout": "লগআউট",
     "firstName": "প্রথম নাম",
@@ -205,6 +210,20 @@
     "employmentType": "চাকরির ধরন",
     "designation": "পদবী",
     "profileDetails": "প্রোফাইল বিবরণ",
+    "organization": "সংস্থা",
+    "roles": "ভূমিকা",
+    "timezone": "সময় অঞ্চল",
+    "aadhaarVerified": "আধার যাচাইকৃত",
+    "panCardVerified": "PAN কার্ড যাচাইকৃত",
+    "geofenceAreas": "অনুমোদিত চেক-ইন এলাকা",
+    "profileUpdatedSuccessfully": "প্রোফাইল সফলভাবে আপডেট হয়েছে",
+    "failedToUpdateProfile": "প্রোফাইল আপডেট করতে ব্যর্থ",
+    "invalidDateFormat": "অবৈধ তারিখ ফরম্যাট। অনুগ্রহ করে YYYY-MM-DD ফরম্যাট ব্যবহার করুন",
+    "year": "বছর",
+    "month": "মাস",
+    "day": "দিন",
+    "databaseViewer": "ডেটাবেস ভিউয়ার",
+    "userProfilePicture": "ব্যবহারকারী প্রোফাইল ছবি",
     "language": {
       "selectLanguage": "ভাষা নির্বাচন করুন",
       "english": "ইংরেজি",
@@ -236,7 +255,13 @@
     "loading": "লোড হচ্ছে...",
     "error": "ত্রুটি",
     "success": "সফল",
-    "featureLocked": "এই বৈশিষ্ট্যটি লক করা আছে!"
+    "featureLocked": "এই বৈশিষ্ট্যটি লক করা আছে!",
+    "okay": "ঠিক আছে",
+    "contact": "আমাদের সাথে যোগাযোগ করুন",
+    "none": "কোনটিই নয়",
+    "next": "পরবর্তী",
+    "continue": "চালিয়ে যান",
+    "uploading": "আপলোড হচ্ছে..."
   }
 }
 

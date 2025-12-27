@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "WireMock stubs for Nexval Attendance API",
   "scripts": {
-    "start": "wiremock --port 8080 --root-dir ./mappings --global-response-templating --verbose --bind-address 0.0.0.0",
+    "start": "node start-with-ip.js",
+    "stop": "pkill -f 'wiremock.*8080' || echo 'WireMock not running'",
     "start:docker": "docker-compose up -d",
     "stop:docker": "docker-compose down",
     "logs:docker": "docker-compose logs -f"

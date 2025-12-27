@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, StyleSheet, ScrollView, Alert, TouchableOpacity, Image, Modal } from 'react-native';
-import { useTheme, useNavigation } from '@react-navigation/native';
+import { useTheme } from '@react-navigation/native';
 import ImagePicker, { ImageOrVideo } from 'react-native-image-crop-picker';
 
 import {
@@ -10,24 +10,23 @@ import {
   BackHeader,
   UserImage,
 } from '../../components';
-import { useAppSelector } from '../../redux';
+import { useAppSelector, useAppDispatch, setUserData } from '../../redux';
 import { hp, wp, Icons, FontTypes } from '../../constants';
-import { DarkThemeColors, APP_THEMES } from '../../themes';
+import { DarkThemeColors, LightThemeColors, APP_THEMES } from '../../themes';
 import { useTranslation } from '../../hooks/useTranslation';
-import { getProfile, updateProfile, uploadProfilePhoto } from '../../services';
+import { getProfile, updateProfile } from '../../services';
 import { profileSyncService } from '../../services/sync/profile-sync-service';
 import { logger } from '../../services/logger';
-import { NavigationProp } from '../../types/navigation';
 
-const DEFAULT_VALUE = 'None';
+// DEFAULT_VALUE will use translation
 
 export default function ViewProfileScreen(): React.JSX.Element {
   const theme = useTheme();
-  const navigation = useNavigation<NavigationProp>();
   const colors = useMemo(() => (theme?.colors || {}) as any, [theme?.colors]);
   const { appTheme } = useAppSelector(state => state.appState);
   const { t } = useTranslation();
   const { userData } = useAppSelector(state => state.userState);
+  const dispatch = useAppDispatch();
 
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -195,55 +194,144 @@ export default function ViewProfileScreen(): React.JSX.Element {
   }, [userData, isEditMode]);
 
   const handleEditPhoto = useCallback(() => {
-    if (!isEditMode) return;
+    logger.debug('[ViewProfile] handleEditPhoto called', { isEditMode });
+    if (!isEditMode) {
+      logger.warn('[ViewProfile] handleEditPhoto called but not in edit mode');
+      return;
+    }
 
+    logger.debug('[ViewProfile] Showing photo picker alert');
     Alert.alert(
-      t('auth.profilePhoto.title'),
-      t('auth.profilePhoto.subtitle'),
+      t('auth.profilePhoto.title', 'Select Photo'),
+      t('auth.profilePhoto.subtitle', 'Choose an option'),
       [
         {
-          text: t('auth.profilePhoto.takePhoto'),
+          text: t('auth.profilePhoto.takePhoto', 'Take Photo'),
           onPress: () => {
+            logger.debug('[ViewProfile] User selected take photo');
             ImagePicker.openCamera({
-              width: 300,
-              height: 300,
-              cropping: true,
               mediaType: 'photo',
+              cropping: true,
+              cropperCircleOverlay: true,
+              cropperChooseText: t('common.save', 'Save'),
+              cropperCancelText: t('common.cancel', 'Cancel'),
+              cropperToolbarTitle: t('auth.profilePhoto.cropPhoto', 'Crop Photo'),
+              cropperActiveWidgetColor: colors.primary || DarkThemeColors.primary,
+              width: 1000,
+              height: 1000,
+              avoidEmptySpaceAroundImage: true, // Enable to fill the circle properly
+              compressImageQuality: 0.9, // Higher quality
+              cropperRotateButtonsHidden: true,
+              freeStyleCropEnabled: false, // Disable free-style to lock to circle
+              forceJpg: true, // Ensure consistent format
             })
-              .then((image: ImageOrVideo) => {
+              .then(async (image: ImageOrVideo) => {
+                logger.debug('[ViewProfile] Photo captured successfully', { path: image.path });
                 setProfilePhoto(image.path);
+                
+                // Immediately update Redux with local file path for instant display
+                if (userData?.email) {
+                  try {
+                    const now = Date.now();
+                    // Update lastUpdatedAt first, then save profile photo
+                    await profileSyncService.updateLastUpdatedAt(userData.email, now);
+                    // Save local path to DB with current timestamp
+                    await profileSyncService.saveProfileProperty(userData.email, 'profilePhoto', image.path);
+                    
+                    // Update Redux immediately with local path
+                    dispatch(setUserData({
+                      ...userData,
+                      profilePhoto: image.path,
+                      profilePhotoUrl: image.path, // Use local path until server URL is synced
+                    }));
+                    logger.debug('[ViewProfile] Updated Redux with local photo path', { path: image.path });
+                  } catch (error: any) {
+                    logger.error('[ViewProfile] Error saving local photo path to DB', error);
+                    // Still update Redux even if DB save fails
+                    dispatch(setUserData({
+                      ...userData,
+                      profilePhoto: image.path,
+                      profilePhotoUrl: image.path,
+                    }));
+                  }
+                }
               })
               .catch((e: any) => {
+                logger.error('[ViewProfile] Error capturing photo', e);
                 if (e.code !== 'E_PICKER_CANCELLED') {
-                  Alert.alert(t('common.error'), e.message);
+                  Alert.alert(t('common.error', 'Error'), e.message || 'Failed to capture photo');
                 }
               });
           },
         },
         {
-          text: t('auth.profilePhoto.chooseFromGallery'),
+          text: t('auth.profilePhoto.chooseFromGallery', 'Choose from Gallery'),
           onPress: () => {
+            logger.debug('[ViewProfile] User selected choose from gallery');
             ImagePicker.openPicker({
-              width: 300,
-              height: 300,
-              cropping: true,
               mediaType: 'photo',
+              cropping: true,
+              cropperCircleOverlay: true,
+              cropperChooseText: t('common.save', 'Save'),
+              cropperCancelText: t('common.cancel', 'Cancel'),
+              cropperToolbarTitle: t('auth.profilePhoto.cropPhoto', 'Crop Photo'),
+              cropperActiveWidgetColor: colors.primary || DarkThemeColors.primary,
+              width: 1000,
+              height: 1000,
+              avoidEmptySpaceAroundImage: true, // Enable to fill the circle properly
+              compressImageQuality: 0.9, // Higher quality
+              cropperRotateButtonsHidden: true,
+              freeStyleCropEnabled: false, // Disable free-style to lock to circle
+              forceJpg: true, // Ensure consistent format
             })
-              .then((image: ImageOrVideo) => {
+              .then(async (image: ImageOrVideo) => {
+                logger.debug('[ViewProfile] Photo selected successfully', { path: image.path });
                 setProfilePhoto(image.path);
+                
+                // Immediately update Redux with local file path for instant display
+                if (userData?.email) {
+                  try {
+                    const now = Date.now();
+                    // Update lastUpdatedAt first, then save profile photo
+                    await profileSyncService.updateLastUpdatedAt(userData.email, now);
+                    // Save local path to DB with current timestamp
+                    await profileSyncService.saveProfileProperty(userData.email, 'profilePhoto', image.path);
+                    
+                    // Update Redux immediately with local path
+                    dispatch(setUserData({
+                      ...userData,
+                      profilePhoto: image.path,
+                      profilePhotoUrl: image.path, // Use local path until server URL is synced
+                    }));
+                    logger.debug('[ViewProfile] Updated Redux with local photo path', { path: image.path });
+                  } catch (error: any) {
+                    logger.error('[ViewProfile] Error saving local photo path to DB', error);
+                    // Still update Redux even if DB save fails
+                    dispatch(setUserData({
+                      ...userData,
+                      profilePhoto: image.path,
+                      profilePhotoUrl: image.path,
+                    }));
+                  }
+                }
               })
               .catch((e: any) => {
+                logger.error('[ViewProfile] Error selecting photo', e);
                 if (e.code !== 'E_PICKER_CANCELLED') {
-                  Alert.alert(t('common.error'), e.message);
+                  Alert.alert(t('common.error', 'Error'), e.message || 'Failed to select photo');
                 }
               });
           },
         },
         {
-          text: t('common.cancel'),
+          text: t('common.cancel', 'Cancel'),
           style: 'cancel',
+          onPress: () => {
+            logger.debug('[ViewProfile] User cancelled photo selection');
+          },
         },
       ],
+      { cancelable: true },
     );
   }, [isEditMode, t]);
 
@@ -301,30 +389,6 @@ export default function ViewProfileScreen(): React.JSX.Element {
     try {
       setIsLoading(true);
 
-      let photoUrl: string | undefined;
-
-      // Upload photo first if changed (local file path)
-      if (profilePhoto && (profilePhoto.startsWith('/') || profilePhoto.startsWith('file://'))) {
-        try {
-          const uploadResponse = await uploadProfilePhoto(profilePhoto);
-          if (uploadResponse.success && uploadResponse.profilePhotoUrl) {
-            photoUrl = uploadResponse.profilePhotoUrl;
-            // // Update local state immediately with the server URL so it shows right away
-            // setProfilePhoto(photoUrl);
-            // // Also update Redux is already done in uploadProfilePhoto, but ensure it's reflected
-          } else {
-            throw new Error('Photo upload succeeded but no URL returned');
-          }
-        } catch (error: any) {
-          logger.error('Failed to upload photo', error);
-          Alert.alert(t('common.error'), `Failed to upload photo: ${error.message}`);
-          return; // Don't continue if photo upload fails
-        }
-      } else if (profilePhoto && (profilePhoto.startsWith('http://') || profilePhoto.startsWith('https://'))) {
-        // Already a URL, use it directly
-        photoUrl = profilePhoto;
-      }
-
       // Validate date of birth format (YYYY-MM-DD)
       let dobISO: string | undefined;
       if (dateOfBirth.trim()) {
@@ -335,23 +399,39 @@ export default function ViewProfileScreen(): React.JSX.Element {
           if (!isNaN(date.getTime())) {
             dobISO = dateOfBirth.trim();
           } else {
-            Alert.alert(t('common.error'), 'Invalid date format. Please use YYYY-MM-DD');
+            Alert.alert(t('common.error'), t('profile.invalidDateFormat'));
             return;
           }
         } else {
-          Alert.alert(t('common.error'), 'Invalid date format. Please use YYYY-MM-DD');
+          Alert.alert(t('common.error'), t('profile.invalidDateFormat'));
           return;
         }
       }
 
-      // Update profile with photo URL (if uploaded)
+      // Update profile with all data including photo (if provided)
+      // If profilePhoto is a local file path, it will be uploaded as FormData
+      // If profilePhoto is a server URL, it will be sent as profilePhotoUrl
+      let photoToSend: string | undefined;
+      let photoUrlToSend: string | undefined;
+      
+      if (profilePhoto) {
+        if (profilePhoto.startsWith('/') || profilePhoto.startsWith('file://')) {
+          // Local file path - will be uploaded as FormData
+          photoToSend = profilePhoto;
+        } else if (profilePhoto.startsWith('http://') || profilePhoto.startsWith('https://')) {
+          // Already a server URL
+          photoUrlToSend = profilePhoto;
+        }
+      }
+
       await updateProfile({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         dateOfBirth: dobISO,
         employmentType: employmentType.trim() || undefined,
         designation: designation.trim() || undefined,
-        profilePhotoUrl: photoUrl, // Include photo URL from upload
+        ...(photoToSend && { profilePhoto: photoToSend }),
+        ...(photoUrlToSend && { profilePhotoUrl: photoUrlToSend }),
       });
 
       // Call getProfile() to refresh DB from server (only overwrites if server.lastSyncedAt >= local.lastUpdatedAt)
@@ -395,10 +475,10 @@ export default function ViewProfileScreen(): React.JSX.Element {
         }
       }
 
-      Alert.alert(t('common.success'), t('common.save', 'Profile updated successfully'));
+      Alert.alert(t('common.success'), t('profile.profileUpdatedSuccessfully'));
       setIsEditMode(false);
     } catch (error: any) {
-      Alert.alert(t('common.error'), error.message || 'Failed to update profile');
+      Alert.alert(t('common.error'), error.message || t('profile.failedToUpdateProfile'));
     } finally {
       setIsLoading(false);
     }
@@ -442,17 +522,23 @@ export default function ViewProfileScreen(): React.JSX.Element {
     empId: t('profile.empId'),
     empType: t('profile.employmentType'),
     designation: t('profile.designation'),
+    organization: t('profile.organization'),
+    roles: t('profile.roles'),
+    timezone: t('profile.timezone'),
+    aadhaarVerified: t('profile.aadhaarVerified'),
+    panCardVerified: t('profile.panCardVerified'),
+    geofenceAreas: t('profile.geofenceAreas'),
   };
 
   // Format date from ISO string
   const formatDate = (dateString?: string): string => {
-    if (!dateString) return DEFAULT_VALUE;
+    if (!dateString) return t('common.none', 'None');
     try {
       const date = new Date(dateString);
-      if (isNaN(date.getTime())) return DEFAULT_VALUE;
+      if (isNaN(date.getTime())) return t('common.none', 'None');
       return date.toLocaleDateString();
     } catch {
-      return DEFAULT_VALUE;
+      return t('common.none', 'None');
     }
   };
 
@@ -463,7 +549,17 @@ export default function ViewProfileScreen(): React.JSX.Element {
         isTitleVisible={true}
         rightContent={
           !isEditMode ? (
-            <TouchableOpacity onPress={() => setIsEditMode(true)}>
+            <TouchableOpacity 
+              onPress={() => {
+                logger.debug('[ViewProfile] Edit button pressed, setting edit mode to true');
+                setIsEditMode(true);
+              }}
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={styles.editButton}
+              accessibilityRole="button"
+              accessibilityLabel={t('common.edit', 'Edit')}
+            >
               <Image
                 source={Icons.edit}
                 style={[styles.editIcon, { tintColor: colors.text || DarkThemeColors.white_common }]}
@@ -471,12 +567,23 @@ export default function ViewProfileScreen(): React.JSX.Element {
             </TouchableOpacity>
           ) : (
             <View style={styles.editActions}>
-              <TouchableOpacity onPress={handleCancel} style={styles.cancelButton}>
+              <TouchableOpacity 
+                onPress={handleCancel} 
+                style={styles.cancelButton}
+                activeOpacity={0.7}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
                 <AppText size={hp(1.8)} color={colors.text || DarkThemeColors.white_common}>
                   {t('common.cancel')}
                 </AppText>
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleSave} style={styles.saveButton} disabled={isLoading}>
+              <TouchableOpacity 
+                onPress={handleSave} 
+                style={styles.saveButton} 
+                disabled={isLoading}
+                activeOpacity={0.7}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
                 <AppText size={hp(1.8)} color={DarkThemeColors.white_common}>
                   {t('common.save')}
                 </AppText>
@@ -491,17 +598,37 @@ export default function ViewProfileScreen(): React.JSX.Element {
       >
         {/* Profile Photo */}
         <View style={styles.photoContainer}>
-          <UserImage
-            size={hp(15)}
-         
-            userName={`${firstName || userData?.firstName || ''} ${lastName || userData?.lastName || ''}`.trim()}
-            isAttendanceStatusVisible={false}
-            charsCount={2}
-          />
+          {isEditMode ? (
+            <TouchableOpacity
+              onPress={handleEditPhoto}
+              activeOpacity={0.8}
+              style={styles.photoTouchable}
+            >
+              <UserImage
+                size={hp(15)}
+                source={profilePhoto ? { uri: profilePhoto } : null}
+                userName={`${firstName || userData?.firstName || ''} ${lastName || userData?.lastName || ''}`.trim()}
+                isAttendanceStatusVisible={false}
+                charsCount={2}
+              />
+            </TouchableOpacity>
+          ) : (
+            <UserImage
+              size={hp(15)}
+              source={profilePhoto ? { uri: profilePhoto } : null}
+              userName={`${firstName || userData?.firstName || ''} ${lastName || userData?.lastName || ''}`.trim()}
+              isAttendanceStatusVisible={false}
+              charsCount={2}
+            />
+          )}
           {isEditMode && (
             <TouchableOpacity
               style={[styles.editPhotoButton, { backgroundColor: colors.primary || DarkThemeColors.primary }]}
               onPress={handleEditPhoto}
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel={t('auth.profilePhoto.edit', 'Edit Photo')}
             >
               <Image
                 source={Icons.edit}
@@ -590,37 +717,63 @@ export default function ViewProfileScreen(): React.JSX.Element {
           onChangeText={setDesignation}
         />
 
-        {/* Attendance Logs Button */}
-        <TouchableOpacity
-          style={[
-            styles.attendanceLogsButton,
-            {
-              backgroundColor: appTheme === APP_THEMES.light
-                ? (colors as any).cardBg || '#F6F6F6'
-                : DarkThemeColors.white_common + '20',
-              borderColor: appTheme === APP_THEMES.light
-                ? (colors as any).cardBorder || '#E0E0E0'
-                : DarkThemeColors.white_common + '40',
-            },
-          ]}
-          onPress={() => navigation.navigate('AttendanceLogsScreen', { filterToday: true })}
-          disabled={isEditMode}
-        >
-          <Image
-            source={Icons.attendance_logs}
-            style={[
-              styles.attendanceLogsIcon,
-              { tintColor: colors.text || DarkThemeColors.white_common },
-            ]}
+        {/* Organization - Read-only */}
+        <AppInput
+          value={userData?.organization || userData?.organizationName || DEFAULT_VALUE}
+          editable={false}
+          placeholder={PROFILE_ITEMS.organization}
+          label={PROFILE_ITEMS.organization}
+        />
+
+        {/* Roles - Read-only */}
+        <AppInput
+          value={userData?.roles?.join(', ') || DEFAULT_VALUE}
+          editable={false}
+          placeholder={PROFILE_ITEMS.roles}
+          label={PROFILE_ITEMS.roles}
+        />
+
+        {/* Timezone - Read-only */}
+        <AppInput
+          value={userData?.timezone || DEFAULT_VALUE}
+          editable={false}
+          placeholder={PROFILE_ITEMS.timezone}
+          label={PROFILE_ITEMS.timezone}
+        />
+
+        {/* Aadhaar Verification Status - Read-only */}
+        <AppInput
+          value={
+            userData?.aadhaarVerification?.isVerified
+              ? t('common.yes', 'Yes')
+              : t('common.no', 'No')
+          }
+          editable={false}
+          placeholder={PROFILE_ITEMS.aadhaarVerified}
+          label={PROFILE_ITEMS.aadhaarVerified}
+        />
+
+        {/* PAN Card Verification Status - Read-only */}
+        <AppInput
+          value={
+            userData?.aadhaarVerification?.isPanCardVerified
+              ? t('common.yes', 'Yes')
+              : t('common.no', 'No')
+          }
+          editable={false}
+          placeholder={PROFILE_ITEMS.panCardVerified}
+          label={PROFILE_ITEMS.panCardVerified}
+        />
+
+        {/* Allowed Geofence Areas - Read-only */}
+        {userData?.allowedGeofenceAreas && userData.allowedGeofenceAreas.length > 0 && (
+          <AppInput
+            value={userData.allowedGeofenceAreas.map((area: any) => area.name).join(', ')}
+            editable={false}
+            placeholder={PROFILE_ITEMS.geofenceAreas}
+            label={PROFILE_ITEMS.geofenceAreas}
           />
-          <AppText
-            size={hp(2)}
-            color={colors.text || DarkThemeColors.white_common}
-            style={styles.attendanceLogsText}
-          >
-            {t('profile.attendanceLogs')}
-          </AppText>
-        </TouchableOpacity>
+        )}
       </ScrollView>
 
       {/* Date Picker Modal */}
@@ -631,72 +784,159 @@ export default function ViewProfileScreen(): React.JSX.Element {
         onRequestClose={handleDatePickerCancel}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.datePickerModal}>
-            <AppText size={hp(2.5)} fontType={FontTypes.medium} color={colors.text || DarkThemeColors.white_common} style={styles.modalTitle}>
+          <View style={[styles.datePickerModal, {
+            backgroundColor: appTheme === APP_THEMES.light
+              ? (colors as any).cardBg || LightThemeColors.white_common
+              : DarkThemeColors.black,
+          }]}>
+            <AppText 
+              size={hp(2.5)} 
+              fontType={FontTypes.medium} 
+              color={colors.text || DarkThemeColors.white_common} 
+              style={styles.modalTitle}
+            >
               {t('profile.dateOfBirth')}
             </AppText>
             
             <View style={styles.datePickerContainer}>
               <View style={styles.datePickerRow}>
                 <TouchableOpacity
-                  style={styles.datePickerButton}
+                  style={[styles.datePickerButton, {
+                    backgroundColor: appTheme === APP_THEMES.light
+                      ? LightThemeColors.white_common
+                      : DarkThemeColors.white_common + '20',
+                  }]}
                   onPress={() => changeDate('year', -1)}
                 >
-                  <AppText size={hp(2)}>−</AppText>
+                  <AppText 
+                    size={hp(2)} 
+                    color={appTheme === APP_THEMES.light 
+                      ? LightThemeColors.black_common
+                      : DarkThemeColors.white_common}
+                  >−</AppText>
                 </TouchableOpacity>
                 <View style={styles.datePickerValue}>
-                  <AppText size={hp(2.5)} fontType={FontTypes.medium}>
+                  <AppText 
+                    size={hp(2.5)} 
+                    fontType={FontTypes.medium}
+                    color={colors.text || DarkThemeColors.white_common}
+                  >
                     {tempDate.getFullYear()}
                   </AppText>
-                  <AppText size={hp(1.5)}>Year</AppText>
+                  <AppText 
+                    size={hp(1.5)}
+                    color={colors.text || DarkThemeColors.white_common}
+                    style={{ opacity: 0.7 }}
+                  >{t('profile.year')}</AppText>
                 </View>
                 <TouchableOpacity
-                  style={styles.datePickerButton}
+                  style={[styles.datePickerButton, {
+                    backgroundColor: appTheme === APP_THEMES.light
+                      ? LightThemeColors.white_common
+                      : DarkThemeColors.white_common + '20',
+                  }]}
                   onPress={() => changeDate('year', 1)}
                 >
-                  <AppText size={hp(2)}>+</AppText>
+                  <AppText 
+                    size={hp(2)} 
+                    color={appTheme === APP_THEMES.light 
+                      ? LightThemeColors.black_common
+                      : DarkThemeColors.white_common}
+                  >+</AppText>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.datePickerRow}>
                 <TouchableOpacity
-                  style={styles.datePickerButton}
+                  style={[styles.datePickerButton, {
+                    backgroundColor: appTheme === APP_THEMES.light
+                      ? LightThemeColors.white_common
+                      : DarkThemeColors.white_common + '20',
+                  }]}
                   onPress={() => changeDate('month', -1)}
                 >
-                  <AppText size={hp(2)}>−</AppText>
+                  <AppText 
+                    size={hp(2)} 
+                    color={appTheme === APP_THEMES.light 
+                      ? LightThemeColors.black_common
+                      : DarkThemeColors.white_common}
+                  >−</AppText>
                 </TouchableOpacity>
                 <View style={styles.datePickerValue}>
-                  <AppText size={hp(2.5)} fontType={FontTypes.medium}>
+                  <AppText 
+                    size={hp(2.5)} 
+                    fontType={FontTypes.medium}
+                    color={colors.text || DarkThemeColors.white_common}
+                  >
                     {tempDate.toLocaleDateString('en-US', { month: 'long' })}
                   </AppText>
-                  <AppText size={hp(1.5)}>Month</AppText>
+                  <AppText 
+                    size={hp(1.5)}
+                    color={colors.text || DarkThemeColors.white_common}
+                    style={{ opacity: 0.7 }}
+                  >{t('profile.month')}</AppText>
                 </View>
                 <TouchableOpacity
-                  style={styles.datePickerButton}
+                  style={[styles.datePickerButton, {
+                    backgroundColor: appTheme === APP_THEMES.light
+                      ? LightThemeColors.white_common
+                      : DarkThemeColors.white_common + '20',
+                  }]}
                   onPress={() => changeDate('month', 1)}
                 >
-                  <AppText size={hp(2)}>+</AppText>
+                  <AppText 
+                    size={hp(2)} 
+                    color={appTheme === APP_THEMES.light 
+                      ? LightThemeColors.black_common
+                      : DarkThemeColors.white_common}
+                  >+</AppText>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.datePickerRow}>
                 <TouchableOpacity
-                  style={styles.datePickerButton}
+                  style={[styles.datePickerButton, {
+                    backgroundColor: appTheme === APP_THEMES.light
+                      ? LightThemeColors.white_common
+                      : DarkThemeColors.white_common + '20',
+                  }]}
                   onPress={() => changeDate('day', -1)}
                 >
-                  <AppText size={hp(2)}>−</AppText>
+                  <AppText 
+                    size={hp(2)} 
+                    color={appTheme === APP_THEMES.light 
+                      ? LightThemeColors.black_common
+                      : DarkThemeColors.white_common}
+                  >−</AppText>
                 </TouchableOpacity>
                 <View style={styles.datePickerValue}>
-                  <AppText size={hp(2.5)} fontType={FontTypes.medium}>
+                  <AppText 
+                    size={hp(2.5)} 
+                    fontType={FontTypes.medium}
+                    color={colors.text || DarkThemeColors.white_common}
+                  >
                     {tempDate.getDate()}
                   </AppText>
-                  <AppText size={hp(1.5)}>Day</AppText>
+                  <AppText 
+                    size={hp(1.5)}
+                    color={colors.text || DarkThemeColors.white_common}
+                    style={{ opacity: 0.7 }}
+                  >{t('profile.day')}</AppText>
                 </View>
                 <TouchableOpacity
-                  style={styles.datePickerButton}
+                  style={[styles.datePickerButton, {
+                    backgroundColor: appTheme === APP_THEMES.light
+                      ? LightThemeColors.white_common
+                      : DarkThemeColors.white_common + '20',
+                  }]}
                   onPress={() => changeDate('day', 1)}
                 >
-                  <AppText size={hp(2)}>+</AppText>
+                  <AppText 
+                    size={hp(2)} 
+                    color={appTheme === APP_THEMES.light 
+                      ? LightThemeColors.black_common
+                      : DarkThemeColors.white_common}
+                  >+</AppText>
                 </TouchableOpacity>
               </View>
             </View>
@@ -740,6 +980,10 @@ const styles = StyleSheet.create({
     marginBottom: hp(3),
     position: 'relative',
   },
+  photoTouchable: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   editPhotoButton: {
     position: 'absolute',
     bottom: 0,
@@ -762,6 +1006,13 @@ const styles = StyleSheet.create({
     height: 20,
     resizeMode: 'contain',
     marginRight: wp(4),
+  },
+  editButton: {
+    padding: hp(1),
+    minWidth: 44,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   editActions: {
     flexDirection: 'row',
@@ -819,7 +1070,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: DarkThemeColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -844,24 +1094,5 @@ const styles = StyleSheet.create({
   },
   confirmModalButton: {
     backgroundColor: DarkThemeColors.primary,
-  },
-  attendanceLogsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: hp(1.5),
-    borderRadius: 8,
-    borderWidth: 1,
-    marginTop: hp(2),
-    marginBottom: hp(2),
-  },
-  attendanceLogsIcon: {
-    width: 20,
-    height: 20,
-    resizeMode: 'contain',
-    marginRight: wp(2),
-  },
-  attendanceLogsText: {
-    fontFamily: 'Noto Sans',
   },
 });

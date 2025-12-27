@@ -1,6 +1,24 @@
 import { Platform, PermissionsAndroid, Linking, Alert } from 'react-native';
 import { logger } from '../logger';
 
+// Import react-native-permissions with error handling
+let check: any;
+let request: any;
+let PERMISSIONS: any;
+let RESULTS: any;
+let PermissionStatus: any;
+
+try {
+  const RNPermissions = require('react-native-permissions');
+  check = RNPermissions.check;
+  request = RNPermissions.request;
+  PERMISSIONS = RNPermissions.PERMISSIONS;
+  RESULTS = RNPermissions.RESULTS;
+  PermissionStatus = RNPermissions.PermissionStatus;
+} catch (error) {
+  logger.warn('react-native-permissions not available, iOS permissions will fallback to basic handling', error);
+}
+
 export type PermissionType =
   | 'location'
   | 'storage'
@@ -14,6 +32,34 @@ export interface PermissionStatus {
   granted: boolean;
   canRequest: boolean;
 }
+
+// Map permission types to react-native-permissions constants for iOS
+const getIOSPermission = (type: PermissionType): string | null => {
+  if (Platform.OS !== 'ios') {
+    return null;
+  }
+
+  // If react-native-permissions is not available, return null
+  if (!PERMISSIONS || !PERMISSIONS.IOS) {
+    return null;
+  }
+
+  switch (type) {
+    case 'location':
+      return PERMISSIONS.IOS.LOCATION_WHEN_IN_USE;
+    case 'camera':
+      return PERMISSIONS.IOS.CAMERA;
+    case 'microphone':
+      return PERMISSIONS.IOS.MICROPHONE;
+    case 'phone':
+      return PERMISSIONS.IOS.CONTACTS; // iOS doesn't have direct phone permission
+    case 'storage':
+    case 'device':
+      return null; // Not applicable on iOS
+    default:
+      return null;
+  }
+};
 
 // Map permission types to Android permission constants
 // Accessing constants directly to avoid Hermes "property is not configurable" errors
@@ -41,19 +87,49 @@ const getAndroidPermission = (type: PermissionType): typeof PermissionsAndroid.P
   }
 };
 
+// Helper to convert react-native-permissions status to our PermissionStatus
+const convertRNPermissionStatus = (
+  type: PermissionType,
+  status: any,
+): PermissionStatus => {
+  if (!RESULTS) {
+    return { type, granted: false, canRequest: false };
+  }
+  const granted = status === RESULTS.GRANTED;
+  const canRequest = status === RESULTS.DENIED || status === RESULTS.BLOCKED;
+  return { type, granted, canRequest };
+};
+
 /**
  * Check if a specific permission is granted
- * Note: iOS permissions are handled differently and may require react-native-permissions for full support
+ * Uses react-native-permissions for iOS location permissions
  */
 export const checkPermission = async (
   type: PermissionType,
 ): Promise<PermissionStatus> => {
   try {
     if (Platform.OS === 'ios') {
-      // iOS permissions require Info.plist configuration and may need react-native-permissions
-      // For now, return a default status (can be enhanced later)
-      logger.warn(`iOS permission check for ${type} - consider using react-native-permissions for full support`);
-      return { type, granted: false, canRequest: true };
+      const iosPermission = getIOSPermission(type);
+      if (!iosPermission) {
+        // Permission not applicable on iOS (e.g., storage, device) or react-native-permissions not available
+        if (!PERMISSIONS) {
+          logger.warn(`react-native-permissions not available for iOS permission check: ${type}`);
+        }
+        return { type, granted: false, canRequest: false };
+      }
+
+      if (!check) {
+        logger.warn(`react-native-permissions check function not available for iOS permission: ${type}`);
+        return { type, granted: false, canRequest: false };
+      }
+
+      try {
+        const status = await check(iosPermission as any);
+        return convertRNPermissionStatus(type, status);
+      } catch (error) {
+        logger.error(`Error checking iOS permission ${type}`, error);
+        return { type, granted: false, canRequest: false };
+      }
     }
 
     const permission = getAndroidPermission(type);
@@ -75,17 +151,34 @@ export const checkPermission = async (
 
 /**
  * Request a specific permission
- * Note: iOS permissions are handled differently and may require react-native-permissions for full support
+ * Uses react-native-permissions for iOS location permissions
  */
 export const requestPermission = async (
   type: PermissionType,
 ): Promise<boolean> => {
   try {
     if (Platform.OS === 'ios') {
-      // iOS permissions require Info.plist configuration and may need react-native-permissions
-      // For now, return false (can be enhanced later)
-      logger.warn(`iOS permission request for ${type} - consider using react-native-permissions for full support`);
-      return false;
+      const iosPermission = getIOSPermission(type);
+      if (!iosPermission) {
+        // Permission not applicable on iOS or react-native-permissions not available
+        if (!PERMISSIONS) {
+          logger.warn(`react-native-permissions not available for iOS permission request: ${type}`);
+        }
+        return false;
+      }
+
+      if (!request || !RESULTS) {
+        logger.warn(`react-native-permissions request function not available for iOS permission: ${type}`);
+        return false;
+      }
+
+      try {
+        const status = await request(iosPermission as any);
+        return status === RESULTS.GRANTED;
+      } catch (error) {
+        logger.error(`Error requesting iOS permission ${type}`, error);
+        return false;
+      }
     }
 
     const permission = getAndroidPermission(type);

@@ -54,6 +54,12 @@ export * from './sync';
 // Database services
 export * from './database';
 
+// Time services
+export * from './time';
+
 // API services (queue, batching, caching)
 export * from './api';
+
+// Error handling services
+export * from './error-handler';
 

@@ -14,7 +14,7 @@ export interface UserData {
 }
 
 // Account Status Type
-export type AccountStatus = 'active' | 'locked' | 'password expired' | 'inactive';
+export type AccountStatus = 'active' | 'locked' | 'passwordExpired' | 'inactive';
 
 // Location Region Type
 export interface LocationRegion {
@@ -59,6 +59,7 @@ export interface FirstTimeLoginData {
 export interface UserState {
   userData: UserData | null;
   jwtToken: string | null; // JWT token for API authentication
+  idpjourneyToken: string | null; // IDP journey token from login, used in OTP verification
   expiresAt: string | null; // Session expiration timestamp (ISO 8601 format)
   accountStatus: AccountStatus | null; // Current account status
   userLocationRegion: LocationRegion;
@@ -70,5 +71,6 @@ export interface UserState {
   storedAadhaarNumber: string | null; // Stored Aadhaar number for Face RD verification
   firstTimeLoginData: FirstTimeLoginData | null; // Temporary storage for first-time login form data
   displayBreakStatus: boolean; // User preference to display break status on home screen
+  isAuthenticatingFace: boolean; // UI loading state during Aadhaar authentication
 }
 

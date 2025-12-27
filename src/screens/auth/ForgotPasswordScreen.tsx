@@ -16,7 +16,6 @@ import {
   AppInput,
   AppText,
   BackHeader,
-  AccountLockedModal,
 } from '../../components';
 import { Icons, Images, MAIL_FORMAT, hp } from '../../constants';
 import { NavigationProp, RootStackParamList } from '../../types/navigation';
@@ -41,8 +40,6 @@ export default function ForgotPasswordScreen({
 
   const [email, setEmail] = useState<string>(emailID || '');
   const [emailError, setEmailError] = useState<string | null>(null);
-  const [isAccountLockedModalVisible, setIsAccountLockedModalVisible] =
-    useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
 
@@ -69,19 +66,6 @@ export default function ForgotPasswordScreen({
     try {
       const response = await forgotPassword({ email: email.trim() });
 
-      // Check account status
-      if (response.accountStatus === 'locked') {
-        setIsAccountLockedModalVisible(true);
-        setIsLoading(false);
-        return;
-      }
-
-      if (response.accountStatus === 'inactive') {
-        setEmailError(t('auth.forgotPassword.accountInactive', 'Your account is inactive. Please contact support.'));
-        setIsLoading(false);
-        return;
-      }
-
       // If OTP was sent successfully, navigate to OTP screen
       if (response.success && response.otpSent) {
         navigation.navigate('OtpScreen', {
@@ -98,10 +82,6 @@ export default function ForgotPasswordScreen({
       setIsLoading(false);
     }
   }, [email, validateEmail, navigation, t]);
-
-  const handleCloseLockedModal = useCallback((): void => {
-    setIsAccountLockedModalVisible(false);
-  }, []);
 
   return (
     <AppContainer>
@@ -151,12 +131,6 @@ export default function ForgotPasswordScreen({
           </View>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
-
-      {/* Account Locked Modal */}
-      <AccountLockedModal
-        visible={isAccountLockedModalVisible}
-        onClose={handleCloseLockedModal}
-      />
     </AppContainer>
   );
 }

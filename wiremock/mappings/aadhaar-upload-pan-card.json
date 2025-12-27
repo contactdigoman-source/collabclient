@@ -1,0 +1,24 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/api/aadhaar/upload-pan-card"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "success": true,
+      "message": "PAN card uploaded and verified successfully",
+      "isVerified": true,
+      "panCardDetails": {
+        "panNumber": "ABCDE****F",
+        "name": "JOHN DOE",
+        "dob": "01-01-1990",
+        "verifiedAt": "2026-01-15T10:30:00.000Z"
+      }
+    }
+  }
+}
+

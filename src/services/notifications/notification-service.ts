@@ -109,51 +109,13 @@ export async function scheduleBreakReminderNotifications(
 
     // Schedule recurring notifications using a workaround
     // Since notifee doesn't support true recurring triggers, we'll schedule multiple notifications
-    scheduleRecurringNotifications(breakStatusLabel, 5); // Schedule 5 notifications (2.5 hours)
+    // scheduleRecurringNotifications(breakStatusLabel, 5); // Schedule 5 notifications (2.5 hours)
   } catch (error) {
     logger.error('Error scheduling break reminder notifications', error);
   }
 }
 
-/**
- * Schedule multiple notifications at 30-minute intervals
- */
-async function scheduleRecurringNotifications(
-  breakStatusLabel: string,
-  count: number,
-): Promise<void> {
-  for (let i = 1; i <= count; i++) {
-    const trigger = {
-      type: TriggerType.TIMESTAMP,
-      timestamp: Date.now() + (i + 1) * NOTIFICATION_INTERVAL_MINUTES * 60 * 1000,
-    };
 
-    try {
-      await notifee.createTriggerNotification(
-        {
-          id: `${BREAK_NOTIFICATION_ID}-${i}`,
-          title: 'Break Reminder',
-          body: `Don't forget to check in when you return from ${breakStatusLabel}`,
-          android: {
-            channelId: 'break-reminders',
-            importance: AndroidImportance.HIGH,
-            pressAction: {
-              id: 'default',
-            },
-            ongoing: false,
-            autoCancel: true,
-          },
-          ios: {
-            sound: 'default',
-          },
-        },
-        trigger,
-      );
-    } catch (error) {
-      logger.warn(`Error scheduling notification ${i}`, error);
-    }
-  }
-}
 
 /**
  * Cancel all break reminder notifications
@@ -174,7 +136,7 @@ export async function cancelBreakReminderNotifications(): Promise<void> {
 
     // Also cancel all notifications with the break reminder prefix
     const notifications = await notifee.getTriggerNotifications();
-    notifications.forEach(notification => {
+    notifications.forEach((notification: any) => {
       if (notification.notification.id?.startsWith(BREAK_NOTIFICATION_ID)) {
         notifee.cancelNotification(notification.notification.id);
       }

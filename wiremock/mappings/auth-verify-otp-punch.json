@@ -1,0 +1,44 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/api/auth/verify-otp",
+    "headers": {
+      "Content-Type": {
+        "equalTo": "application/json"
+      }
+    },
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": {
+          "expression": "$.email",
+          "matches": ".*"
+        }
+      },
+      {
+        "matchesJsonPath": {
+          "expression": "$.otp",
+          "matches": ".*"
+        }
+      },
+      {
+        "matchesJsonPath": {
+          "expression": "$.flowType",
+          "matches": "punch"
+        }
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "success": true,
+      "message": "OTP verified successfully. You can proceed with check-in/check-out.",
+      "accountStatus": "active",
+      "token": null
+    }
+  }
+}
+

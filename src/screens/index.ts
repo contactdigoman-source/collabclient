@@ -3,7 +3,6 @@ import AadhaarOtpScreen from './aadhaar/AadhaarOtpScreen';
 import PanCardCaptureScreen from './aadhaar/PanCardCaptureScreen';
 import AttendanceLogsScreen from './attendance/AttendanceLogsScreen';
 import GeoLocationsScreen from './attendance/GeoLocationsScreen';
-import ChangeForgottenPassword from './auth/ChangeForgottenPassword';
 import ChangePasswordScreen from './auth/ChangePasswordScreen';
 import CheckInScreen from './attendance/CheckInScreen';
 import DaysBottomTabScreen from './attendance/DaysBottomTabScreen';
@@ -11,6 +10,7 @@ import ForgotPasswordScreen from './auth/ForgotPasswordScreen';
 import HomeScreen from './home/HomeScreen';
 import FirstTimeLoginScreen from './auth/FirstTimeLoginScreen';
 import LoginScreen from './auth/LoginScreen';
+import LoginOtpScreen from './auth/LoginOtpScreen';
 import OtpScreen from './auth/OtpScreen';
 import PermissionsScreen from './auth/PermissionsScreen';
 import PrivacyPolicyScreen from './legal/PrivacyPolicyScreen';
@@ -24,6 +24,7 @@ import DatabaseViewerScreen from './debug/DatabaseViewerScreen';
 export {
   FirstTimeLoginScreen,
   LoginScreen,
+  LoginOtpScreen,
   HomeScreen,
   ForgotPasswordScreen,
   DaysBottomTabScreen,
@@ -33,7 +34,6 @@ export {
   GeoLocationsScreen,
   ViewProfileScreen,
   OtpScreen,
-  ChangeForgottenPassword,
   ChangePasswordScreen,
   AadhaarInputScreen,
   AadhaarOtpScreen,

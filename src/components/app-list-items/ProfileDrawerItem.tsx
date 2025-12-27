@@ -3,14 +3,16 @@ import { View, StyleSheet, ViewStyle, ImageSourcePropType } from 'react-native';
 import AppText from '../app-texts/AppText';
 import { hp, Icons } from '../../constants';
 import AppImage from '../app-images/AppImage';
-import RippleButton, { RippleButtonProps } from '../app-buttons/RippleButton';
+import RippleButton from '../app-buttons/RippleButton';
 
-interface ProfileDrawerItemProps extends Omit<RippleButtonProps, 'style'> {
+interface ProfileDrawerItemProps {
   icon?: ImageSourcePropType;
   title?: string;
   iconColor?: string;
   rightContent?: React.ReactNode;
   style?: ViewStyle;
+  disabled?: boolean;
+  onPress?: () => void;
 }
 
 const ProfileDrawerItem: React.FC<ProfileDrawerItemProps> = ({
@@ -19,7 +21,8 @@ const ProfileDrawerItem: React.FC<ProfileDrawerItemProps> = ({
   iconColor,
   rightContent = null,
   style,
-  ...rest
+  disabled = false,
+  onPress,
 }) => {
   // ✅ Memoize combined container style to avoid re-creation every render
   const subContainerStyle = useMemo(
@@ -29,7 +32,11 @@ const ProfileDrawerItem: React.FC<ProfileDrawerItemProps> = ({
 
   return (
     <View style={styles.container}>
-      <RippleButton style={subContainerStyle} {...rest}>
+      <RippleButton
+        {...({ style: subContainerStyle } as any)}
+        disabled={disabled}
+        onPress={onPress}
+      >
         <AppImage size={hp(2.48)} source={icon} tintColor={iconColor} />
         <AppText size={hp(1.98)} style={styles.title}>
           {title}

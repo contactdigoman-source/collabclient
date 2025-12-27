@@ -6,7 +6,21 @@
       "Content-Type": {
         "equalTo": "application/json"
       }
-    }
+    },
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": {
+          "expression": "$.idpjourneyToken",
+          "matches": ".*"
+        }
+      },
+      {
+        "matchesJsonPath": {
+          "expression": "$.otpValue",
+          "matches": ".*"
+        }
+      }
+    ]
   },
   "response": {
     "status": 200,
@@ -16,23 +30,19 @@
     "jsonBody": {
       "success": true,
       "message": "OTP verified successfully",
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
-      "expiresAt": "2026-12-31T23:59:59Z",
       "accountStatus": "active",
-      "requiresPasswordChange": false,
-      "firstTimeLogin": true,
-      "user": {
-        "id": 1,
-        "email": "user@example.com",
-        "firstName": "John",
-        "lastName": "Doe",
-        "phoneNumber": "+1234567890",
-        "isEmailVerified": true,
-        "isPhoneVerified": false,
-        "requiresPasswordChange": false,
-        "roles": ["ORGUSER"],
-        "firstTimeLogin": false
-      }
+      "firstTimeLogin": false,
+      "idpjourneyToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZHBqb3VybmV5IjoiT1RQVkVSSUZJRURfVE9LRU4iLCJpYXQiOjE1MTYyMzkwMjJ9.otp_verified_token_here",
+      "token": "reset_password_token_from_login_otp_1234567890",
+      "jwt": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+      "expiresAt": "2026-12-31T23:59:59Z",
+      "refreshToken": "refresh_token_1234567890",
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "user@example.com",
+      "contact": "+1234567890",
+      "organization": "Example Organization",
+      "role": "ORGUSER"
     }
   }
 }

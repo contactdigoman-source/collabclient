@@ -16,12 +16,17 @@ export type RootStackParamList = {
     isPasswordReset?: boolean;
     isPunchFlow?: boolean;
   };
+  LoginOtpScreen: {
+    emailID?: string;
+  };
   AadhaarOtpScreen: {
     emailID?: string;
     aadhaarNumber?: string;
   };
-  ChangeForgottenPassword: { emailID?: string };
-  ChangePasswordScreen: undefined;
+  ChangePasswordScreen: {
+    emailID?: string;
+    token?: string; // Token from OTP verification (if present, it's password expired from login flow - no current password needed)
+  } | undefined; // If no params, it's from profile page (requires current password)
   AadhaarInputScreen: undefined;
   PanCardCaptureScreen: undefined;
   PrivacyPolicyScreen: undefined;

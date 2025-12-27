@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { StyleSheet, View, TouchableOpacity, Image } from 'react-native';
 import { useTheme } from '@react-navigation/native';
 import moment from 'moment';
+import { formatUTCForDisplay } from '../../utils/time-utils';
 
 import AppText from '../app-texts/AppText';
 import { hp, wp, Icons } from '../../constants';
@@ -89,10 +90,9 @@ const DayAttendanceItem: React.FC<DayAttendanceItemProps> = ({
         // Find the next IN punch after this OUT
         const nextIn = sortedRecords.slice(i + 1).find(r => r.PunchDirection === 'IN');
         if (nextIn) {
-          // Timestamps are UTC ticks - moment() auto-converts to local for display
-          // Use moment() for display, but calculations work correctly with UTC ticks
-          const outTime = moment(record.Timestamp); // UTC ticks → local time
-          const inTime = moment(nextIn.Timestamp); // UTC ticks → local time
+          // Timestamps are UTC ticks - use moment.utc() to interpret as UTC, then convert to local for calculations
+          const outTime = moment.utc(record.Timestamp).local(); // UTC ticks → local time
+          const inTime = moment.utc(nextIn.Timestamp).local(); // UTC ticks → local time
           const diff = moment.duration(inTime.diff(outTime));
           totalBreakMinutes += diff.asMinutes();
         }
@@ -110,9 +110,9 @@ const DayAttendanceItem: React.FC<DayAttendanceItemProps> = ({
       return totalDuration;
     }
     if (!firstCheckIn || !lastCheckOut) return null;
-    // Timestamps are UTC ticks - moment() auto-converts to local for display
-    const inTime = moment(firstCheckIn.Timestamp); // UTC ticks → local time
-    const outTime = moment(lastCheckOut.Timestamp); // UTC ticks → local time
+    // Timestamps are UTC ticks - use moment.utc() to interpret as UTC, then convert to local for calculations
+    const inTime = moment.utc(firstCheckIn.Timestamp).local(); // UTC ticks → local time
+    const outTime = moment.utc(lastCheckOut.Timestamp).local(); // UTC ticks → local time
     const diff = moment.duration(outTime.diff(inTime));
     const hours = Math.floor(diff.asHours());
     const minutes = diff.minutes();
@@ -140,39 +140,32 @@ const DayAttendanceItem: React.FC<DayAttendanceItemProps> = ({
     return dateMoment.isSame(todayUTC, 'day');
   }, [date]);
 
-  // Cache formatted times for first check-in
-  const formattedCheckInTime = useMemo(() => {
-    if (!firstCheckIn) return null;
-    const timeMoment = moment(firstCheckIn.Timestamp);
-    return {
-      time: timeMoment.format('HH:mm'),
-      date: timeMoment.format('D MMM'),
-      timeIn: `${timeMoment.format('HH:mm')} In |`,
-    };
-  }, [firstCheckIn?.Timestamp]);
+  // Format time with date for check-in (e.g., "11:30 In |")
+  // Timestamp is UTC ticks - convert to local time for display
+  const formatTimeIn = (timestamp: string | number): string => {
+    const time = formatUTCForDisplay(timestamp, 'HH:mm');
+    return `${time} In |`;
+  };
 
-  // Cache formatted times for last check-out
-  const formattedCheckOutTime = useMemo(() => {
-    if (!lastCheckOut) return null;
-    const timeMoment = moment(lastCheckOut.Timestamp);
-    return {
-      time: timeMoment.format('HH:mm'),
-      date: timeMoment.format('D MMM'),
-      timeOut: `${timeMoment.format('HH:mm')} Out | ${timeMoment.format('D MMM')}`,
-    };
-  }, [lastCheckOut?.Timestamp]);
+  // Format time with date for check-out (e.g., "22:30 Out | 9 Apr")
+  // Timestamp is UTC ticks - convert to local time for display
+  const formatTimeOut = (timestamp: string | number): string => {
+    const time = formatUTCForDisplay(timestamp, 'HH:mm');
+    const dateStr = formatUTCForDisplay(timestamp, 'D MMM');
+    return `${time} Out | ${dateStr}`;
+  };
 
-  // Cache formatted times for all records (for expanded view)
-  const formattedRecords = useMemo(() => {
-    return sortedRecords.map((record) => {
-      const timeMoment = moment(record.Timestamp);
-      return {
-        timeOnly: timeMoment.format('HH:mm'),
-        dateOnly: timeMoment.format('D MMM'),
-        fullText: `${timeMoment.format('HH:mm')} ${record.PunchDirection === 'IN' ? 'In' : 'Out'} | ${timeMoment.format('D MMM')}`,
-      };
-    });
-  }, [sortedRecords]);
+  // Format date only (e.g., "9 Apr")
+  // Timestamp is UTC ticks - convert to local time for display
+  const formatDateOnly = (timestamp: string | number): string => {
+    return formatUTCForDisplay(timestamp, 'D MMM');
+  };
+
+  // Format time only (e.g., "10:30")
+  // Timestamp is UTC ticks - convert to local time for display
+  const formatTimeOnly = (timestamp: string | number): string => {
+    return formatUTCForDisplay(timestamp, 'HH:mm');
+  };
 
   const handlePress = () => {
     setIsExpanded(!isExpanded);
@@ -242,7 +235,7 @@ const DayAttendanceItem: React.FC<DayAttendanceItemProps> = ({
         <View style={styles.infoSection}>
           {/* Check-in/Check-out Times - Show FIRST check-in and LAST check-out */}
           <View style={styles.timesContainer}>
-            {formattedCheckInTime ? (
+            {firstCheckIn ? (
               <View style={styles.timeRow}>
                 <Image
                   source={Icons.clock}
@@ -250,10 +243,10 @@ const DayAttendanceItem: React.FC<DayAttendanceItemProps> = ({
                   resizeMode="contain"
                 />
                 <AppText size={15} color={colors.text || DarkThemeColors.white_common} style={styles.timeText}>
-                  {formattedCheckInTime.timeIn}
+                  {formatTimeIn(firstCheckIn.Timestamp)}
                 </AppText>
                 <AppText size={15} color={colors.text || DarkThemeColors.white_common} style={styles.dateTextSmall}>
-                  {formattedCheckInTime.date}
+                  {formatDateOnly(firstCheckIn.Timestamp)}
                 </AppText>
               </View>
             ) : (
@@ -269,7 +262,7 @@ const DayAttendanceItem: React.FC<DayAttendanceItemProps> = ({
               </View>
             )}
 
-            {formattedCheckOutTime ? (
+            {lastCheckOut ? (
               <View style={styles.timeRow}>
                 <Image
                   source={Icons.clock}
@@ -277,7 +270,7 @@ const DayAttendanceItem: React.FC<DayAttendanceItemProps> = ({
                   resizeMode="contain"
                 />
                 <AppText size={15} color={colors.text || DarkThemeColors.white_common} style={styles.timeText}>
-                  {formattedCheckOutTime.timeOut}
+                  {formatTimeOut(lastCheckOut.Timestamp)}
                 </AppText>
               </View>
             ) : (
@@ -355,7 +348,6 @@ const DayAttendanceItem: React.FC<DayAttendanceItemProps> = ({
               };
 
               const breakLabel = isBreakRecord ? getBreakLabel(record.AttendanceStatus) : '';
-              const formattedRecord = formattedRecords[index];
 
               return (
                 <View key={`${record.Timestamp}-${index}`} style={styles.expandedRecordItem}>
@@ -366,7 +358,7 @@ const DayAttendanceItem: React.FC<DayAttendanceItemProps> = ({
                   />
                   <View style={styles.expandedTextContainer}>
                     <AppText size={15} color={colors.text} style={styles.expandedTimeText}>
-                      {formattedRecord?.fullText || `${formattedRecord?.timeOnly || ''} ${record.PunchDirection === 'IN' ? 'In' : 'Out'} | ${formattedRecord?.dateOnly || ''}`}
+                      {formatTimeOnly(record.Timestamp)} {record.PunchDirection === 'IN' ? 'In' : 'Out'} | {formatDateOnly(record.Timestamp)}
                     </AppText>
                   </View>
                   {breakLabel && (
@@ -645,39 +637,4 @@ const styles = StyleSheet.create({
   },
 });
 
-// Helper function to compare records arrays by comparing key fields
-const areRecordsEqual = (prevRecords: AttendanceRecord[], nextRecords: AttendanceRecord[]): boolean => {
-  if (prevRecords === nextRecords) return true;
-  if (prevRecords.length !== nextRecords.length) return false;
-  
-  // Compare each record by key fields (Timestamp, PunchDirection, AttendanceStatus)
-  for (let i = 0; i < prevRecords.length; i++) {
-    const prev = prevRecords[i];
-    const next = nextRecords[i];
-    
-    const prevTimestamp = typeof prev.Timestamp === 'string' ? parseInt(prev.Timestamp, 10) : prev.Timestamp;
-    const nextTimestamp = typeof next.Timestamp === 'string' ? parseInt(next.Timestamp, 10) : next.Timestamp;
-    
-    if (
-      prevTimestamp !== nextTimestamp ||
-      prev.PunchDirection !== next.PunchDirection ||
-      prev.AttendanceStatus !== next.AttendanceStatus
-    ) {
-      return false;
-    }
-  }
-  
-  return true;
-};
-
-export default React.memo(DayAttendanceItem, (prevProps, nextProps) => {
-  return (
-    prevProps.date === nextProps.date &&
-    areRecordsEqual(prevProps.records, nextProps.records) &&
-    prevProps.attendanceStatus === nextProps.attendanceStatus &&
-    prevProps.totalDuration === nextProps.totalDuration &&
-    prevProps.breakDuration === nextProps.breakDuration &&
-    prevProps.onPress === nextProps.onPress &&
-    prevProps.onDetailPress === nextProps.onDetailPress
-  );
-});
+export default DayAttendanceItem;

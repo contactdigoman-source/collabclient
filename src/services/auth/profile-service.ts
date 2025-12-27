@@ -1,17 +1,26 @@
-import axios from 'axios';
 import { Configs } from '../../constants/configs';
 import { logger } from '../logger';
-import { getJWTToken } from './login-service';
 import { store } from '../../redux';
-import { setUserData } from '../../redux/reducers/userReducer';
+import { setUserData, setUserAadhaarFaceValidated, setIsPanCardVerified, setLastAadhaarVerificationDate } from '../../redux/reducers/userReducer';
 import { profileSyncService } from '../sync/profile-sync-service';
 import { networkService } from '../network/network-service';
 import { apiQueueService, RequestPriority } from '../api';
+import apiClient from '../api/api-client';
 
 // FormData is available globally in React Native
 declare const FormData: any;
 
 const API_BASE_URL = Configs.apiBaseUrl;
+
+// Geofencing area type for check-in validation
+export interface GeofenceArea {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  radius: number; // Radius in meters
+  isActive?: boolean;
+}
 
 // Profile API Types
 export interface ProfileResponse {
@@ -29,29 +38,39 @@ export interface ProfileResponse {
   employmentType?: string;
   designation?: string;
   organizationName?: string;
+  organization?: string; // Organization ID or name
   department?: string;
-  roles: string[];
+  roles: string[]; // User roles (e.g., ["ORGUSER", "ADMIN"])
   createdAt?: string;
   lastLoginAt?: string;
   lastSyncedAt?: string; // ISO 8601 timestamp from server
   shiftStartTime?: string; // Shift start time in HH:mm format (e.g., "09:00")
   shiftEndTime?: string; // Shift end time in HH:mm format (e.g., "18:00")
+  minimumWorkingHours?: number; // Minimum working hours required per day (e.g., 9)
+  // Geofencing data for check-in validation
+  allowedGeofenceAreas?: GeofenceArea[]; // List of allowed geofence areas for check-in
+  // Timezone and time data
+  timezone?: string; // User's timezone (e.g., "Asia/Kolkata")
+  timezoneOffset?: number; // Offset in minutes from UTC
+  currentTime?: string; // Current server time in ISO 8601 format
+  // Aadhaar and PAN verification
   aadhaarVerification?: {
     isVerified: boolean;
-    verificationMethod?: string;
-    lastVerifiedDate?: string;
+    verificationMethod?: string; // "face-rd" | "otp" | "pan-card"
+    lastVerifiedDate?: string; // Format: YYYY-MM-DD
     maskedAadhaarNumber?: string;
-    isPanCardVerified?: boolean;
+    isPanCardVerified?: boolean; // If verified using PAN card instead of Aadhaar
   };
 }
 
 export interface UpdateProfileRequest {
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
   dateOfBirth?: string; // ISO 8601 format (YYYY-MM-DD)
   employmentType?: string;
   designation?: string;
-  profilePhotoUrl?: string; // URL from uploaded photo
+  profilePhoto?: string; // Local file path (e.g., /path/to/image.jpg or file://...)
+  profilePhotoUrl?: string; // Server URL (e.g., https://...)
 }
 
 export interface UpdateProfileResponse {
@@ -82,12 +101,6 @@ export interface UpdateProfileResponse {
   };
 }
 
-export interface UploadProfilePhotoResponse {
-  success: boolean;
-  message: string;
-  profilePhotoUrl: string;
-  thumbnailUrl?: string;
-}
 
 export interface ChangePasswordRequest {
   currentPassword: string;
@@ -108,19 +121,10 @@ export const getProfile = async (): Promise<ProfileResponse> => {
       throw new Error('User email not found');
     }
 
-    const token = await getJWTToken(userData.email);
-    if (!token) {
-      throw new Error('Authentication token not found');
-    }
-
     const response = await apiQueueService.enqueue(
       {
         method: 'get',
-        url: `${API_BASE_URL}/api/auth/profile`,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        url: `/api/auth/profile`,
         timeout: 30000,
       },
       RequestPriority.HIGH,
@@ -178,7 +182,9 @@ export const getProfile = async (): Promise<ProfileResponse> => {
         
         finalProfile.firstName = localProfile.firstName || response.data.firstName;
         finalProfile.lastName = localProfile.lastName || response.data.lastName;
-        finalProfile.profilePhotoUrl = localProfile.profilePhotoUrl || response.data.profilePhotoUrl;
+        // Prefer local profilePhoto (local file path) if it exists, otherwise use server URL
+        // Only use server URL if local doesn't have a photo or if server timestamp is >= local
+        finalProfile.profilePhotoUrl = localProfile.profilePhoto || localProfile.profilePhotoUrl || response.data.profilePhotoUrl;
         finalProfile.dateOfBirth = localProfile.dateOfBirth || response.data.dateOfBirth;
         finalProfile.employmentType = localProfile.employmentType || response.data.employmentType;
         finalProfile.designation = localProfile.designation || response.data.designation;
@@ -211,14 +217,7 @@ export const getProfile = async (): Promise<ProfileResponse> => {
         await profileSyncService.saveProfileProperty(userData.email, 'designation', response.data.designation);
         await profileSyncService.markPropertyAsSynced(userData.email, 'designation');
       }
-      if (response.data.shiftStartTime) {
-        await profileSyncService.saveProfileProperty(userData.email, 'shiftStartTime', response.data.shiftStartTime);
-        await profileSyncService.markPropertyAsSynced(userData.email, 'shiftStartTime');
-      }
-      if (response.data.shiftEndTime) {
-        await profileSyncService.saveProfileProperty(userData.email, 'shiftEndTime', response.data.shiftEndTime);
-        await profileSyncService.markPropertyAsSynced(userData.email, 'shiftEndTime');
-      }
+      // Note: shiftStartTime and shiftEndTime are read-only from server, stored only in Redux, not in DB
     }
 
     // Update server_lastSyncedAt in database (for tracking, but doesn't affect property comparison)
@@ -228,20 +227,63 @@ export const getProfile = async (): Promise<ProfileResponse> => {
 
     // Load final merged data from DB (which now has the latest merged data)
     const dbProfile = await profileSyncService.loadProfileFromDB(userData.email);
-    const finalDbProfile: ProfileResponse = dbProfile ? {
+    const finalDbProfile: ProfileResponse & { profilePhoto?: string } = dbProfile ? {
       ...response.data,
       ...dbProfile,
       profilePhotoUrl: dbProfile.profilePhotoUrl || response.data.profilePhotoUrl,
+      profilePhoto: (dbProfile as any).profilePhoto, // Local file path from DB
     } : finalProfile;
 
     // Update Redux store with final profile data from DB
     if (finalDbProfile) {
+      // Prefer local profilePhoto (file path) if it exists, otherwise use profilePhotoUrl (server URL)
+      // This ensures local picked photos are shown immediately until server syncs
+      const photoToUse = (dbProfile as any)?.profilePhoto || finalDbProfile.profilePhotoUrl;
+      
       store.dispatch(setUserData({
         ...userData,
         ...finalDbProfile,
-        profilePhoto: finalDbProfile.profilePhotoUrl,
-        profilePhotoUrl: finalDbProfile.profilePhotoUrl,
+        profilePhoto: photoToUse, // Use local path if available, otherwise server URL
+        profilePhotoUrl: finalDbProfile.profilePhotoUrl, // Always store server URL for reference
+        // Include new fields for geofencing, timezone, verification status, shift times
+        organization: finalDbProfile.organization || finalDbProfile.organizationName,
+        organizationName: finalDbProfile.organizationName,
+        timezone: finalDbProfile.timezone,
+        timezoneOffset: finalDbProfile.timezoneOffset,
+        currentTime: finalDbProfile.currentTime,
+        allowedGeofenceAreas: finalDbProfile.allowedGeofenceAreas,
+        aadhaarVerification: finalDbProfile.aadhaarVerification,
+        shiftStartTime: finalDbProfile.shiftStartTime, // Shift start time from profile API
+        shiftEndTime: finalDbProfile.shiftEndTime, // Shift end time from profile API
       }));
+
+      // Sync Aadhaar/PAN verification status from profile data to Redux state
+      // This ensures BottomTabBar and other components use the server's verification status
+      if (finalDbProfile.aadhaarVerification) {
+        const { isVerified, isPanCardVerified, lastVerifiedDate } = finalDbProfile.aadhaarVerification;
+        
+        // Update verification status based on profile data
+        if (isVerified) {
+          // Update PAN card verification status first
+          if (isPanCardVerified !== undefined) {
+            store.dispatch(setIsPanCardVerified(isPanCardVerified));
+          }
+          
+          // Set verified status (this will set date to today in the reducer)
+          store.dispatch(setUserAadhaarFaceValidated(true));
+          
+          // Override with the actual date from profile if available
+          // This must be done AFTER setUserAadhaarFaceValidated because the reducer sets it to today
+          if (lastVerifiedDate) {
+            store.dispatch(setLastAadhaarVerificationDate(lastVerifiedDate));
+          }
+        } else {
+          // If not verified in profile, reset verification status
+          store.dispatch(setUserAadhaarFaceValidated(false));
+          store.dispatch(setIsPanCardVerified(false));
+          store.dispatch(setLastAadhaarVerificationDate(null));
+        }
+      }
     }
 
     // Return final merged data from DB
@@ -276,7 +318,8 @@ export const getProfile = async (): Promise<ProfileResponse> => {
 
 /**
  * Update user profile (firstName, lastName, etc.)
- * If profilePhotoUrl is provided, it should be from a previously uploaded photo.
+ * If profilePhoto (file path) is provided, it will be uploaded as FormData.
+ * If profilePhotoUrl (server URL) is provided, it will be sent as a regular field.
  * Saves each property to SQLite with isSynced=0, then syncs if online or queues if offline.
  * Updates local lastUpdatedAt timestamp.
  */
@@ -309,7 +352,11 @@ export const updateProfile = async (data: UpdateProfileRequest): Promise<UpdateP
     if (data.designation !== undefined) {
       await profileSyncService.saveProfileProperty(email, 'designation', data.designation);
     }
-    if (data.profilePhotoUrl !== undefined) {
+    // Save profilePhoto (local path) if provided
+    if (data.profilePhoto !== undefined) {
+      await profileSyncService.saveProfileProperty(email, 'profilePhoto', data.profilePhoto);
+    } else if (data.profilePhotoUrl !== undefined) {
+      // If only profilePhotoUrl is provided (server URL), save it to profilePhoto
       await profileSyncService.saveProfileProperty(email, 'profilePhoto', data.profilePhotoUrl);
     }
 
@@ -318,97 +365,149 @@ export const updateProfile = async (data: UpdateProfileRequest): Promise<UpdateP
     if (isOnline) {
       // Try to sync immediately
       try {
-        const token = await getJWTToken(email);
-        if (token) {
-    const response = await axios.post<UpdateProfileResponse>(
-      `${API_BASE_URL}/api/auth/update-profile`,
-      {
-        firstName: data.firstName,
-        lastName: data.lastName,
+        // Check if we need to send FormData (when profilePhoto is a local file path)
+        const isLocalPhoto = data.profilePhoto && (data.profilePhoto.startsWith('/') || data.profilePhoto.startsWith('file://'));
+        
+        let response: any;
+        
+        if (isLocalPhoto) {
+          // Create FormData for multipart/form-data when uploading photo
+          const formData = new FormData();
+          
+          if (data.firstName !== undefined) {
+            formData.append('firstName', data.firstName);
+          }
+          if (data.lastName !== undefined) {
+            formData.append('lastName', data.lastName);
+          }
+          if (data.dateOfBirth !== undefined) {
+            formData.append('dateOfBirth', data.dateOfBirth);
+          }
+          if (data.employmentType !== undefined) {
+            formData.append('employmentType', data.employmentType);
+          }
+          if (data.designation !== undefined) {
+            formData.append('designation', data.designation);
+          }
+          formData.append('profilePhoto', {
+            uri: data.profilePhoto,
+            type: 'image/jpeg',
+            name: 'profile.jpg',
+          } as any);
+
+          response = await apiClient.post<UpdateProfileResponse>(
+            `/api/auth/update-profile`,
+            formData,
+            {
+              headers: {
+                'Accept': 'application/json',
+                // Content-Type will be set automatically by apiClient (interceptor handles FormData)
+              },
+              timeout: 60000, // 60 seconds for file upload
+            }
+          );
+        } else {
+          // Regular JSON request when no local photo
+          response = await apiClient.post<UpdateProfileResponse>(
+            `/api/auth/update-profile`,
+            {
+              firstName: data.firstName,
+              lastName: data.lastName,
               ...(data.dateOfBirth && { dateOfBirth: data.dateOfBirth }),
               ...(data.employmentType && { employmentType: data.employmentType }),
               ...(data.designation && { designation: data.designation }),
               ...(data.profilePhotoUrl && { profilePhotoUrl: data.profilePhotoUrl }),
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        timeout: 30000,
-      }
-    );
-
-          // Don't overwrite DB with server response - only getProfile() should update DB from server
-          // Just mark properties as synced if server's lastSyncedAt >= local lastUpdatedAt
-          const syncStatus = await profileSyncService.getProfileSyncStatus(email);
-          const serverLastSyncedAt = response.data.lastSyncedAt 
-            ? new Date(response.data.lastSyncedAt).getTime() 
-            : now;
-
-          // Compare single timestamps: only mark as synced if server's lastSyncedAt >= local lastUpdatedAt
-          // This ensures we don't overwrite newer local data with older server data
-          const lastUpdatedAt = syncStatus?.lastUpdatedAt || null;
-          const canMarkAsSynced = lastUpdatedAt === null || serverLastSyncedAt >= lastUpdatedAt;
-
-          if (canMarkAsSynced) {
-            // Server is newer or equal - mark all updated properties as synced
-            if (data.firstName !== undefined) {
-              await profileSyncService.markPropertyAsSynced(email, 'firstName');
+            },
+            {
+              timeout: 30000,
             }
-            if (data.lastName !== undefined) {
-              await profileSyncService.markPropertyAsSynced(email, 'lastName');
-            }
-            if (data.dateOfBirth !== undefined) {
-              await profileSyncService.markPropertyAsSynced(email, 'dateOfBirth');
-            }
-            if (data.employmentType !== undefined) {
-              await profileSyncService.markPropertyAsSynced(email, 'employmentType');
-            }
-            if (data.designation !== undefined) {
-              await profileSyncService.markPropertyAsSynced(email, 'designation');
-            }
-            if (data.profilePhotoUrl !== undefined) {
-              await profileSyncService.markPropertyAsSynced(email, 'profilePhoto');
-            }
-          }
-
-          // Update server_lastSyncedAt in database with server's lastSyncedAt
-          if (response.data.lastSyncedAt) {
-            await profileSyncService.updateServerLastSyncedAt(email, new Date(response.data.lastSyncedAt).getTime());
-          } else {
-            // If server doesn't provide lastSyncedAt, use current time
-            await profileSyncService.updateServerLastSyncedAt(email, now);
-          }
-
-          // Don't overwrite DB with server response - return data from DB (which has local changes)
-          // getProfile() will be called separately to merge server data properly
-          const dbProfile = await profileSyncService.loadProfileFromDB(email);
-          const finalProfile: UpdateProfileResponse = dbProfile ? {
-            ...response.data,
-            ...dbProfile,
-            profilePhotoUrl: dbProfile.profilePhotoUrl || response.data.profilePhotoUrl,
-          } : response.data;
-
-          // Update Redux store with data from DB (not server response)
-          if (finalProfile) {
-            store.dispatch(setUserData({
-        ...userData,
-              ...finalProfile,
-              profilePhoto: finalProfile.profilePhotoUrl,
-              profilePhotoUrl: finalProfile.profilePhotoUrl,
-            }));
-          }
-
-          // After update, call getProfile to sync lastUpdatedAt with server_lastSyncedAt if server is newer or equal
-          try {
-            await getProfile();
-          } catch (getProfileError) {
-            logger.warn('Failed to sync timestamps after update', getProfileError as Error);
-          }
-
-          return finalProfile;
+          );
         }
+
+        // Don't overwrite DB with server response - only getProfile() should update DB from server
+        // Just mark properties as synced if server's lastSyncedAt >= local lastUpdatedAt
+        const syncStatus = await profileSyncService.getProfileSyncStatus(email);
+        const serverLastSyncedAt = response.data.lastSyncedAt 
+          ? new Date(response.data.lastSyncedAt).getTime() 
+          : now;
+
+        // Compare single timestamps: only mark as synced if server's lastSyncedAt >= local lastUpdatedAt
+        // This ensures we don't overwrite newer local data with older server data
+        const lastUpdatedAt = syncStatus?.lastUpdatedAt || null;
+        const canMarkAsSynced = lastUpdatedAt === null || serverLastSyncedAt >= lastUpdatedAt;
+
+        if (canMarkAsSynced) {
+          // Server is newer or equal - mark all updated properties as synced
+          if (data.firstName !== undefined) {
+            await profileSyncService.markPropertyAsSynced(email, 'firstName');
+          }
+          if (data.lastName !== undefined) {
+            await profileSyncService.markPropertyAsSynced(email, 'lastName');
+          }
+          if (data.dateOfBirth !== undefined) {
+            await profileSyncService.markPropertyAsSynced(email, 'dateOfBirth');
+          }
+          if (data.employmentType !== undefined) {
+            await profileSyncService.markPropertyAsSynced(email, 'employmentType');
+          }
+          if (data.designation !== undefined) {
+            await profileSyncService.markPropertyAsSynced(email, 'designation');
+          }
+          if (data.profilePhoto !== undefined || data.profilePhotoUrl !== undefined) {
+            await profileSyncService.markPropertyAsSynced(email, 'profilePhoto');
+          }
+        }
+
+        // Update server_lastSyncedAt in database with server's lastSyncedAt
+        if (response.data.lastSyncedAt) {
+          await profileSyncService.updateServerLastSyncedAt(email, new Date(response.data.lastSyncedAt).getTime());
+        } else {
+          // If server doesn't provide lastSyncedAt, use current time
+          await profileSyncService.updateServerLastSyncedAt(email, now);
+        }
+
+        // Don't overwrite DB with server response - return data from DB (which has local changes)
+        // getProfile() will be called separately to merge server data properly
+        const dbProfile = await profileSyncService.loadProfileFromDB(email);
+        const finalProfile: UpdateProfileResponse = dbProfile ? {
+          ...response.data,
+          ...dbProfile,
+          profilePhotoUrl: dbProfile.profilePhotoUrl || response.data.profilePhotoUrl,
+        } : response.data;
+
+        // Update Redux store with data from DB (not server response)
+        if (finalProfile) {
+          // Prefer local profilePhoto (file path) if it exists, otherwise use profilePhotoUrl (server URL)
+          // This ensures local picked photos are shown immediately until server syncs
+          const photoToUse = (dbProfile as any)?.profilePhoto || finalProfile.profilePhotoUrl;
+          
+          store.dispatch(setUserData({
+            ...userData,
+            ...finalProfile,
+            profilePhoto: photoToUse, // Use local path if available, otherwise server URL
+            profilePhotoUrl: finalProfile.profilePhotoUrl, // Always store server URL for reference
+            // Include new fields for geofencing, timezone, verification status
+            // Note: UpdateProfileResponse may not have all fields, so use type assertion
+            organization: (finalProfile as any).organization || (finalProfile as any).organizationName,
+            organizationName: (finalProfile as any).organizationName,
+            timezone: (finalProfile as any).timezone,
+            timezoneOffset: (finalProfile as any).timezoneOffset,
+            currentTime: (finalProfile as any).currentTime,
+            allowedGeofenceAreas: (finalProfile as any).allowedGeofenceAreas,
+            aadhaarVerification: finalProfile.aadhaarVerification,
+            shiftStartTime: (finalProfile as any).shiftStartTime, // Shift start time from profile API
+            shiftEndTime: (finalProfile as any).shiftEndTime, // Shift end time from profile API
+          }));
+        }
+
+        // After update, call getProfile to sync lastUpdatedAt with server_lastSyncedAt if server is newer or equal
+        try {
+          await getProfile();
+        } catch (getProfileError) {
+          logger.warn('Failed to sync timestamps after update', getProfileError as Error);
+        }
+
+        return finalProfile;
       } catch (syncError: any) {
         // Sync failed, but data is saved locally and queued
         logger.warn('Immediate sync failed, data queued for later', syncError as Error);
@@ -474,118 +573,6 @@ export const updateProfile = async (data: UpdateProfileRequest): Promise<UpdateP
 };
 
 /**
- * Upload profile photo
- * Saves to SQLite with isSynced=0, then syncs if online or queues if offline
- */
-export const uploadProfilePhoto = async (photoPath: string): Promise<UploadProfilePhotoResponse> => {
-  try {
-    const userData = store.getState().userState?.userData;
-    if (!userData?.email) {
-      throw new Error('User email not found');
-    }
-
-    const email = userData.email;
-    const now = Date.now();
-
-    // Update lastUpdatedAt BEFORE making the API call (as requested)
-    await profileSyncService.updateLastUpdatedAt(email, now);
-
-    // Check if online - must be online to upload photo
-    const isOnline = await networkService.isConnected();
-    if (!isOnline) {
-      // Save local path temporarily, will sync when online
-      await profileSyncService.saveProfileProperty(email, 'profilePhoto', photoPath);
-      throw new Error('Network error. Please check your internet connection to upload photo.');
-    }
-
-    // Upload photo to server first
-    const token = await getJWTToken(email);
-    if (!token) {
-      throw new Error('Authentication token not found');
-    }
-
-    // Create FormData for multipart/form-data
-    const formData = new FormData();
-    formData.append('profilePhoto', {
-      uri: photoPath,
-      type: 'image/jpeg',
-      name: 'profile.jpg',
-    } as any);
-
-    const response = await axios.post<UploadProfilePhotoResponse>(
-      `${API_BASE_URL}/api/auth/upload-profile-photo`,
-      formData,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          // Don't set Content-Type - axios will set it automatically with boundary
-        },
-        timeout: 60000, // 60 seconds for file upload
-      }
-    );
-
-    if (!response.data.success || !response.data.profilePhotoUrl) {
-      throw new Error('Failed to upload photo: No URL returned from server');
-    }
-
-    // Save the server URL to SQLite with lastUpdatedAt = now
-    // This saves the uploaded photo URL locally
-    await profileSyncService.saveProfileProperty(email, 'profilePhoto', response.data.profilePhotoUrl);
-    // Mark as synced since we just uploaded it
-    await profileSyncService.markPropertyAsSynced(email, 'profilePhoto');
-    
-    // Update server_lastSyncedAt with current time since we just uploaded
-    // The server response doesn't include lastSyncedAt, so we use the upload time
-    await profileSyncService.updateServerLastSyncedAt(email, now);
-
-    // Load final data from DB (which now has the uploaded photo)
-    const dbProfile = await profileSyncService.loadProfileFromDB(email);
-    const finalPhotoUrl = dbProfile?.profilePhotoUrl || response.data.profilePhotoUrl;
-
-    // Update Redux store with new profile photo URL from DB
-    if (userData) {
-      store.dispatch(setUserData({
-        ...userData,
-        profilePhoto: finalPhotoUrl,
-        profilePhotoUrl: finalPhotoUrl,
-      }));
-    }
-
-    // Don't call getProfile() immediately after upload - it might overwrite with old server data
-    // The photo is already saved to DB and Redux. getProfile() will be called later when needed.
-
-    return {
-      ...response.data,
-      profilePhotoUrl: finalPhotoUrl,
-    };
-  } catch (error: any) {
-    logger.error('Failed to upload profile photo', error, {
-          url: `${API_BASE_URL}/api/auth/upload-profile-photo`,
-          method: 'POST',
-          statusCode: error.response?.status,
-          responseBody: error.response?.data,
-    }, {
-          hasResponse: !!error.response,
-          hasRequest: !!error.request,
-    });
-
-    // Don't crash the app if service is down
-    if (error.response) {
-      const errorMessage = error.response.data?.message || 'Failed to upload profile photo';
-      logger.warn(`Photo upload error: ${errorMessage}`, error);
-      throw new Error(errorMessage);
-    } else if (error.request) {
-      logger.warn('Network error during photo upload - service may be unavailable', error);
-      throw new Error('Network error. Please check your internet connection.');
-    } else {
-      logger.warn(`Photo upload request error: ${error.message}`, error);
-      throw new Error('Failed to upload profile photo. Please try again.');
-    }
-  }
-};
-
-/**
  * Change user password
  */
 export const changePassword = async (data: ChangePasswordRequest): Promise<ChangePasswordResponse> => {
@@ -595,22 +582,13 @@ export const changePassword = async (data: ChangePasswordRequest): Promise<Chang
       throw new Error('User email not found');
     }
 
-    const token = await getJWTToken(userData.email);
-    if (!token) {
-      throw new Error('Authentication token not found');
-    }
-
-    const response = await axios.post<ChangePasswordResponse>(
-      `${API_BASE_URL}/api/auth/change-password`,
+    const response = await apiClient.post<ChangePasswordResponse>(
+      `/api/auth/change-password`,
       {
         currentPassword: data.currentPassword,
         newPassword: data.newPassword,
       },
       {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         timeout: 30000,
       }
     );

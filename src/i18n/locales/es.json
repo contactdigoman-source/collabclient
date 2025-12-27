@@ -150,7 +150,10 @@
     "captureFace": "Capturar Rostro",
     "authenticating": "Autenticando...",
     "verified": "Aadhaar verificado exitosamente",
-    "continue": "Continuar"
+    "continue": "Continuar",
+    "aadhaarNotAvailable": "Aadhaar no disponible",
+    "next": "Siguiente",
+    "continueWithPanCard": "Continuar con PAN Card"
   },
   "home": {
     "colleagues": "Colegas",
@@ -194,6 +197,8 @@
     "preferredLanguage": "Idioma Preferido",
     "attendanceLogs": "Registros de Asistencia",
     "viewProfile": "Ver Perfil",
+    "geoLocations": "Geo-ubicaciones",
+    "security": "Seguridad",
     "supportAndLearn": "Soporte y Aprendizaje",
     "logout": "Cerrar Sesión",
     "firstName": "Nombre",
@@ -205,6 +210,20 @@
     "employmentType": "Tipo de empleo",
     "designation": "Designación",
     "profileDetails": "Detalles del Perfil",
+    "organization": "Organización",
+    "roles": "Roles",
+    "timezone": "Zona horaria",
+    "aadhaarVerified": "Aadhaar Verificado",
+    "panCardVerified": "PAN Card Verificado",
+    "geofenceAreas": "Áreas de Check-in Permitidas",
+    "profileUpdatedSuccessfully": "Perfil actualizado exitosamente",
+    "failedToUpdateProfile": "Error al actualizar el perfil",
+    "invalidDateFormat": "Formato de fecha inválido. Por favor use YYYY-MM-DD",
+    "year": "Año",
+    "month": "Mes",
+    "day": "Día",
+    "databaseViewer": "Visor de Base de Datos",
+    "userProfilePicture": "Foto de perfil del usuario",
     "language": {
       "selectLanguage": "Seleccionar Idioma",
       "english": "Inglés",
@@ -236,7 +255,13 @@
     "loading": "Cargando...",
     "error": "Error",
     "success": "Éxito",
-    "featureLocked": "¡Esta función está bloqueada!"
+    "featureLocked": "¡Esta función está bloqueada!",
+    "okay": "De acuerdo",
+    "contact": "Contáctenos en",
+    "none": "Ninguno",
+    "next": "Siguiente",
+    "continue": "Continuar",
+    "uploading": "Subiendo..."
   }
 }
 

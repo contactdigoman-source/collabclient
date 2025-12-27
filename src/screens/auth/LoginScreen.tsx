@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
   TextInput,
+  BackHandler,
 } from 'react-native';
 import { useNavigation, useTheme } from '@react-navigation/native';
 
@@ -18,13 +19,13 @@ import {
   AppInput,
   AppText,
   AccountLockedModal,
+  AccountInactiveModal,
 } from '../../components';
-import PasswordExpiryModal from '../../components/app-modals/PasswordExpiryModal';
 import { hp, Icons, Images, MAIL_FORMAT } from '../../constants';
-import { useAppDispatch, setUserData, setJWTToken, setExpiresAt, setAccountStatus } from '../../redux';
+import { useAppDispatch, setIdpjourneyToken, setAccountStatus } from '../../redux';
 import { NavigationProp } from '../../types/navigation';
 import { useTranslation } from '../../hooks/useTranslation';
-import { loginUser, storeJWTToken, AccountStatus } from '../../services/auth/login-service';
+import { loginUser } from '../../services/auth/login-service';
 import { logger } from '../../services/logger';
 
 export default function LoginScreen(): React.JSX.Element {
@@ -41,11 +42,19 @@ export default function LoginScreen(): React.JSX.Element {
   const [passError, setPassError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string | null>(null);
-  
-  const [isAccountLockedModalVisible, setIsAccountLockedModalVisible] =
-    useState<boolean>(false);
-  const [isPasswordExpiryModalVisible, setIsPasswordExpiryModalVisible] =
-    useState<boolean>(false);
+  const [isAccountLockedModalVisible, setIsAccountLockedModalVisible] = useState<boolean>(false);
+  const [isAccountInactiveModalVisible, setIsAccountInactiveModalVisible] = useState<boolean>(false);
+
+  // Prevent hardware back button from going back (exit app instead)
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      // Return true to prevent default back behavior
+      // On Android, this will exit the app
+      return true;
+    });
+
+    return () => backHandler.remove();
+  }, []);
 
   const validateEmail = useCallback((): boolean => {
     if (!email.trim()) {
@@ -76,56 +85,32 @@ export default function LoginScreen(): React.JSX.Element {
       // Call login API
       const loginResponse = await loginUser({ email, password });
 
-      // Store JWT token securely in Keychain
-      await storeJWTToken(loginResponse.token, loginResponse.user.email);
+      // Handle account status from response
+      if (loginResponse.accountStatus) {
+        dispatch(setAccountStatus(loginResponse.accountStatus));
 
-      // Save user data and token to Redux store
-      dispatch(setUserData({
-        id: loginResponse.user.id,
-        firstName: loginResponse.user.firstName,
-        lastName: loginResponse.user.lastName,
-        email: loginResponse.user.email,
-        phoneNumber: loginResponse.user.phoneNumber,
-        isEmailVerified: loginResponse.user.isEmailVerified,
-        isPhoneVerified: loginResponse.user.isPhoneVerified,
-        requiresPasswordChange: loginResponse.user.requiresPasswordChange,
-        roles: loginResponse.user.roles,
-        firstTimeLogin: loginResponse.user.firstTimeLogin,
-      }));
-      dispatch(setJWTToken(loginResponse.token));
-      dispatch(setExpiresAt(loginResponse.expiresAt));
-      dispatch(setAccountStatus(loginResponse.accountStatus));
+        if (loginResponse.accountStatus === 'locked') {
+          setIsAccountLockedModalVisible(true);
+          setIsLoading(false);
+          return;
+        }
 
-      // Handle account status
-      // Possible values: "active" | "locked" | "password expired" | "inactive"
-      const accountStatus = loginResponse.accountStatus?.toLowerCase() as AccountStatus;
-      
-      if (accountStatus === 'locked') {
-        // Show AccountLockedModal - user cannot proceed
-        setIsAccountLockedModalVisible(true);
-        setIsLoading(false);
-        return;
+        if (loginResponse.accountStatus === 'inactive') {
+          setIsAccountInactiveModalVisible(true);
+          setIsLoading(false);
+          return;
+        }
+
+        // For passwordExpired, continue to OTP screen (will be handled there)
+        // For active, continue to OTP screen
       }
 
-      if (accountStatus === 'password expired') {
-        // Show PasswordExpiryModal - user can reset password or dismiss
-        setIsPasswordExpiryModalVisible(true);
-        setIsLoading(false);
-        return;
-      }
+      // Save idpjourney token to Redux store (will be used in OTP verification)
+      dispatch(setIdpjourneyToken(loginResponse.idpjourneyToken));
 
-      if (accountStatus === 'inactive') {
-        // Show error message - user cannot proceed
-        setLoginError('Your account is inactive. Please contact support.');
-        setIsLoading(false);
-        return;
-      }
-
-      // accountStatus === 'active' - proceed with navigation
-
-      // Always navigate to OTP screen after successful login
-      // OTP screen will decide whether to go to dashboard or first-time login
-      navigation.replace('OtpScreen', { emailID: email });
+      // Always navigate to Login OTP screen after successful login
+      // Login OTP screen will use the idpjourneyToken for verification
+      navigation.navigate('LoginOtpScreen', { emailID: email });
     } catch (error: any) {
       logger.error('Login error', error);
       setLoginError(error.message || t('auth.login.loginFailed') || 'Login failed. Please try again.');
@@ -133,22 +118,6 @@ export default function LoginScreen(): React.JSX.Element {
       setIsLoading(false);
     }
   }, [email, password, dispatch, navigation, validateEmail, t]);
-
-  const handleCloseLockedModal = useCallback((): void => {
-    setIsAccountLockedModalVisible(false);
-  }, []);
-
-  const handlePasswordExpiryReset = useCallback((): void => {
-    setIsPasswordExpiryModalVisible(false);
-    // Navigate to change password screen
-    navigation.navigate('ChangeForgottenPassword', { emailID: email });
-  }, [navigation, email]);
-
-  const handlePasswordExpiryDismiss = useCallback((): void => {
-    setIsPasswordExpiryModalVisible(false);
-    // User chose to dismiss - they should reset password via the modal
-    // Navigation will be handled by handlePasswordExpiryReset
-  }, []);
 
   const onForgotPasswordPress = useCallback((): void => {
     navigation.navigate('ForgotPasswordScreen', { emailID: email });
@@ -245,14 +214,13 @@ export default function LoginScreen(): React.JSX.Element {
       {/* Account Locked Modal */}
       <AccountLockedModal
         visible={isAccountLockedModalVisible}
-        onClose={handleCloseLockedModal}
+        onClose={() => setIsAccountLockedModalVisible(false)}
       />
 
-      {/* Password Expiry Modal */}
-      <PasswordExpiryModal
-        visible={isPasswordExpiryModalVisible}
-        onReset={handlePasswordExpiryReset}
-        onDismiss={handlePasswordExpiryDismiss}
+      {/* Account Inactive Modal */}
+      <AccountInactiveModal
+        visible={isAccountInactiveModalVisible}
+        onClose={() => setIsAccountInactiveModalVisible(false)}
       />
     </AppContainer>
   );

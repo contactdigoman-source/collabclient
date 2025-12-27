@@ -72,6 +72,7 @@ function AppInput({
             borderColor: isBorderFocused ? colors.red : colors.black,
             borderWidth: isBorderFocused ? 2 : 0,
             backgroundColor: bgColor || colors.app_input_bg,
+            opacity: editable ? 1 : 0.6,
           },
         ]}
       >
@@ -88,7 +89,14 @@ function AppInput({
         <TextInput
           {...restProps}
           ref={inputRef}
-          style={[styles.input, style, { color: colors.white }]}
+          style={[
+            styles.input, 
+            style, 
+            { 
+              color: colors.white,
+              opacity: editable ? 1 : 0.7,
+            }
+          ]}
           placeholderTextColor={
             placeholderTextColor || colors.app_input_placeholder
           }

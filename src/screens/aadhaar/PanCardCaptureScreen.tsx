@@ -20,12 +20,14 @@ import { NavigationProp } from '../../types/navigation';
 import { hp, wp, FontTypes } from '../../constants';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useAppDispatch } from '../../redux';
-import { setIsPanCardVerified, setUserAadhaarFaceValidated } from '../../redux';
+import { setIsPanCardVerified, setUserAadhaarFaceValidated, setLastAadhaarVerificationDate } from '../../redux';
 import { logger } from '../../services/logger';
 import {
   requestLocationPermission,
   isLocationEnabled,
+  uploadPanCard,
 } from '../../services';
+import moment from 'moment';
 
 // Try to import ImagePicker, fallback if not available
 let ImagePicker: any = null;
@@ -47,6 +49,7 @@ export default function PanCardCaptureScreen(): React.JSX.Element {
   const [panCardFront, setPanCardFront] = useState<string | null>(null);
   const [panCardBack, setPanCardBack] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [uploading, setUploading] = useState<boolean>(false);
   const [currentSide, setCurrentSide] = useState<PanCardSide>('front');
 
   const handleCapturePhoto = useCallback(
@@ -129,30 +132,111 @@ export default function PanCardCaptureScreen(): React.JSX.Element {
       return;
     }
 
-    // Mark PAN card as verified
-    dispatch(setIsPanCardVerified(true));
-    dispatch(setUserAadhaarFaceValidated(true));
+    setUploading(true);
+    try {
+      // Upload PAN card images to server
+      logger.debug('Uploading PAN card images', {
+        frontPath: panCardFront,
+        backPath: panCardBack,
+      });
 
-    // After PAN card verification, navigate to location capture screen
-    const onCancelPress = (): void => {
-      navigation.navigate('DashboardScreen');
-    };
+      const uploadResponse = await uploadPanCard({
+        panCardFront,
+        panCardBack,
+      });
 
-    const granted = await requestLocationPermission(onCancelPress);
+      if (uploadResponse.success && (uploadResponse.isVerified !== false)) {
+        // Mark PAN card as verified
+        dispatch(setIsPanCardVerified(true));
+        dispatch(setUserAadhaarFaceValidated(true));
+        
+        // Store today's date in UTC format (YYYY-MM-DD) when PAN card is verified
+        const today = moment.utc().format('YYYY-MM-DD');
+        dispatch(setLastAadhaarVerificationDate(today));
 
-    if (granted) {
-      const isLocationOn = await isLocationEnabled();
-      if (isLocationOn) {
-        navigation.navigate('CheckInScreen');
+        logger.info('PAN card verified successfully', {
+          panCardDetails: uploadResponse.panCardDetails,
+        });
+
+        // After PAN card verification, navigate to location capture screen
+        const onCancelPress = (): void => {
+          navigation.navigate('DashboardScreen');
+        };
+
+        const granted = await requestLocationPermission(onCancelPress);
+
+        if (granted) {
+          const isLocationOn = await isLocationEnabled();
+          if (isLocationOn) {
+            navigation.navigate('CheckInScreen');
+          } else {
+            navigation.navigate('DashboardScreen');
+          }
+        } else {
+          navigation.navigate('DashboardScreen');
+        }
       } else {
-        navigation.navigate('DashboardScreen');
+        Alert.alert(
+          'Verification Failed',
+          uploadResponse.message || 'PAN card verification failed. Please try again.',
+          [{ text: 'OK' }]
+        );
       }
-    } else {
-      navigation.navigate('DashboardScreen');
+    } catch (error: any) {
+      logger.error('Failed to upload PAN card', error);
+      
+      // Filter out WireMock-specific error messages and provide user-friendly messages
+      let errorMessage = 'Failed to upload PAN card. Please check your internet connection and try again.';
+      
+      if (error?.message) {
+        const errorMsg = error.message.toLowerCase();
+        
+        // Filter out WireMock-specific debugging messages
+        if (
+          errorMsg.includes('wiremock') ||
+          errorMsg.includes('cannot reach the server at') ||
+          errorMsg.includes('wiremock is running') ||
+          errorMsg.includes('same network') ||
+          errorMsg.includes('firewall settings')
+        ) {
+          // Use generic network error message for WireMock-related errors
+          errorMessage = 'Network error. Please check your internet connection and try again.';
+        } else if (errorMsg.includes('network error') || errorMsg.includes('network')) {
+          // Generic network error
+          errorMessage = 'Network error. Please check your internet connection and try again.';
+        } else if (errorMsg.includes('timeout')) {
+          errorMessage = 'Request timed out. Please try again.';
+        } else if (errorMsg.includes('file too large')) {
+          errorMessage = 'Image file is too large. Please use smaller images and try again.';
+        } else if (errorMsg.includes('unsupported file type')) {
+          errorMessage = 'Unsupported file type. Please use JPEG images.';
+        } else if (errorMsg.includes('authentication failed') || errorMsg.includes('401')) {
+          errorMessage = 'Authentication failed. Please login again.';
+        } else if (errorMsg.includes('permission denied') || errorMsg.includes('403')) {
+          errorMessage = 'Permission denied. You do not have access to upload PAN card.';
+        } else if (errorMsg.includes('server error') || errorMsg.includes('500')) {
+          errorMessage = 'Server error. Please try again later.';
+        } else {
+          // For other errors, use a sanitized version if it's user-friendly
+          // Otherwise use the generic message
+          const sanitizedMsg = error.message.trim();
+          if (sanitizedMsg && sanitizedMsg.length < 100 && !sanitizedMsg.includes('http://') && !sanitizedMsg.includes('192.168.')) {
+            errorMessage = sanitizedMsg;
+          }
+        }
+      }
+      
+      Alert.alert(
+        'Upload Failed',
+        errorMessage,
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setUploading(false);
     }
   }, [panCardFront, panCardBack, dispatch, navigation]);
 
-  const isContinueDisabled = !panCardFront || !panCardBack || loading;
+  const isContinueDisabled = !panCardFront || !panCardBack || loading || uploading;
 
   return (
     <AppContainer>
@@ -266,7 +350,7 @@ export default function PanCardCaptureScreen(): React.JSX.Element {
         </View>
 
         <AppButton
-          title="Continue"
+          title={uploading ? t('common.uploading') : t('common.continue')}
           style={styles.continueButton}
           disabled={isContinueDisabled}
           onPress={handleContinue}

@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@react-navigation/native';
 import moment from 'moment';
 import { Marker, Region } from 'react-native-maps';
+import { formatUTCForDisplay } from '../../utils/time-utils';
 
 import { AppText, AppMap } from '..';
 import { logger } from '../../services/logger';
@@ -66,16 +67,11 @@ export default function AttendanceDetailModal({
   }, [records]);
 
   // Format time (e.g., "10:30")
-  // Timestamp is UTC ticks - moment() auto-converts to local time for display
+  // Timestamp is UTC ticks - convert to local time for display
   const formatTime = (timestamp: string | number): string => {
     try {
-      // Timestamp is UTC ticks (number) - moment() auto-converts to local time
-      const timeMoment = moment(timestamp); // UTC ticks → local time
-      if (!timeMoment.isValid()) {
-        logger.warn('[AttendanceDetailModal] Invalid timestamp', { timestamp });
-        return '--:--';
-      }
-      return timeMoment.format('HH:mm');
+      // Timestamp is UTC ticks - use formatUTCForDisplay to convert to local time
+      return formatUTCForDisplay(timestamp, 'HH:mm');
     } catch (error) {
       logger.error('[AttendanceDetailModal] Error formatting time', error, undefined, { timestamp });
       return '--:--';
@@ -83,16 +79,11 @@ export default function AttendanceDetailModal({
   };
 
   // Format date with year (e.g., "7 Apr, 25")
-  // Timestamp is UTC ticks - moment() auto-converts to local time for display
+  // Timestamp is UTC ticks - convert to local time for display
   const formatDateWithYear = (timestamp: string | number): string => {
     try {
-      // Timestamp is UTC ticks (number) - moment() auto-converts to local time
-      const timeMoment = moment(timestamp); // UTC ticks → local time
-      if (!timeMoment.isValid()) {
-        logger.warn('[AttendanceDetailModal] Invalid timestamp for date', { timestamp });
-        return '--';
-      }
-      return timeMoment.format('D MMM, YY');
+      // Timestamp is UTC ticks - use formatUTCForDisplay to convert to local time
+      return formatUTCForDisplay(timestamp, 'D MMM, YY');
     } catch (error) {
       logger.error('[AttendanceDetailModal] Error formatting date', error, undefined, { timestamp });
       return '--';

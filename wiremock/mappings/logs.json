@@ -1,0 +1,43 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/api/logs",
+    "headers": {
+      "Content-Type": {
+        "equalTo": "application/json"
+      }
+    },
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": {
+          "expression": "$.correlationId",
+          "matches": ".*"
+        }
+      },
+      {
+        "matchesJsonPath": {
+          "expression": "$.level",
+          "matches": ".*"
+        }
+      },
+      {
+        "matchesJsonPath": {
+          "expression": "$.message",
+          "matches": ".*"
+        }
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "success": true,
+      "message": "Log entry saved successfully",
+      "logId": "log-1234567890abcdef"
+    }
+  }
+}
+

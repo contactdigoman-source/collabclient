@@ -9,6 +9,7 @@ import { persistor, store } from './src/redux';
 import { DarkThemeColors } from './src/themes';
 import './src/i18n'; // Initialize i18n
 import { getCorrelationId } from './src/services/logger'; // Initialize correlation ID
+import { ErrorBoundary} from './src/services/error-handler';
 
 // Default loading spinner component for PersistGate
 const LoadingSpinner = () => (
@@ -18,23 +19,27 @@ const LoadingSpinner = () => (
 );
 
 export default function App() {
-  // Initialize correlation ID on app startup
+  // Initialize correlation ID and error handlers on app startup
   React.useEffect(() => {
     getCorrelationId();
+    // initializeGlobalErrorHandlers();
+    // captureConsoleErrors();
   }, []);
   
   return (
-    <GestureHandlerRootView style={styles.flex1}>
-      <SafeAreaProvider>
-        <View style={styles.container}>
-          <Provider store={store}>
-            <PersistGate loading={<LoadingSpinner />} persistor={persistor}>
-              <AppNavigation />
-            </PersistGate>
-          </Provider>
-        </View>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <ErrorBoundary>
+      <GestureHandlerRootView style={styles.flex1}>
+        <SafeAreaProvider>
+          <View style={styles.container}>
+            <Provider store={store}>
+              <PersistGate loading={<LoadingSpinner />} persistor={persistor}>
+                <AppNavigation />
+              </PersistGate>
+            </Provider>
+          </View>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }
 

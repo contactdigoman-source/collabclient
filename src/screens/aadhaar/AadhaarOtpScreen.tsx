@@ -24,7 +24,7 @@ import {
   RippleButton,
 } from '../../components';
 import { FontTypes, hp, wp, Images } from '../../constants';
-import { useAppDispatch } from '../../redux';
+import { useAppDispatch, useAppSelector } from '../../redux';
 import { setUserAadhaarFaceValidated, setStoredAadhaarNumber } from '../../redux';
 import { storeAadhaarNumber, requestAadhaarOTP, verifyAadhaarOTP } from '../../services/aadhaar';
 import {
@@ -56,17 +56,15 @@ const TimerDisplay = React.memo<TimerDisplayProps>(({ timer, color }) => {
 TimerDisplay.displayName = 'TimerDisplay';
 
 interface AadhaarOtpScreenProps {
-  route: RouteProp<RootStackParamList, 'AadhaarOtpScreen'> & {
-    params?: {
-      emailID?: string;
-      aadhaarNumber?: string;
-    };
-  };
+  route: RouteProp<RootStackParamList, 'AadhaarOtpScreen'>;
 }
 
 const AadhaarOtpScreen: React.FC<AadhaarOtpScreenProps> = ({ route }) => {
-  const emailID = route?.params?.emailID || '';
-  const aadhaarNumber = route?.params?.aadhaarNumber || '';
+  // Get params from route, with fallback to Redux state if params are missing
+  const routeParams = route?.params;
+  const reduxEmail = useAppSelector(state => state.userState?.userData?.email);
+  const emailID = routeParams?.emailID || reduxEmail || '';
+  const aadhaarNumber = routeParams?.aadhaarNumber || '';
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const dispatch = useAppDispatch();
@@ -118,6 +116,11 @@ const AadhaarOtpScreen: React.FC<AadhaarOtpScreenProps> = ({ route }) => {
   useEffect(() => {
     if (aadhaarNumber && emailID) {
       // Request OTP when screen loads
+      logger.debug('AadhaarOtpScreen: Requesting OTP', { 
+        hasAadhaar: !!aadhaarNumber, 
+        hasEmail: !!emailID,
+        aadhaarLength: aadhaarNumber.length 
+      });
       requestAadhaarOTP({
         aadhaarNumber: aadhaarNumber,
         emailID: emailID,
@@ -125,6 +128,17 @@ const AadhaarOtpScreen: React.FC<AadhaarOtpScreenProps> = ({ route }) => {
         logger.error('Failed to request OTP:', error);
         setOtpError(error.message || t('auth.otp.requestFailed', 'Failed to request OTP. Please try again.'));
       });
+    } else {
+      // Log warning if params are missing
+      logger.warn('AadhaarOtpScreen: Missing params', { 
+        hasAadhaar: !!aadhaarNumber, 
+        hasEmail: !!emailID 
+      });
+      if (!emailID) {
+        setOtpError(t('auth.otp.requestFailed', 'Email ID is missing. Please try again.'));
+      } else if (!aadhaarNumber) {
+        setOtpError(t('auth.otp.requestFailed', 'Aadhaar number is missing. Please try again.'));
+      }
     }
   }, [aadhaarNumber, emailID, t]);
 

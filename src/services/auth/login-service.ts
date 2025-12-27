@@ -1,9 +1,13 @@
 import * as Keychain from 'react-native-keychain';
-import axios from 'axios';
 import { Configs } from '../../constants/configs';
 import { store, persistor } from '../../redux';
 import { resetUserState } from '../../redux/reducers/userReducer';
 import { logger, resetCorrelationId } from '../logger';
+import apiClient from '../api/api-client';
+import { clearJWTToken } from './token-service';
+
+// Re-export token functions for backward compatibility
+export { storeJWTToken, getJWTToken, getRefreshToken, clearJWTToken } from './token-service';
 
 const API_BASE_URL = Configs.apiBaseUrl;
 
@@ -18,32 +22,15 @@ export interface LoginRequest {
  * Possible values:
  * - "active" - Account is active and user can proceed with login
  * - "locked" - Account is locked, show AccountLockedModal
- * - "password expired" - Password has expired, show PasswordExpiryModal
+ * - "passwordExpired" - Password has expired, show PasswordExpiryModal
  * - "inactive" - Account is inactive, show error message
  */
-export type AccountStatus = 'active' | 'locked' | 'password expired' | 'inactive';
+export type AccountStatus = 'active' | 'locked' | 'passwordExpired' | 'inactive';
 
 export interface LoginResponse {
-  token: string;
-  expiresAt: string;
-  user: {
-    id: number;
-    email: string;
-    firstName: string;
-    lastName: string;
-    phoneNumber?: string;
-    isEmailVerified: boolean;
-    isPhoneVerified: boolean;
-    requiresPasswordChange: boolean;
-    roles: string[];
-    firstTimeLogin?: boolean; // If true, navigate to FirstTimeLoginScreen
-  };
-  /**
-   * Account Status - determines navigation and modal display
-   * Possible values: "active" | "locked" | "password expired" | "inactive"
-   */
-  accountStatus: AccountStatus;
-  requiresPasswordChange?: boolean;
+  idpjourneyToken: string; // IDP journey token to be used in OTP verification
+  message: string; // Response message
+  accountStatus?: AccountStatus; // Account status: 'active', 'locked', 'passwordExpired', 'inactive'
 }
 
 /**
@@ -51,95 +38,64 @@ export interface LoginResponse {
  */
 export const loginUser = async (credentials: LoginRequest): Promise<LoginResponse> => {
   try {
-    const response = await axios.post<LoginResponse>(
-      `${API_BASE_URL}/api/auth/login`,
+    logger.debug('Login request starting', { email: credentials.email });
+    
+    const response = await apiClient.post<LoginResponse>(
+      `/api/auth/login`,
       {
         email: credentials.email,
         password: credentials.password,
       },
       {
-        headers: {
-          'Content-Type': 'application/json',
-        },
         timeout: 30000, // 30 seconds timeout
       }
     );
 
+    logger.debug('Login request successful', { email: credentials.email });
     return response.data;
   } catch (error: any) {
-    // Log service error with context
-    logger.error('Failed to login', error, {
-      url: `${API_BASE_URL}/api/auth/login`,
-      method: 'POST',
-      statusCode: error.response?.status,
-      requestBody: { email: credentials.email },
-      responseBody: error.response?.data,
-    }, {
-      hasResponse: !!error.response,
-      hasRequest: !!error.request,
-    });
+    // Determine error type and message
+    let errorMessage = 'Failed to login. Please try again.';
+    const hasResponse = !!error.response;
+    const hasRequest = !!error.request;
     
-    if (error.response) {
+    if (hasResponse) {
       // Server responded with error
-      const errorMessage = error.response.data?.message || 'Login failed';
-      throw new Error(errorMessage);
-    } else if (error.request) {
-      // Request made but no response
-      throw new Error('Network error. Please check your internet connection.');
+      errorMessage = error.response.data?.message || 'Login failed';
+    } else if (hasRequest) {
+      // Request made but no response (network error)
+      errorMessage = 'Network error. Please check your internet connection.';
     } else {
-      // Error setting up request
-      throw new Error('Failed to login. Please try again.');
+      // Error setting up request (config error, timeout during setup, etc.)
+      // Check if it's a timeout or other specific error
+      if (error.message) {
+        errorMessage = error.message;
+      }
     }
+    
+    // Log service error with context
+    logger.error(
+      'Failed to login',
+      error instanceof Error ? error : new Error(String(error)),
+      {
+        url: `${API_BASE_URL}/api/auth/login`,
+        method: 'POST',
+        statusCode: error.response?.status,
+        requestBody: { email: credentials.email },
+        responseBody: error.response?.data,
+      },
+      {
+        hasResponse,
+        hasRequest,
+        errorCode: error.code,
+        errorMessage: error.message,
+      }
+    );
+    
+    throw new Error(errorMessage);
   }
 };
 
-/**
- * Securely store JWT token in Keychain
- */
-export const storeJWTToken = async (token: string, email: string): Promise<void> => {
-  try {
-    await Keychain.setGenericPassword('jwt_token', token, {
-      service: `jwt_${email}`,
-      accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED,
-    });
-    logger.info('JWT token stored securely');
-  } catch (error) {
-    logger.error('Failed to store JWT token', error as Error, undefined, {
-      email,
-    });
-    throw new Error('Failed to store authentication token');
-  }
-};
-
-/**
- * Get stored JWT token from Keychain
- */
-export const getJWTToken = async (email: string): Promise<string | null> => {
-  try {
-    const credentials = await Keychain.getGenericPassword({
-      service: `jwt_${email}`,
-    });
-    return credentials ? credentials.password : null;
-  } catch (error) {
-    logger.error('Failed to get JWT token', error as Error, undefined, {
-      email,
-    });
-    return null;
-  }
-};
-
-/**
- * Clear JWT token from Keychain
- */
-export const clearJWTToken = async (email: string): Promise<void> => {
-  try {
-    await Keychain.resetGenericPassword({
-      service: `jwt_${email}`,
-    });
-  } catch (error) {
-    logger.error('Error clearing JWT token', error);
-  }
-};
 
 export const logoutUser = async (): Promise<void> => {
   // Clear Aadhaar data from Keychain before logout

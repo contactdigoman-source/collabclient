@@ -1,0 +1,37 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/api/auth/refresh",
+    "headers": {
+      "Content-Type": {
+        "equalTo": "application/json"
+      }
+    },
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": {
+          "expression": "$.refreshToken",
+          "matches": ".*"
+        }
+      },
+      {
+        "matchesJsonPath": {
+          "expression": "$.userId",
+          "matches": ".*"
+        }
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE3MTAwMDAwMDB9.new_refreshed_jwt_token_here",
+      "refreshToken": "new_refresh_token_1234567890",
+      "expiresAt": "2026-12-31T23:59:59Z"
+    }
+  }
+}
+

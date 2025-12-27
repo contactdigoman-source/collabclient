@@ -21,9 +21,8 @@ import {
   isFaceRDAppInstalled,
 } from '../../services';
 import {
-  setIsAadhaarFaceValidated,
-  setIsAuthenticatingFace,
   setUserAadhaarFaceValidated,
+  setIsAuthenticatingFace,
   setStoredAadhaarNumber,
 } from '../../redux';
 import { NavigationProp } from '../../types/navigation';
@@ -40,12 +39,15 @@ export default function AadhaarInputScreen(): React.JSX.Element {
   const { t } = useTranslation();
 
 
-  const { isAuthenticatingFace, isAadhaarFaceValidated } = useAppSelector(
-    state => ({
-      isAuthenticatingFace: state.aadhaarState.isAuthenticatingFace,
-      isAadhaarFaceValidated: state.aadhaarState.isAadhaarFaceValidated,
-    }),
-  );
+  const isAuthenticatingFace = useAppSelector(state => state.userState.isAuthenticatingFace);
+  const userAadhaarFaceValidated = useAppSelector(state => state.userState.userAadhaarFaceValidated);
+  const userData = useAppSelector(state => state.userState.userData);
+  const isPanCardVerifiedRedux = useAppSelector(state => state.userState.isPanCardVerified);
+  
+  // Check PAN card verification from profile data (preferred) or Redux state (fallback)
+  // If PAN card is verified, when checkbox is checked, show "Next" instead of "Continue with PAN Card"
+  const isPanCardVerifiedFromProfile = userData?.aadhaarVerification?.isPanCardVerified === true;
+  const isPanCardVerified = isPanCardVerifiedFromProfile || isPanCardVerifiedRedux;
 
   const [aadhaarInput, setAadhaarInput] = useState<string>('');
   const [aadhaarNumberErr, setAadhaarNumberErr] = useState<string>('');
@@ -71,7 +73,7 @@ export default function AadhaarInputScreen(): React.JSX.Element {
       (data: any) => {
         logger.debug('Face RD Success:', data);
         dispatch(setIsAuthenticatingFace(false));
-        dispatch(setIsAadhaarFaceValidated(true));
+        dispatch(setUserAadhaarFaceValidated(true));
         // Store Aadhaar number in Redux for future Face RD verifications
         const rawAadhaar = getRawAadhaarNumber(aadhaarInput);
         if (rawAadhaar && rawAadhaar.length === AADHAAR_LENGTH) {
@@ -87,13 +89,27 @@ export default function AadhaarInputScreen(): React.JSX.Element {
         dispatch(setIsAuthenticatingFace(false));
         // Hard fallback: Navigate to OTP screen ONLY when Face RD fails
         const rawAadhaar = getRawAadhaarNumber(aadhaarInput);
+        const userEmail = store.getState().userState?.userData?.email || '';
+        
+        logger.debug('Face RD Failure: Navigating to OTP screen', {
+          hasAadhaar: !!rawAadhaar && rawAadhaar.length === AADHAAR_LENGTH,
+          hasEmail: !!userEmail,
+          aadhaarLength: rawAadhaar?.length,
+        });
+        
         if (rawAadhaar && rawAadhaar.length === AADHAAR_LENGTH) {
+          if (!userEmail) {
+            logger.error('Face RD Failure: User email not found in Redux state');
+            setAadhaarNumberErr(t('aadhaar.emailMissing', 'User email not found. Please try again.'));
+            return;
+          }
           navigation.navigate('AadhaarOtpScreen', {
-            emailID: store.getState().userState?.userData?.email || '',
+            emailID: userEmail,
             aadhaarNumber: rawAadhaar,
           });
         } else {
           // If Aadhaar is invalid, show error
+          logger.warn('Face RD Failure: Invalid Aadhaar number', { aadhaarLength: rawAadhaar?.length });
           setAadhaarNumberErr(t('aadhaar.aadhaarLengthError'));
         }
       },
@@ -200,6 +216,27 @@ export default function AadhaarInputScreen(): React.JSX.Element {
     }
   }, [dispatch, navigation, aadhaarInput]);
 
+  /** Skip button handler - when PAN card is verified, user can skip Aadhaar */
+  const handleSkip = useCallback(async (): Promise<void> => {
+    // Navigate directly to location/check-in screen
+    const onCancelPress = (): void => {
+      navigation.navigate('DashboardScreen');
+    };
+    
+    const granted = await requestLocationPermission(onCancelPress);
+    
+    if (granted) {
+      const isLocationOn = await isLocationEnabled();
+      if (isLocationOn) {
+        navigation.navigate('CheckInScreen');
+      } else {
+        navigation.navigate('DashboardScreen');
+      }
+    } else {
+      navigation.navigate('DashboardScreen');
+    }
+  }, [navigation]);
+
   /** Open Privacy Policy screen */
   const onPrivacyPolicyPress = useCallback((): void => {
     navigation.navigate('PrivacyPolicyScreen');
@@ -214,7 +251,7 @@ export default function AadhaarInputScreen(): React.JSX.Element {
       <BackHeader title={t('aadhaar.title')} isBottomBorder />
 
       <View style={styles.container}>
-        {isAadhaarFaceValidated ? (
+        {userAadhaarFaceValidated ? (
           <>
             <AppImage
               size={hp(10)}
@@ -260,7 +297,7 @@ export default function AadhaarInputScreen(): React.JSX.Element {
               editable={!aadhaarNotAvailable}
             />
 
-            {/* Aadhaar not available checkbox */}
+            {/* Aadhaar not available checkbox - show always */}
             <TouchableOpacity
               style={styles.checkboxContainer}
               onPress={() => {
@@ -292,47 +329,60 @@ export default function AadhaarInputScreen(): React.JSX.Element {
                 color={colors.text}
                 style={styles.checkboxLabel}
               >
-                Aadhaar not available
+                {t('aadhaar.aadhaarNotAvailable')}
               </AppText>
             </TouchableOpacity>
 
+            {/* Button logic: Only show Skip/Next when checkbox is checked */}
             {aadhaarNotAvailable ? (
-              <AppButton
-                title="Continue with PAN Card"
-                style={styles.continueBtn}
-                onPress={onAadhaarNotAvailablePress}
-              />
+              // If "Aadhaar not available" checkbox is checked
+              isPanCardVerified ? (
+                // PAN card is verified (isPanCardVerified: true): show "Next" and go to CheckInScreen
+                <AppButton
+                  title={t('aadhaar.next')}
+                  style={styles.continueBtn}
+                  onPress={handleSkip}
+                />
+              ) : (
+                // PAN card is NOT verified (isPanCardVerified: false): show "Continue with PAN Card" and go to PanCardCaptureScreen
+                <AppButton
+                  title={t('aadhaar.continueWithPanCard')}
+                  style={styles.continueBtn}
+                  onPress={onAadhaarNotAvailablePress}
+                />
+              )
             ) : (
+              // If Aadhaar is available (checkbox not checked) - always show normal Aadhaar verification flow
               <>
-            <View style={styles.policyContainer}>
-              <AppText
-                size={hp('1.5%')}
-                color={colors.text}
-                style={styles.policyText}
-              >
-                {t('aadhaar.authorize')}{' '}
-                <AppText
-                  size={hp('1.5%')}
-                  color={colors.primary}
-                  onPress={onPrivacyPolicyPress}
-                >
-                  {t('aadhaar.privacyPolicy')}
-                </AppText>
-                .
-              </AppText>
-            </View>
+                <View style={styles.policyContainer}>
+                  <AppText
+                    size={hp('1.5%')}
+                    color={colors.text}
+                    style={styles.policyText}
+                  >
+                    {t('aadhaar.authorize')}{' '}
+                    <AppText
+                      size={hp('1.5%')}
+                      color={colors.primary}
+                      onPress={onPrivacyPolicyPress}
+                    >
+                      {t('aadhaar.privacyPolicy')}
+                    </AppText>
+                    .
+                  </AppText>
+                </View>
 
-            <AppButton
-              disabled={isButtonDisabled}
-              title={
-                isAuthenticatingFace
-                  ? t('aadhaar.authenticating')
-                  : Platform.OS === 'ios'
-                  ? 'Verify with OTP'
-                  : t('aadhaar.captureFace')
-              }
-              onPress={onCaptureFacePress}
-            />
+                <AppButton
+                  disabled={isButtonDisabled}
+                  title={
+                    isAuthenticatingFace
+                      ? t('aadhaar.authenticating')
+                      : Platform.OS === 'ios'
+                      ? 'Verify with OTP'
+                      : t('aadhaar.captureFace')
+                  }
+                  onPress={onCaptureFacePress}
+                />
               </>
             )}
           </>
