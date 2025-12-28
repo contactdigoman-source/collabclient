@@ -11,6 +11,7 @@ import { logger } from '../../services/logger';
 import { hp, wp, FontTypes } from '../../constants';
 import { DarkThemeColors, APP_THEMES } from '../../themes';
 import { useAppSelector } from '../../redux';
+import { useTranslation } from '../../hooks/useTranslation';
 
 interface AttendanceRecord {
   Timestamp: string | number;
@@ -39,6 +40,7 @@ export default function AttendanceDetailModal({
   const theme = useTheme();
   const colors = useMemo(() => theme?.colors || {}, [theme?.colors]);
   const { appTheme } = useAppSelector(state => state.appState);
+  const { t } = useTranslation();
 
   // Debug logging
   useEffect(() => {
@@ -140,17 +142,17 @@ export default function AttendanceDetailModal({
     const status = record.AttendanceStatus?.toUpperCase();
     switch (status) {
       case 'LUNCH':
-        return 'Lunch';
+        return t('attendance.breakStatus.lunch');
       case 'SHORTBREAK':
-        return 'Short Break';
+        return t('attendance.breakStatus.shortBreak');
       case 'COMMUTING':
-        return 'Commuting';
+        return t('attendance.breakStatus.commuting');
       case 'PERSONALTIMEOUT':
-        return 'Personal Timeout';
+        return t('attendance.breakStatus.personalTimeout');
       case 'OUTFORDINNER':
-        return 'Out for Dinner';
+        return t('attendance.breakStatus.outForDinner');
       default:
-        return 'Break';
+        return t('attendance.breakStatus.break');
     }
   };
 
@@ -239,7 +241,7 @@ export default function AttendanceDetailModal({
                     color={colors.text || DarkThemeColors.white_common}
                     style={styles.directionText}
                   >
-                    {record.PunchDirection === 'IN' ? 'In' : 'Out'}: {formatTime(record.Timestamp)}
+                    {record.PunchDirection === 'IN' ? t('attendance.in') : t('attendance.out')}: {formatTime(record.Timestamp)}
                     {breakLabel && ` (${breakLabel})`}
                   </AppText>
 
@@ -274,7 +276,7 @@ export default function AttendanceDetailModal({
                         <Marker
                           key={`marker-${record.Timestamp}-${index}`}
                           coordinate={coords}
-                          title={record.PunchDirection === 'IN' ? 'Check In' : 'Check Out'}
+                          title={record.PunchDirection === 'IN' ? t('attendance.checkIn') : t('attendance.checkOut')}
                         />
                       )}
                     </AppMap>

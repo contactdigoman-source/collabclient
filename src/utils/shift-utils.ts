@@ -15,19 +15,20 @@ function getShiftStartTime(shiftStartTime?: string): string {
 }
 
 /**
- * Get the shift start time timestamp for today
+ * Get the shift start time timestamp for a given date
  * Shift times from API are in UTC format
  * @param shiftStartTime - Shift start time in HH:mm format (e.g., "09:00") in UTC, defaults to 09:00
+ * @param date - Date in YYYY-MM-DD format in UTC (defaults to today in UTC)
  * @returns timestamp in milliseconds (UTC), or null if invalid
  */
-export function getShiftStartTimestamp(shiftStartTime?: string): number | null {
+export function getShiftStartTimestamp(shiftStartTime?: string, date?: string): number | null {
   const startTime = getShiftStartTime(shiftStartTime);
+  // If date not provided, use today's date in UTC (since shift times are in UTC)
+  const targetDate = date || getCurrentUTCDate();
 
   try {
-    // Get today's date in UTC (since shift times are in UTC)
-    const todayUTC = getCurrentUTCDate();
     // Create UTC timestamp from UTC date/time
-    return createTimestampFromDateTime(todayUTC, startTime);
+    return createTimestampFromDateTime(targetDate, startTime);
   } catch (error) {
     logger.error('Error getting shift start timestamp', error);
     return null;

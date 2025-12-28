@@ -17,6 +17,7 @@ import {
   Platform,
   Alert,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { useFocusEffect, useTheme } from '@react-navigation/native';
@@ -75,11 +76,10 @@ import {
 } from '../../redux/reducers/syncReducer';
 import { initializeDatabaseTables } from '../../services/database';
 import {
-  getCurrentUTCDate,
-  getDateFromUTCTimestamp,
   formatUTCForDisplay,
 } from '../../utils/time-utils';
 import { getAttendanceData } from '../../services/attendance/attendance-db-service';
+import { getDaysAttendance } from '../../services/attendance/attendance-service';
 import { logger } from '../../services/logger';
 
 const COLLEAGUE_NUM_COLUMNS = 4;
@@ -112,72 +112,11 @@ export default function HomeScreen(): React.JSX.Element {
   const userLastAttendance = useAppSelector(
     state => state.userState.userLastAttendance,
   );
-  const userAttendanceHistory = useAppSelector(
-    state => state.userState.userAttendanceHistory,
-  );
   const userData = useAppSelector(state => state.userState.userData);
   const expiresAt = useAppSelector(state => state.userState.expiresAt);
   const displayBreakStatus = useAppSelector(
     state => state.userState.displayBreakStatus,
   );
-
-  // Get today's attendance records (first check-in and last checkout) in UTC date format
-  const todayAttendance = useMemo(() => {
-    if (!userAttendanceHistory || userAttendanceHistory.length === 0) {
-      return { checkIn: null, checkout: null };
-    }
-
-    const today = getCurrentUTCDate(); // Get today's date in UTC
-
-    // Find today's check-in and checkout records
-    let checkIn: (typeof userAttendanceHistory)[0] | null = null;
-    let checkout: (typeof userAttendanceHistory)[0] | null = null;
-    let checkoutTimestamp = 0;
-
-    for (const record of userAttendanceHistory) {
-      // Check DateOfPunch field first, then derive from Timestamp (timestamp is UTC)
-      let recordDate: string;
-      if (record.DateOfPunch) {
-        recordDate = record.DateOfPunch;
-      } else if (record.Timestamp) {
-        const timestamp =
-          typeof record.Timestamp === 'string'
-            ? parseInt(record.Timestamp, 10)
-            : record.Timestamp;
-        recordDate = getDateFromUTCTimestamp(timestamp);
-      } else {
-        continue;
-      }
-
-      if (recordDate === today) {
-        const timestamp =
-          typeof record.Timestamp === 'string'
-            ? parseInt(record.Timestamp, 10)
-            : record.Timestamp;
-
-        if (record.PunchDirection === 'IN') {
-          // Get first check-in of the day (earliest timestamp)
-          if (
-            !checkIn ||
-            timestamp <
-              (typeof checkIn.Timestamp === 'string'
-                ? parseInt(checkIn.Timestamp, 10)
-                : checkIn.Timestamp)
-          ) {
-            checkIn = record;
-          }
-        } else if (record.PunchDirection === 'OUT') {
-          // Get last checkout of the day (most recent/latest timestamp)
-          if (timestamp > checkoutTimestamp) {
-            checkout = record;
-            checkoutTimestamp = timestamp;
-          }
-        }
-      }
-    }
-
-    return { checkIn, checkout };
-  }, [userAttendanceHistory]);
 
   const [currentLocation, setCurrentLocation] = useState<{
     latitude: number;
@@ -185,6 +124,7 @@ export default function HomeScreen(): React.JSX.Element {
   } | null>(null);
 
   const [refreshing, setRefreshing] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true); // Track initialization state
 
   // Check if user is on break
   const isOnBreak = useMemo(() => {
@@ -209,7 +149,7 @@ export default function HomeScreen(): React.JSX.Element {
       COMMUTING: t('attendance.breakStatus.commuting', 'Commuting'),
       PERSONALTIMEOUT: t(
         'attendance.breakStatus.personalTimeout',
-        'Personal Timeout',
+        t('attendance.breakStatus.personalTimeout'),
       ),
       OUTFORDINNER: t('attendance.breakStatus.outForDinner', 'Out for Dinner'),
     };
@@ -262,6 +202,9 @@ export default function HomeScreen(): React.JSX.Element {
   const lastInitializedEmailRef = useRef<string | null>(null);
   const deviceRegistrationDoneRef = useRef(false);
   const locationFetchedOnMountRef = useRef(false);
+  const databaseInitializedRef = useRef(false); // Track if database is ready
+  const lastLocationUpdateRef = useRef<number>(0); // Track last location update time
+  const locationUpdateCountRef = useRef<number>(0); // Track number of location updates
 
   // ============================================================================
   // Callbacks
@@ -269,6 +212,30 @@ export default function HomeScreen(): React.JSX.Element {
   // Function to update current location
   const updateCurrentLocation = useCallback(async () => {
     try {
+      // Throttle location updates - max once every 30 seconds
+      const now = Date.now();
+      const timeSinceLastUpdate = now - lastLocationUpdateRef.current;
+      const MIN_UPDATE_INTERVAL = 30000; // 30 seconds
+
+      locationUpdateCountRef.current += 1;
+
+      // Skip if updated too recently (except for first 2 updates)
+      if (
+        locationUpdateCountRef.current > 2 &&
+        timeSinceLastUpdate < MIN_UPDATE_INTERVAL
+      ) {
+        logger.debug('Location update throttled', {
+          timeSinceLastUpdate,
+          updateCount: locationUpdateCountRef.current,
+        });
+        return false;
+      }
+
+      logger.debug('Updating location', {
+        updateCount: locationUpdateCountRef.current,
+        timeSinceLastUpdate,
+      });
+
       // Request permission first (on Android, iOS handles this automatically)
       const hasPermission = await requestLocationPermission(() => {
         logger.debug('Location permission denied by user');
@@ -281,6 +248,9 @@ export default function HomeScreen(): React.JSX.Element {
 
       const coords = await getCurrentPositionOfUser();
       logger.debug('Current location fetched', { coords });
+
+      lastLocationUpdateRef.current = now; // Update timestamp
+
       setCurrentLocation({
         latitude: coords.latitude,
         longitude: coords.longitude,
@@ -373,7 +343,6 @@ export default function HomeScreen(): React.JSX.Element {
   // 2. Initialize database tables and load profile from DB on mount
   useEffect(() => {
     const email = userData?.email;
-    const userID = userData?.id?.toString();
 
     // Skip if no email or if already initialized for this email
     if (
@@ -386,26 +355,56 @@ export default function HomeScreen(): React.JSX.Element {
 
     const initializeAndLoadProfile = async () => {
       try {
-        // Initialize database tables (only once)
+        setIsInitializing(true); // Start loading state
+
+        // STEP 1: Initialize database tables (only once)
         if (!initializationDoneRef.current) {
           await initializeDatabaseTables();
           initializationDoneRef.current = true;
+          databaseInitializedRef.current = true; // Mark database as ready
+          logger.info('Database tables initialized successfully');
         }
 
-        // Load profile from DB
+        // STEP 2: Load profile from DB immediately (FAST - shows data right away)
         const dbProfile = await profileSyncService.loadProfileFromDB(email);
-        if (dbProfile) {
-          // Profile loaded from DB, now sync unsynced items
-          await syncUnsyncedItems(email, userID || email);
-        } else {
-          // No profile in DB, sync from server
-          await syncCoordinator.syncPullOnly(email, userID || email);
+        logger.info('Profile loaded from DB', { hasProfile: !!dbProfile });
+
+        // STEP 3: Load attendance data from DB immediately (FAST - shows data right away)
+        // This ensures UI has data immediately, even before server sync
+        try {
+          await getAttendanceData(email);
+          logger.info('Attendance data loaded from DB');
+        } catch (attendanceError) {
+          logger.error('Error loading attendance from DB', attendanceError);
+          // Continue even if attendance load fails
         }
 
         // Mark as initialized for this email
         lastInitializedEmailRef.current = email;
+
+        // Data loaded from DB, hide loading state
+        setIsInitializing(false);
+
+        // STEP 4: Pull attendance and profile from server (updates DB and Redux)
+        // This happens in background after UI is shown
+        // Pull attendance from server
+        getDaysAttendance(email).catch(error => {
+          logger.error('Error pulling attendance from server', error);
+        });
+
+        // Pull profile from server
+        profileSyncService.syncProfileFromServer(email).catch(error => {
+          logger.error('Error pulling profile from server', error);
+        });
       } catch (error) {
         logger.error('Error initializing and loading profile', error);
+        // Even if profile loading failed, mark database as initialized
+        // so other operations can proceed
+        if (initializationDoneRef.current) {
+          databaseInitializedRef.current = true;
+        }
+        // Hide loading state even on error
+        setIsInitializing(false);
       }
     };
 
@@ -604,12 +603,21 @@ export default function HomeScreen(): React.JSX.Element {
       if (locationFetchedOnMountRef.current) {
         updateCurrentLocation();
       }
-      
+
       // Refresh attendance data when screen comes into focus to update header
-      if (userData?.email) {
-        getAttendanceData(userData.email);
+      // BUT only if database is initialized to avoid errors on first login
+      const email = userData?.email;
+      if (email && databaseInitializedRef.current) {
+        // Load from DB first, then sync from server in background
+        getAttendanceData(email).catch(error => {
+          logger.error(
+            '[HomeScreen] Error refreshing attendance on focus',
+            error,
+          );
+        });
       }
-    }, [updateCurrentLocation, userData?.email]),
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [updateCurrentLocation]), // Removed userData?.email to prevent infinite loop - email is captured inside
   );
 
   // 7. Animate map to current location when it's updated
@@ -1020,14 +1028,17 @@ export default function HomeScreen(): React.JSX.Element {
       <HomeHeader
         userName={`${userData?.firstName || ''} ${userData?.lastName || ''}`}
         punchTimestamp={
-          // Only show today's check-in time (active shift)
-          todayAttendance.checkIn?.Timestamp || undefined
+          // Show last punch timestamp (regardless of date)
+          // This ensures header displays correctly even on weekends/holidays
+          userLastAttendance?.Timestamp || undefined
         }
         checkoutTimestamp={
-          // Only show today's checkout time (active shift)
-          todayAttendance.checkout?.Timestamp || undefined
+          // Show last checkout only if last action was checkout
+          userLastAttendance?.PunchDirection === 'OUT'
+            ? userLastAttendance.Timestamp
+            : undefined
         }
-        punchDirection={todayAttendance.checkIn?.PunchDirection || undefined}
+        punchDirection={userLastAttendance?.PunchDirection || undefined}
         textColor={headerTextColor}
         bgColor={headerBgColor}
       />
@@ -1053,6 +1064,25 @@ export default function HomeScreen(): React.JSX.Element {
       <View style={styles.syncIndicatorContainer}>
         <SyncStatusIndicator />
       </View>
+
+      {/* Loading Overlay - Show while initializing database and loading data */}
+      {isInitializing && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator
+              size="large"
+              color={colors.primary || DarkThemeColors.primary}
+            />
+            <AppText
+              size={hp(2)}
+              style={styles.loadingText}
+              color={colors.text || DarkThemeColors.white_common}
+            >
+              {t('common.loading', 'Loading...')}
+            </AppText>
+          </View>
+        </View>
+      )}
     </AppContainer>
   );
 }
@@ -1118,5 +1148,23 @@ const styles = StyleSheet.create({
     top: hp(12),
     right: wp(5),
     zIndex: 1000,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: hp(2),
   },
 });

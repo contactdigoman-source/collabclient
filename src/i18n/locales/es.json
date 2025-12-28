@@ -153,7 +153,12 @@
     "continue": "Continuar",
     "aadhaarNotAvailable": "Aadhaar no disponible",
     "next": "Siguiente",
-    "continueWithPanCard": "Continuar con PAN Card"
+    "continueWithPanCard": "Continuar con PAN Card",
+    "panCardVerification": "Verificación de PAN Card",
+    "captureBothSides": "Por favor captura ambos lados de la tarjeta PAN",
+    "failedToCaptureImage": "Error al capturar imagen",
+    "failedToSelectImage": "Error al seleccionar imagen",
+    "verificationFailed": "La verificación de la tarjeta PAN falló. Por favor, inténtelo de nuevo."
   },
   "home": {
     "colleagues": "Colegas",
@@ -167,6 +172,10 @@
   "attendance": {
     "confirmCheckIn": "Confirmar Entrada",
     "confirmCheckOut": "Confirmar Salida",
+    "checkIn": "Entrada",
+    "checkOut": "Salida",
+    "in": "Entrada",
+    "out": "Salida",
     "fetchingLocation": "Obteniendo tu ubicación...",
     "locationPermissionDenied": "Permiso de ubicación denegado. Habilítalo en configuración.",
     "locationPermissionRequired": "Permiso de Ubicación Requerido",
@@ -174,6 +183,8 @@
     "metersAccurate": "metros de precisión",
     "waitingForAccuracy": "Esperando precisión < {{accuracy}}m",
     "noDataFound": "¡No se encontraron datos de asistencia!",
+    "time": "Hora",
+    "direction": "Dirección",
     "earlyCheckout": {
       "title": "Salida Temprana",
       "message": "Has trabajado durante {{hours}} horas. Se requieren un mínimo de 9 horas de trabajo.",
@@ -187,8 +198,11 @@
       "shortBreak": "Descanso Corto",
       "commuting": "Desplazándose",
       "personalTimeout": "Tiempo Personal",
-      "outForDinner": "Fuera para Cenar"
-    }
+      "outForDinner": "Fuera para Cenar",
+      "lunch": "Almuerzo",
+      "break": "Descanso"
+    },
+    "forgotToCheckout": "Olvidé hacer Checkout"
   },
   "profile": {
     "member": "Miembro",
@@ -261,7 +275,18 @@
     "none": "Ninguno",
     "next": "Siguiente",
     "continue": "Continuar",
-    "uploading": "Subiendo..."
+    "uploading": "Subiendo...",
+    "close": "Cerrar",
+    "confirm": "Confirmar",
+    "databaseClearedSuccessfully": "Base de datos limpiada exitosamente",
+    "failedToClearDatabase": "Error al limpiar la base de datos",
+    "clearDatabase": "Limpiar Base de Datos",
+    "clearDatabaseConfirmation": "¿Está seguro de que desea eliminar todos los datos de la base de datos? Esta acción no se puede deshacer.",
+    "clear": "Limpiar",
+    "deleteAttendanceConfirmation": "¿Está seguro de que desea eliminar este registro de asistencia?",
+    "attendanceRecordDeleted": "Registro de asistencia eliminado exitosamente",
+    "failedToDeleteAttendance": "Error al eliminar el registro de asistencia",
+    "actionCannotBeUndone": "Esta acción no se puede deshacer."
   }
 }
 

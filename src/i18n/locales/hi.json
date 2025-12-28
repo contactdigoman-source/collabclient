@@ -153,7 +153,12 @@
     "continue": "जारी रखें",
     "aadhaarNotAvailable": "आधार उपलब्ध नहीं है",
     "next": "अगला",
-    "continueWithPanCard": "PAN कार्ड के साथ जारी रखें"
+    "continueWithPanCard": "PAN कार्ड के साथ जारी रखें",
+    "panCardVerification": "PAN कार्ड सत्यापन",
+    "captureBothSides": "कृपया PAN कार्ड के दोनों पक्ष कैप्चर करें",
+    "failedToCaptureImage": "छवि कैप्चर करने में विफल",
+    "failedToSelectImage": "छवि चुनने में विफल",
+    "verificationFailed": "PAN कार्ड सत्यापन विफल। कृपया पुनः प्रयास करें।"
   },
   "home": {
     "colleagues": "सहकर्मी",
@@ -167,6 +172,10 @@
   "attendance": {
     "confirmCheckIn": "चेक इन की पुष्टि करें",
     "confirmCheckOut": "चेक आउट की पुष्टि करें",
+    "checkIn": "चेक इन",
+    "checkOut": "चेक आउट",
+    "in": "इन",
+    "out": "आउट",
     "fetchingLocation": "आपका स्थान प्राप्त किया जा रहा है...",
     "locationPermissionDenied": "स्थान अनुमति अस्वीकृत। इसे सेटिंग्स में सक्षम करें।",
     "locationPermissionRequired": "स्थान अनुमति आवश्यक",
@@ -174,6 +183,8 @@
     "metersAccurate": "मीटर सटीक",
     "waitingForAccuracy": "सटीकता < {{accuracy}}m की प्रतीक्षा कर रहे हैं",
     "noDataFound": "कोई उपस्थिति डेटा नहीं मिला!",
+    "time": "समय",
+    "direction": "दिशा",
     "earlyCheckout": {
       "title": "जल्दी चेक आउट",
       "message": "आपने {{hours}} घंटे काम किया है। न्यूनतम 9 घंटे काम की आवश्यकता है।",
@@ -187,8 +198,11 @@
       "shortBreak": "छोटा ब्रेक",
       "commuting": "यात्रा कर रहे हैं",
       "personalTimeout": "व्यक्तिगत समय",
-      "outForDinner": "डिनर के लिए बाहर"
-    }
+      "outForDinner": "डिनर के लिए बाहर",
+      "lunch": "लंच",
+      "break": "ब्रेक"
+    },
+    "forgotToCheckout": "चेकआउट करना भूल गए"
   },
   "profile": {
     "member": "सदस्य",
@@ -261,7 +275,18 @@
     "none": "कोई नहीं",
     "next": "अगला",
     "continue": "जारी रखें",
-    "uploading": "अपलोड हो रहा है..."
+    "uploading": "अपलोड हो रहा है...",
+    "close": "बंद करें",
+    "confirm": "पुष्टि करें",
+    "databaseClearedSuccessfully": "डेटाबेस सफलतापूर्वक साफ किया गया",
+    "failedToClearDatabase": "डेटाबेस साफ करने में विफल",
+    "clearDatabase": "डेटाबेस साफ करें",
+    "clearDatabaseConfirmation": "क्या आप वाकई सभी डेटाबेस डेटा हटाना चाहते हैं? यह कार्रवाई पूर्ववत नहीं की जा सकती।",
+    "clear": "साफ करें",
+    "deleteAttendanceConfirmation": "क्या आप वाकई इस उपस्थिति रिकॉर्ड को हटाना चाहते हैं?",
+    "attendanceRecordDeleted": "उपस्थिति रिकॉर्ड सफलतापूर्वक हटाया गया",
+    "failedToDeleteAttendance": "उपस्थिति रिकॉर्ड हटाने में विफल",
+    "actionCannotBeUndone": "यह कार्रवाई पूर्ववत नहीं की जा सकती।"
   }
 }
 

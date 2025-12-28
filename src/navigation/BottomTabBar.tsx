@@ -54,7 +54,11 @@ export default function BottomTabBar(): React.JSX.Element {
   } = useAppSelector(state => state.userState);
 
   // Use shared hook for check-in status
-  const isUserCheckedIn = useCheckInStatus();
+  const checkInStatus = useCheckInStatus();
+  const isUserCheckedIn = checkInStatus.isUserCheckedIn;
+  
+  // Check if data is initialized (userData must exist for button to work)
+  const isDataInitialized = !!userData?.email;
 
   const [showFaceRDModal, setShowFaceRDModal] = useState<boolean>(false);
   const [isFaceRDVerifying, setIsFaceRDVerifying] = useState<boolean>(false);
@@ -250,7 +254,8 @@ export default function BottomTabBar(): React.JSX.Element {
             <RippleButton
               rippleColor={(colors as any).black || DarkThemeColors.black}
               {...({ style: styles.flex1 } as any)}
-              onLongPress={onPunchButtonLongPress}
+              onLongPress={isDataInitialized ? onPunchButtonLongPress : undefined}
+              disabled={!isDataInitialized}
               accessibilityRole="button"
               accessibilityLabel="Punch Button"
             >
@@ -258,6 +263,7 @@ export default function BottomTabBar(): React.JSX.Element {
                 size={ATTENDANCE_ICON_SIZE}
                 isRounded
                 source={getAttendanceIcon}
+                style={!isDataInitialized ? { opacity: 0.5 } : undefined}
               />
             </RippleButton>
           </Animated.View>

@@ -44,6 +44,24 @@ export interface AttendanceRecord {
   IsCheckoutQrScan?: number;
   TravelerName?: string;
   PhoneNumber?: string;
+  // New fields for approval workflow and status tracking
+  ApprovalRequired?: 'Y' | 'N';
+  Reason?: 'FORGOT_TO_CHECKOUT' | 'MANUAL_CORRECTION' | null;
+  OriginalCheckoutTime?: number;
+  CorrectedCheckoutTime?: number;
+  WorkedHours?: number;
+  MinimumHoursRequired?: number;
+  
+  // For overnight shifts - links Day 2 checkout to Day 1 entry
+  LinkedEntryDate?: string;
+  
+  // For correction tracking
+  CorrectionType?: 'FORGOT_CHECKOUT' | 'MANUAL_TIME' | null;
+  ManualCheckoutTime?: number;
+  
+  // Store shift times with each record (captured at check-in time)
+  ShiftStartTime?: string;   // "HH:mm" - from profile at check-in
+  ShiftEndTime?: string;     // "HH:mm" - from profile at check-in
 }
 
 // First Time Login Data (temporary storage before API submission)

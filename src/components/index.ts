@@ -23,6 +23,8 @@ import PasswordExpiryModal from './app-modals/PasswordExpiryModal';
 import FaceRDVerificationModal from './app-modals/FaceRDVerificationModal';
 import FaceRDNotInstalledModal from './app-modals/FaceRDNotInstalledModal';
 import LanguagePickerModal from './app-modals/LanguagePickerModal';
+import { ForgotCheckoutModal } from './app-modals/ForgotCheckoutModal';
+import { TimePickerModal } from './app-modals/TimePickerModal';
 import ComingSoonBadge from './app-badges/ComingSoonBadge';
 import { SyncStatusIndicator } from './app-sync/SyncStatusIndicator';
 import { UnsyncedItemsList } from './app-sync/UnsyncedItemsList';
@@ -53,6 +55,8 @@ export {
   FaceRDVerificationModal,
   FaceRDNotInstalledModal,
   LanguagePickerModal,
+  ForgotCheckoutModal,
+  TimePickerModal,
   ComingSoonBadge,
   SyncStatusIndicator,
   UnsyncedItemsList,

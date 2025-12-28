@@ -10,7 +10,7 @@ import { useNavigation, CommonActions, useTheme } from '@react-navigation/native
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView from 'react-native-maps';
 
-import { AppButton, AppMap, AppText, BackHeader, EarlyCheckoutModal } from '../../components';
+import { AppButton, AppMap, AppText, BackHeader, EarlyCheckoutModal, ForgotCheckoutModal } from '../../components';
 import {
   hp,
   wp,
@@ -20,14 +20,14 @@ import {
 import Geolocation from '@react-native-community/geolocation';
 import {
   requestLocationPermission,
-  watchUserLocation,
   getLocationFromLatLon,
   isLocationEnabled,
   cancelBreakReminderNotifications,
 } from '../../services';
 import { useAppDispatch, useAppSelector } from '../../redux';
 import { setUserLocationRegion } from '../../redux';
-import { insertAttendancePunchRecord, getAttendanceData } from '../../services';
+import { insertAttendancePunchRecord } from '../../services';
+import { isOvernightShift } from '../../services/attendance/overnight-shift-service';
 import moment from 'moment';
 import { getCurrentUTCTimestamp, getCurrentUTCDate} from '../../utils/time-utils';
 import { PUNCH_DIRECTIONS } from '../../constants/location';
@@ -63,31 +63,55 @@ export default function CheckInScreen(): React.JSX.Element {
 
   const userData = useAppSelector(state => state.userState.userData);
 
-  // Use shared hook for check-in status
-  const isUserCheckedIn = useCheckInStatus();
+  // Use enhanced hook for check-in status with all logic
+  const checkInStatus = useCheckInStatus();
+  const isUserCheckedIn = checkInStatus.isUserCheckedIn;
 
   const [isFetchingLocation, setIsFetchingLocation] = useState<boolean>(true);
   const [permissionDenied, setPermissionDenied] = useState<boolean>(false);
   const [currentAddress, setCurrentAddress] = useState<string | null>(null);
   const [isFetchingAddress, setIsFetchingAddress] = useState<boolean>(false);
   const [showEarlyCheckoutModal, setShowEarlyCheckoutModal] = useState<boolean>(false);
+  const [showForgotCheckoutModal, setShowForgotCheckoutModal] = useState<boolean>(false);
+  const [isPunchInProgress, setIsPunchInProgress] = useState<boolean>(false);
   
   // Use refs to prevent unnecessary re-renders and address fetches
   const addressFetchedRef = useRef<boolean>(false);
   const lastLocationRef = useRef<{ lat: number; lon: number } | null>(null);
+  const watchIdRef = useRef<number | null>(null);
+  const locationUpdateCountRef = useRef<number>(0);
+  const initialLocationFetchedRef = useRef<boolean>(false);
+  const punchOperationInProgressRef = useRef<boolean>(false);
 
  
   const stopWatching = useCallback((): void => {
-    // watchIdRef is not needed here as watchUserLocation handles it internally
-    // Just clear any existing watch
+    if (watchIdRef.current !== null) {
+      Geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+      logger.debug('stopWatching: Cleared location watch');
+    }
   }, []);
 
   const handleLocationUpdate = useCallback(
     (coords: Coordinates): void => {
+      // Limit location updates to prevent excessive calls
+      locationUpdateCountRef.current += 1;
+      
       const logContext = { _context: { service: 'attendance', fileName: 'CheckInScreen.tsx', methodName: 'handleLocationUpdate' } };
-      logger.debug('handleLocationUpdate: Called with coords', { ...logContext, coords });
+      logger.debug('handleLocationUpdate: Called with coords', { 
+        ...logContext, 
+        coords, 
+        updateCount: locationUpdateCountRef.current 
+      });
+      
       if (!coords) {
         logger.debug('handleLocationUpdate: No coords, returning', logContext);
+        return;
+      }
+
+      // After initial location is set, limit updates
+      if (initialLocationFetchedRef.current && locationUpdateCountRef.current > 3) {
+        logger.debug('handleLocationUpdate: Max updates reached, ignoring', logContext);
         return;
       }
 
@@ -102,6 +126,7 @@ export default function CheckInScreen(): React.JSX.Element {
       logger.debug('handleLocationUpdate: Dispatching location region', logContext);
       dispatch(setUserLocationRegion(locationRegion));
       setIsFetchingLocation(false);
+      initialLocationFetchedRef.current = true;
 
       // Fetch address immediately when location is available using Google API (only if not already fetched)
       if (coords.latitude && coords.longitude && !addressFetchedRef.current) {
@@ -127,9 +152,9 @@ export default function CheckInScreen(): React.JSX.Element {
         }
       }
 
-      if (mapRef.current) {
+      if (mapRef.current && locationUpdateCountRef.current <= 2) {
         logger.debug('handleLocationUpdate: Animating map to region', logContext);
-        // Focus on current location when location updates
+        // Focus on current location when location updates (only first 2 times)
         mapRef.current.animateToRegion(
           {
             latitude: coords.latitude,
@@ -139,7 +164,7 @@ export default function CheckInScreen(): React.JSX.Element {
           },
           1000,
         );
-      } else {
+      } else if (!mapRef.current) {
         logger.debug('handleLocationUpdate: mapRef.current is null', logContext);
       }
     },
@@ -173,12 +198,24 @@ export default function CheckInScreen(): React.JSX.Element {
         },
         (error) => {
           logger.warn('startWatching: Error getting current position', error);
+          setIsFetchingLocation(false);
         },
         { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 },
       );
       
-      // Then start watching for updates
-      watchUserLocation(handleLocationUpdate);
+      // Then start watching for updates (limited to 2-3 updates by handleLocationUpdate)
+      const watchId = Geolocation.watchPosition(
+        (position) => {
+          handleLocationUpdate(position.coords);
+        },
+        (error) => {
+          logger.warn('startWatching: Error watching position', error);
+        },
+        { enableHighAccuracy: true, distanceFilter: 10, interval: 10000 },
+      );
+      
+      watchIdRef.current = watchId;
+      logger.debug('startWatching: Watch started with ID', { watchId });
     } else {
       logger.debug('startWatching: Location is not enabled');
       navigation.goBack();
@@ -186,9 +223,28 @@ export default function CheckInScreen(): React.JSX.Element {
   }, [handleLocationUpdate, stopWatching, onCancelPress, navigation]);
 
   useEffect(() => {
-    startWatching();
-    return stopWatching;
-  }, [startWatching, stopWatching]);
+    let mounted = true;
+    
+    if (mounted) {
+      startWatching();
+    }
+    
+    return () => {
+      mounted = false;
+      stopWatching();
+    };
+  }, [startWatching, stopWatching]); // Include dependencies as per linter
+
+  // Show forgot checkout modal on mount if conditions are met
+  useEffect(() => {
+    if (checkInStatus.showMissedCheckoutModal && !showForgotCheckoutModal) {
+      // Small delay to ensure UI is ready
+      const timer = setTimeout(() => {
+        setShowForgotCheckoutModal(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [checkInStatus.showMissedCheckoutModal, showForgotCheckoutModal]);
 
   // Fetch address when location region changes (only once, prevent flickering)
   useEffect(() => {
@@ -476,24 +532,69 @@ export default function CheckInScreen(): React.JSX.Element {
   }, [isUserCheckedIn, userLastAttendance?.CreatedOn]);
 
   const onCheckInPress = useCallback(async (): Promise<void> => {
-    // Get minimum working hours from profile (default to 9 if not set)
-    const minimumWorkingHours = userData?.minimumWorkingHours || 9;
-    
-    // If checking out and hours worked is less than minimum working hours, show early checkout modal
-    if (isUserCheckedIn && hoursWorked < minimumWorkingHours) {
-      setShowEarlyCheckoutModal(true);
+    // Prevent multiple simultaneous operations
+    if (punchOperationInProgressRef.current || isPunchInProgress) {
+      logger.debug('Punch operation already in progress, ignoring duplicate press', {
+        _context: { service: 'attendance', fileName: 'CheckInScreen.tsx', methodName: 'onCheckInPress' },
+      });
       return;
     }
+
+    // Set operation in progress flag
+    punchOperationInProgressRef.current = true;
+    setIsPunchInProgress(true);
+
+    try {
+      // Get minimum working hours from profile (default to 9 if not set)
+      const minimumWorkingHours = userData?.minimumWorkingHours || 9;
+      
+      // If checking out and hours worked is less than minimum working hours, show early checkout modal
+      if (isUserCheckedIn && hoursWorked < minimumWorkingHours) {
+        setShowEarlyCheckoutModal(true);
+        punchOperationInProgressRef.current = false;
+        setIsPunchInProgress(false);
+        return;
+      }
 
     // Proceed with normal check-in/check-out
     const currentTimeTS = getCurrentTimestamp();
     // Use getCheckInDate() for check-in, getCurrentDate() for checkout
     const currentDate = isUserCheckedIn ? getCurrentDate() : getCheckInDate();
 
+    // Handle overnight shift checkout: Link checkout to check-in date
+    let finalDateOfPunch = currentDate;
+    let linkedEntryDate: string | undefined = undefined;
+
+    if (isUserCheckedIn && userLastAttendance && userData?.shiftStartTime && userData?.shiftEndTime) {
+      // Check if shift is overnight
+      const shiftIsOvernight = isOvernightShift(userData.shiftStartTime, userData.shiftEndTime);
+      const checkInDate = userLastAttendance.DateOfPunch || moment.utc(userLastAttendance.Timestamp).format('YYYY-MM-DD');
+      const checkoutDate = moment.utc(currentTimeTS).format('YYYY-MM-DD');
+      const isNextDay = checkoutDate !== checkInDate;
+
+      if (shiftIsOvernight && isNextDay) {
+        // For overnight shifts, checkout should be grouped with check-in date
+        finalDateOfPunch = checkInDate; // Use check-in date for grouping
+        linkedEntryDate = checkoutDate; // Store actual checkout date
+        
+        logger.debug('Overnight shift checkout detected', {
+          _context: { service: 'attendance', fileName: 'CheckInScreen.tsx', methodName: 'onCheckInPress' },
+          checkInDate,
+          checkoutDate,
+          shiftStartTime: userData.shiftStartTime,
+          shiftEndTime: userData.shiftEndTime,
+          finalDateOfPunch,
+          linkedEntryDate,
+        });
+      }
+    }
+
     logger.debug('Inserting attendance record', {
       _context: { service: 'attendance', fileName: 'CheckInScreen.tsx', methodName: 'onCheckInPress' },
       isUserCheckedIn,
       currentDate,
+      finalDateOfPunch,
+      linkedEntryDate,
       currentTimeTS,
       timestampDate: moment.utc(currentTimeTS).format('YYYY-MM-DD'),
       lastAttendance: userLastAttendance ? {
@@ -503,8 +604,7 @@ export default function CheckInScreen(): React.JSX.Element {
       } : null,
     });
 
-    try {
-      await insertAttendancePunchRecord({
+    await insertAttendancePunchRecord({
         timestamp: currentTimeTS,
         orgID: '123',
         userID: userData?.email || '',
@@ -520,7 +620,7 @@ export default function CheckInScreen(): React.JSX.Element {
         address: currentAddress || '',
         createdOn: currentTimeTS,
         isSynced: 'N',
-        dateOfPunch: currentDate, // Explicitly set dateOfPunch to ensure correct grouping
+        dateOfPunch: finalDateOfPunch, // Use check-in date for overnight shifts
         attendanceStatus: '',
         moduleID: '',
         tripType: '',
@@ -529,6 +629,12 @@ export default function CheckInScreen(): React.JSX.Element {
         isCheckoutQrScan: 0,
         travelerName: '',
         phoneNumber: '',
+        // Capture shift times from profile at check-in time (for immutability)
+        ShiftStartTime: !isUserCheckedIn ? userData?.shiftStartTime : undefined,
+        ShiftEndTime: !isUserCheckedIn ? userData?.shiftEndTime : undefined,
+        MinimumHoursRequired: !isUserCheckedIn ? userData?.minimumWorkingHours : undefined,
+        // Overnight shift linking
+        LinkedEntryDate: linkedEntryDate || undefined, // Store actual checkout date for overnight shifts
       });
 
       // Cancel break notifications when checking in (returning from break)
@@ -545,15 +651,19 @@ export default function CheckInScreen(): React.JSX.Element {
         }),
       );
 
-      // Refresh attendance data from database to update Redux state (async, after navigation)
-      // This happens in the background and won't affect the current screen
-      if (userData?.email) {
-        getAttendanceData(userData.email).catch((error) => {
-          logger.error('Error refreshing attendance data after check-in', error);
-        });
-      }
+      // Note: getAttendanceData is already called inside insertAttendancePunchRecord
+      // No need to call it again here to avoid race conditions
+      
+      // Clear loading state after navigation (small delay to ensure navigation completes)
+      setTimeout(() => {
+        punchOperationInProgressRef.current = false;
+        setIsPunchInProgress(false);
+      }, 500);
     } catch (error) {
       logger.error('Error inserting attendance record', error);
+      // Clear loading state on error
+      punchOperationInProgressRef.current = false;
+      setIsPunchInProgress(false);
       // Show error to user or handle gracefully
       return; // Don't navigate if insert failed
     }
@@ -562,11 +672,15 @@ export default function CheckInScreen(): React.JSX.Element {
     isUserCheckedIn,
     userData?.email,
     userData?.minimumWorkingHours,
+    userData?.shiftStartTime,
+    userData?.shiftEndTime,
+    userLastAttendance,
     navigation,
     currentAddress,
     getCurrentTimestamp,
     hoursWorked,
     getCheckInDate,
+    isPunchInProgress,
   ]);
 
   const handleBreakStatusSelect = useCallback(
@@ -574,6 +688,22 @@ export default function CheckInScreen(): React.JSX.Element {
       setShowEarlyCheckoutModal(false);
       const currentTimeTS = getCurrentTimestamp();
       const currentDate = getCurrentDate();
+
+      // Handle overnight shift checkout: Link checkout to check-in date
+      let finalDateOfPunch = currentDate;
+      let linkedEntryDate: string | undefined = undefined;
+
+      if (userLastAttendance && userData?.shiftStartTime && userData?.shiftEndTime) {
+        const shiftIsOvernight = isOvernightShift(userData.shiftStartTime, userData.shiftEndTime);
+        const checkInDate = userLastAttendance.DateOfPunch || moment.utc(userLastAttendance.Timestamp).format('YYYY-MM-DD');
+        const checkoutDate = moment.utc(currentTimeTS).format('YYYY-MM-DD');
+        const isNextDay = checkoutDate !== checkInDate;
+
+        if (shiftIsOvernight && isNextDay) {
+          finalDateOfPunch = checkInDate;
+          linkedEntryDate = checkoutDate;
+        }
+      }
 
       try {
         await insertAttendancePunchRecord({
@@ -590,7 +720,7 @@ export default function CheckInScreen(): React.JSX.Element {
           address: currentAddress || '',
           createdOn: currentTimeTS,
           isSynced: 'N',
-          dateOfPunch: currentDate,
+          dateOfPunch: finalDateOfPunch,
           attendanceStatus: status.toUpperCase(), // Mark with selected break status
           moduleID: '',
           tripType: '',
@@ -599,6 +729,7 @@ export default function CheckInScreen(): React.JSX.Element {
           isCheckoutQrScan: 0,
           travelerName: '',
           phoneNumber: '',
+          LinkedEntryDate: linkedEntryDate || undefined,
         });
 
         // Navigate immediately to prevent button flicker
@@ -610,13 +741,8 @@ export default function CheckInScreen(): React.JSX.Element {
           }),
         );
 
-        // Refresh attendance data from database to update Redux state (async, after navigation)
-        // This happens in the background and won't affect the current screen
-        if (userData?.email) {
-          getAttendanceData(userData.email).catch((error) => {
-            logger.error('Error refreshing attendance data after checkout', error);
-          });
-        }
+        // Note: getAttendanceData is already called inside insertAttendancePunchRecord
+        // No need to call it again here to avoid race conditions
       } catch (error) {
         logger.error('Error inserting attendance record', error);
       }
@@ -624,6 +750,9 @@ export default function CheckInScreen(): React.JSX.Element {
     [
       userLocationRegion,
       userData?.email,
+      userData?.shiftStartTime,
+      userData?.shiftEndTime,
+      userLastAttendance,
       navigation,
       currentAddress,
       getCurrentTimestamp,
@@ -634,6 +763,22 @@ export default function CheckInScreen(): React.JSX.Element {
     setShowEarlyCheckoutModal(false);
     const currentTimeTS = getCurrentTimestamp();
     const currentDate = getCurrentDate();
+
+    // Handle overnight shift checkout: Link checkout to check-in date
+    let finalDateOfPunch = currentDate;
+    let linkedEntryDate: string | undefined = undefined;
+
+    if (userLastAttendance && userData?.shiftStartTime && userData?.shiftEndTime) {
+      const shiftIsOvernight = isOvernightShift(userData.shiftStartTime, userData.shiftEndTime);
+      const checkInDate = userLastAttendance.DateOfPunch || moment.utc(userLastAttendance.Timestamp).format('YYYY-MM-DD');
+      const checkoutDate = moment.utc(currentTimeTS).format('YYYY-MM-DD');
+      const isNextDay = checkoutDate !== checkInDate;
+
+      if (shiftIsOvernight && isNextDay) {
+        finalDateOfPunch = checkInDate;
+        linkedEntryDate = checkoutDate;
+      }
+    }
 
     try {
       await insertAttendancePunchRecord({
@@ -650,7 +795,7 @@ export default function CheckInScreen(): React.JSX.Element {
         address: currentAddress || '',
         createdOn: currentTimeTS,
         isSynced: 'N',
-        dateOfPunch: currentDate,
+        dateOfPunch: finalDateOfPunch,
         attendanceStatus: 'EARLY_CHECKOUT', // Mark as early checkout when skipped
         moduleID: '',
         tripType: '',
@@ -659,6 +804,7 @@ export default function CheckInScreen(): React.JSX.Element {
         isCheckoutQrScan: 0,
         travelerName: '',
         phoneNumber: '',
+        LinkedEntryDate: linkedEntryDate,
       });
 
       // Navigate immediately to prevent button flicker
@@ -670,22 +816,247 @@ export default function CheckInScreen(): React.JSX.Element {
         }),
       );
 
-      // Refresh attendance data from database to update Redux state (async, after navigation)
-      // This happens in the background and won't affect the current screen
-      if (userData?.email) {
-        getAttendanceData(userData.email).catch((error) => {
-          logger.error('Error refreshing attendance data after early checkout', error);
-        });
-      }
+      // Note: getAttendanceData is already called inside insertAttendancePunchRecord
+      // No need to call it again here to avoid race conditions
     } catch (error) {
       logger.error('Error inserting attendance record', error);
     }
   }, [
     userLocationRegion,
     userData?.email,
+    userData?.shiftStartTime,
+    userData?.shiftEndTime,
+    userLastAttendance,
     navigation,
     currentAddress,
     getCurrentTimestamp,
+  ]);
+
+  // Handler for "Yes, I forgot" option in forgot checkout modal
+  const handleForgotCheckout = useCallback(async (): Promise<void> => {
+    setShowForgotCheckoutModal(false);
+    
+    if (!userLastAttendance || !userData) {
+      logger.error('Missing required data for forgot checkout', {
+        _context: { service: 'attendance', fileName: 'CheckInScreen.tsx', methodName: 'handleForgotCheckout' },
+      });
+      return;
+    }
+
+    const checkInDate = userLastAttendance.DateOfPunch || moment.utc(userLastAttendance.Timestamp).format('YYYY-MM-DD');
+    const shiftEndTime = userData.shiftEndTime || '17:00';
+    
+    // Get shift end timestamp
+    const shiftEndTimestamp = getShiftEndTimestamp(checkInDate, shiftEndTime);
+    if (!shiftEndTimestamp) {
+      logger.error('Could not calculate shift end timestamp', {
+        _context: { service: 'attendance', fileName: 'CheckInScreen.tsx', methodName: 'handleForgotCheckout' },
+        checkInDate,
+        shiftEndTime,
+      });
+      return;
+    }
+
+    const currentTimeTS = getCurrentTimestamp();
+    const shiftEndDate = moment.utc(shiftEndTimestamp).format('YYYY-MM-DD');
+    const linkedEntryDate = shiftEndDate !== checkInDate ? shiftEndDate : undefined;
+
+    try {
+      // Insert checkout record with shift end time, marked for approval
+      await insertAttendancePunchRecord({
+        timestamp: shiftEndTimestamp, // Use shift end time as checkout time
+        orgID: '123',
+        userID: userData.email || '',
+        punchType: 'CHECK',
+        punchDirection: PUNCH_DIRECTIONS.out,
+        latLon: userLocationRegion
+          ? `${userLocationRegion.latitude?.toFixed(4)},${userLocationRegion.longitude?.toFixed(4)}`
+          : '',
+        address: currentAddress || '',
+        createdOn: currentTimeTS, // When this record was created
+        isSynced: 'N',
+        dateOfPunch: checkInDate, // Use check-in date for grouping
+        attendanceStatus: '', // Empty, not a break
+        moduleID: '',
+        tripType: '',
+        passengerID: '',
+        allowanceData: JSON.stringify([]),
+        isCheckoutQrScan: 0,
+        travelerName: '',
+        phoneNumber: '',
+        // New fields for approval workflow
+        ApprovalRequired: 'Y',
+        Reason: 'FORGOT_TO_CHECKOUT',
+        OriginalCheckoutTime: currentTimeTS, // Actual current time
+        CorrectedCheckoutTime: shiftEndTimestamp, // Corrected to shift end
+        LinkedEntryDate: linkedEntryDate, // Store actual checkout date for overnight shifts
+      });
+
+      // Navigate immediately
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'DashboardScreen' }],
+        }),
+      );
+
+      // Note: getAttendanceData is already called inside insertAttendancePunchRecord
+      // No need to call it again here to avoid race conditions
+    } catch (error) {
+      logger.error('Error inserting forgot checkout record', error);
+    }
+  }, [
+    userLastAttendance,
+    userData,
+    userLocationRegion,
+    currentAddress,
+    navigation,
+    getCurrentTimestamp,
+  ]);
+
+  // Handler for "No, check me out now" option in forgot checkout modal
+  const handleCheckoutNow = useCallback(async (): Promise<void> => {
+    setShowForgotCheckoutModal(false);
+    
+    // Proceed with normal checkout at current time
+    const currentTimeTS = getCurrentTimestamp();
+    const currentDate = getCurrentDate();
+
+    // Handle overnight shift checkout: Link checkout to check-in date
+    let finalDateOfPunch = currentDate;
+    let linkedEntryDate: string | undefined = undefined;
+
+    if (userLastAttendance && userData?.shiftStartTime && userData?.shiftEndTime) {
+      const shiftIsOvernight = isOvernightShift(userData.shiftStartTime, userData.shiftEndTime);
+      const checkInDate = userLastAttendance.DateOfPunch || moment.utc(userLastAttendance.Timestamp).format('YYYY-MM-DD');
+      const checkoutDate = moment.utc(currentTimeTS).format('YYYY-MM-DD');
+      const isNextDay = checkoutDate !== checkInDate;
+
+      if (shiftIsOvernight && isNextDay) {
+        finalDateOfPunch = checkInDate;
+        linkedEntryDate = checkoutDate;
+      }
+    }
+
+    try {
+      await insertAttendancePunchRecord({
+        timestamp: currentTimeTS,
+        orgID: '123',
+        userID: userData?.email || '',
+        punchType: 'CHECK',
+        punchDirection: PUNCH_DIRECTIONS.out,
+        latLon: userLocationRegion
+          ? `${userLocationRegion.latitude?.toFixed(4)},${userLocationRegion.longitude?.toFixed(4)}`
+          : '',
+        address: currentAddress || '',
+        createdOn: currentTimeTS,
+        isSynced: 'N',
+        dateOfPunch: finalDateOfPunch,
+        attendanceStatus: '', // Normal checkout, no special status
+        moduleID: '',
+        tripType: '',
+        passengerID: '',
+        allowanceData: JSON.stringify([]),
+        isCheckoutQrScan: 0,
+        travelerName: '',
+        phoneNumber: '',
+        LinkedEntryDate: linkedEntryDate,
+      });
+
+      // Navigate immediately
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'DashboardScreen' }],
+        }),
+      );
+
+      // Note: getAttendanceData is already called inside insertAttendancePunchRecord
+      // No need to call it again here to avoid race conditions
+    } catch (error) {
+      logger.error('Error inserting checkout now record', error);
+    }
+  }, [
+    userData?.email,
+    userData?.shiftStartTime,
+    userData?.shiftEndTime,
+    userLastAttendance,
+    userLocationRegion,
+    currentAddress,
+    navigation,
+    getCurrentTimestamp,
+  ]);
+
+  // Handler for "Select Checkout Time" option in forgot checkout modal
+  const handleManualTime = useCallback(async (selectedTime: number): Promise<void> => {
+    setShowForgotCheckoutModal(false);
+
+    // Proceed with checkout at selected time (requires approval)
+    const currentDate = getCurrentDate();
+
+    // Handle overnight shift checkout: Link checkout to check-in date
+    let finalDateOfPunch = currentDate;
+    let linkedEntryDate: string | undefined = undefined;
+
+    if (userLastAttendance && userData?.shiftStartTime && userData?.shiftEndTime) {
+      const shiftIsOvernight = isOvernightShift(userData.shiftStartTime, userData.shiftEndTime);
+      const checkInDate = userLastAttendance.DateOfPunch || moment.utc(userLastAttendance.Timestamp).format('YYYY-MM-DD');
+      const checkoutDate = moment.utc(selectedTime).format('YYYY-MM-DD');
+      const isNextDay = checkoutDate !== checkInDate;
+
+      if (shiftIsOvernight && isNextDay) {
+        finalDateOfPunch = checkInDate;
+        linkedEntryDate = checkoutDate;
+      }
+    }
+
+    try {
+      await insertAttendancePunchRecord({
+        timestamp: selectedTime,
+        orgID: '123',
+        userID: userData?.email || '',
+        punchType: 'CHECK',
+        punchDirection: PUNCH_DIRECTIONS.out,
+        latLon: userLocationRegion
+          ? `${userLocationRegion.latitude?.toFixed(4)},${userLocationRegion.longitude?.toFixed(4)}`
+          : '',
+        address: currentAddress || '',
+        createdOn: selectedTime,
+        isSynced: 'N',
+        dateOfPunch: finalDateOfPunch,
+        attendanceStatus: '',
+        moduleID: '',
+        tripType: '',
+        passengerID: '',
+        allowanceData: JSON.stringify([]),
+        isCheckoutQrScan: 0,
+        travelerName: '',
+        phoneNumber: '',
+        // Mark for manual approval
+        ApprovalRequired: 'Y',
+        CorrectionType: 'MANUAL_TIME',
+        ManualCheckoutTime: selectedTime,
+        LinkedEntryDate: linkedEntryDate || undefined,
+      });
+
+      // Navigate immediately
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'DashboardScreen' }],
+        }),
+      );
+    } catch (error) {
+      logger.error('Error inserting manual time attendance record', error);
+    }
+  }, [
+    userData?.email,
+    userData?.shiftStartTime,
+    userData?.shiftEndTime,
+    userLastAttendance,
+    userLocationRegion,
+    currentAddress,
+    navigation,
   ]);
 
   const buttonText = useMemo(() => {
@@ -695,11 +1066,12 @@ export default function CheckInScreen(): React.JSX.Element {
     if (permissionDenied) {
       return t('attendance.locationPermissionRequired') || 'Location Permission Required';
     }
-    if (isUserCheckedIn) {
+    // Use checkInStatus.buttonType for consistency with hook logic
+    if (checkInStatus.buttonType === 'CHECK_OUT') {
       return 'Confirm Check Out';
     }
     return 'Confirm CheckIn';
-  }, [isUserCheckedIn, isFetchingLocation, isFetchingAddress, permissionDenied, t]);
+  }, [checkInStatus.buttonType, isFetchingLocation, isFetchingAddress, permissionDenied, t]);
 
   const handleClosePress = useCallback((): void => {
     navigation.goBack();
@@ -707,7 +1079,7 @@ export default function CheckInScreen(): React.JSX.Element {
 
   const appTheme = useAppSelector(state => state.appState.appTheme);
 
-  // Button styles based on check-in/check-out state
+  // Button styles based on check-in/check-out state and missed checkout
   const buttonStyle = useMemo<{
     backgroundColor: string;
     borderRadius: number;
@@ -719,6 +1091,21 @@ export default function CheckInScreen(): React.JSX.Element {
     shadowRadius?: number;
     elevation?: number;
   }>(() => {
+    // RED button for missed checkout
+    if (checkInStatus.buttonColor === 'RED') {
+      return {
+        backgroundColor: '#FF4444',
+        borderRadius: 7,
+        borderWidth: 1,
+        borderColor: '#CC0000',
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 6,
+        elevation: 10,
+      };
+    }
+    
     if (isUserCheckedIn) {
       // Check-out button: white background in dark mode, theme card in light mode
       return {
@@ -744,16 +1131,20 @@ export default function CheckInScreen(): React.JSX.Element {
         elevation: 10,
       };
     }
-  }, [isUserCheckedIn, colors.card, colors.border, colors.text, appTheme]);
+  }, [checkInStatus.buttonColor, isUserCheckedIn, colors.card, colors.border, colors.text, appTheme]);
 
   const buttonTextColor = useMemo(() => {
+    // RED button: white text
+    if (checkInStatus.buttonColor === 'RED') {
+      return '#FFFFFF';
+    }
     if (isUserCheckedIn) {
       // Check-out button: dark text in dark mode (white background), dark text in light mode
       return '#000000';
     }
     // Check-in: always white text
     return '#FFFFFF';
-  }, [isUserCheckedIn]);
+  }, [checkInStatus.buttonColor, isUserCheckedIn]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -763,7 +1154,7 @@ export default function CheckInScreen(): React.JSX.Element {
       />
       <BackHeader
         bgColor={colors.background}
-        title={isUserCheckedIn ? 'Check Out' : 'Check In'}
+        title={checkInStatus.buttonType === 'CHECK_OUT' ? 'Check Out' : 'Check In'}
         rightContent={
           <TouchableOpacity
             onPress={handleClosePress}
@@ -831,11 +1222,11 @@ export default function CheckInScreen(): React.JSX.Element {
         </View>
 
         <AppButton
-          disabled={isFetchingLocation || permissionDenied || !userLocationRegion?.latitude || !userLocationRegion?.longitude}
+          disabled={isFetchingLocation || permissionDenied || !userLocationRegion?.latitude || !userLocationRegion?.longitude || isPunchInProgress}
           title={buttonText}
           titleColor={buttonTextColor}
           titleSize={hp(2.24)} // Standard button text size
-          loading={isFetchingLocation || isFetchingAddress}
+          loading={isFetchingLocation || isFetchingAddress || isPunchInProgress}
           style={{
             ...styles.checkInButton,
             backgroundColor: buttonStyle.backgroundColor,
@@ -859,6 +1250,15 @@ export default function CheckInScreen(): React.JSX.Element {
         onSelectBreakStatus={handleBreakStatusSelect}
         onSkip={handleSkip}
         onCancel={() => setShowEarlyCheckoutModal(false)}
+      />
+
+      <ForgotCheckoutModal
+        visible={showForgotCheckoutModal}
+        onForgotCheckout={handleForgotCheckout}
+        onCheckoutNow={handleCheckoutNow}
+        onManualTime={handleManualTime}
+        onCancel={() => setShowForgotCheckoutModal(false)}
+        shiftEndTime={userData?.shiftEndTime}
       />
     </View>
   );

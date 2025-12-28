@@ -153,7 +153,12 @@
     "continue": "চালিয়ে যান",
     "aadhaarNotAvailable": "আধার উপলব্ধ নয়",
     "next": "পরবর্তী",
-    "continueWithPanCard": "PAN কার্ড দিয়ে চালিয়ে যান"
+    "continueWithPanCard": "PAN কার্ড দিয়ে চালিয়ে যান",
+    "panCardVerification": "PAN কার্ড যাচাইকরণ",
+    "captureBothSides": "অনুগ্রহ করে PAN কার্ডের উভয় পাশ ক্যাপচার করুন",
+    "failedToCaptureImage": "ছবি ক্যাপচার করতে ব্যর্থ",
+    "failedToSelectImage": "ছবি নির্বাচন করতে ব্যর্থ",
+    "verificationFailed": "PAN কার্ড যাচাইকরণ ব্যর্থ হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।"
   },
   "home": {
     "colleagues": "সহকর্মী",
@@ -167,6 +172,10 @@
   "attendance": {
     "confirmCheckIn": "চেক ইন নিশ্চিত করুন",
     "confirmCheckOut": "চেক আউট নিশ্চিত করুন",
+    "checkIn": "চেক ইন",
+    "checkOut": "চেক আউট",
+    "in": "ইন",
+    "out": "আউট",
     "fetchingLocation": "আপনার অবস্থান পাওয়া হচ্ছে...",
     "locationPermissionDenied": "অবস্থান অনুমতি অস্বীকার করা হয়েছে। সেটিংসে এটি সক্রিয় করুন।",
     "locationPermissionRequired": "অবস্থান অনুমতি প্রয়োজন",
@@ -174,6 +183,8 @@
     "metersAccurate": "মিটার সঠিক",
     "waitingForAccuracy": "সঠিকতা < {{accuracy}}m এর জন্য অপেক্ষা করছেন",
     "noDataFound": "কোন উপস্থিতি ডেটা পাওয়া যায়নি!",
+    "time": "সময়",
+    "direction": "দিক",
     "earlyCheckout": {
       "title": "শীঘ্র চেক আউট",
       "message": "আপনি {{hours}} ঘন্টা কাজ করেছেন। ন্যূনতম 9 ঘন্টা কাজের প্রয়োজন।",
@@ -187,8 +198,11 @@
       "shortBreak": "সংক্ষিপ্ত বিরতি",
       "commuting": "যাতায়াত করছেন",
       "personalTimeout": "ব্যক্তিগত সময়",
-      "outForDinner": "ডিনারের জন্য বাইরে"
-    }
+      "outForDinner": "ডিনারের জন্য বাইরে",
+      "lunch": "লাঞ্চ",
+      "break": "বিরতি"
+    },
+    "forgotToCheckout": "চেকআউট করতে ভুলে গেছেন"
   },
   "profile": {
     "member": "সদস্য",
@@ -261,7 +275,18 @@
     "none": "কোনটিই নয়",
     "next": "পরবর্তী",
     "continue": "চালিয়ে যান",
-    "uploading": "আপলোড হচ্ছে..."
+    "uploading": "আপলোড হচ্ছে...",
+    "close": "বন্ধ করুন",
+    "confirm": "নিশ্চিত করুন",
+    "databaseClearedSuccessfully": "ডেটাবেস সফলভাবে পরিষ্কার করা হয়েছে",
+    "failedToClearDatabase": "ডেটাবেস পরিষ্কার করতে ব্যর্থ",
+    "clearDatabase": "ডেটাবেস পরিষ্কার করুন",
+    "clearDatabaseConfirmation": "আপনি কি নিশ্চিত যে আপনি সমস্ত ডেটাবেস ডেটা মুছে ফেলতে চান? এই ক্রিয়াটি পূর্বাবস্থায় ফেরানো যাবে না।",
+    "clear": "পরিষ্কার করুন",
+    "deleteAttendanceConfirmation": "আপনি কি নিশ্চিত যে আপনি এই উপস্থিতি রেকর্ড মুছে ফেলতে চান?",
+    "attendanceRecordDeleted": "উপস্থিতি রেকর্ড সফলভাবে মুছে ফেলা হয়েছে",
+    "failedToDeleteAttendance": "উপস্থিতি রেকর্ড মুছে ফেলতে ব্যর্থ",
+    "actionCannotBeUndone": "এই ক্রিয়াটি পূর্বাবস্থায় ফেরানো যাবে না।"
   }
 }
 

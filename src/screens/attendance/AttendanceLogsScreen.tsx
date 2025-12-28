@@ -1,8 +1,7 @@
-import React, { useMemo, useCallback, useState } from 'react';
+import React, { useMemo, useCallback, useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Modal } from 'react-native';
 import { useFocusEffect, useRoute, RouteProp, useTheme } from '@react-navigation/native';
 import moment from 'moment';
-import { getDateFromUTCTimestamp } from '../../utils/time-utils';
 import {
   AppContainer,
   AppText,
@@ -14,9 +13,10 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { wp, hp, FontTypes } from '../../constants';
 import { AttendanceRecord } from '../../redux/types/userTypes';
 import { getAttendanceData, getAllAttendanceRecords } from '../../services/attendance/attendance-db-service';
-import { getDaysAttendance } from '../../services/attendance/attendance-service';
+import { getDaysAttendance, AttendanceDay } from '../../services/attendance/attendance-service';
 import { DarkThemeColors, LightThemeColors, APP_THEMES } from '../../themes';
 import { logger } from '../../services/logger';
+import { groupAttendanceByDate } from '../../services/attendance/attendance-grouping-service';
 
 type AttendanceLogsRouteParams = {
   filterToday?: boolean;
@@ -43,12 +43,70 @@ export default function AttendanceLogsScreen(): React.JSX.Element {
   const [tempDate, setTempDate] = useState<moment.Moment>(moment());
   const [isLoading, setIsLoading] = useState(false);
 
+  // Load attendance data from database on mount (FAST - shows data immediately)
+  useEffect(() => {
+    const loadData = async () => {
+      if (userData?.email) {
+        // STEP 1: Load from DB first (fast, local data)
+        // This ensures UI shows data immediately, even if server sync is slow
+        try {
+          await getAttendanceData(userData.email);
+        } catch (error) {
+          logger.error('[AttendanceLogs] Error loading attendance from DB on mount', error);
+        }
+        
+        // STEP 2: Sync from server in background (slower, network)
+        // This updates DB and Redux, which will trigger re-render
+        // Sync current month and previous month to get recent data
+        try {
+          const currentMonth = moment.utc();
+          const previousMonth = currentMonth.clone().subtract(1, 'month');
+          
+          // Sync current month
+          await getDaysAttendance(userData.email, currentMonth);
+          // Sync previous month
+          await getDaysAttendance(userData.email, previousMonth);
+          
+          // Refresh data from DB after sync
+          await getAttendanceData(userData.email);
+        } catch (error) {
+          logger.error('[AttendanceLogs] Error syncing from server on mount', error);
+        }
+      }
+    };
+    loadData();
+  }, [userData?.email]);
+
   // Load attendance data from SQL when screen is focused
   useFocusEffect(
     useCallback(() => {
-      if (userData?.email) {
-        getAttendanceData(userData.email);
-      }
+      const loadData = async () => {
+        if (userData?.email) {
+          // Load from DB first (fast)
+          try {
+            await getAttendanceData(userData.email);
+          } catch (error) {
+            logger.error('[AttendanceLogs] Error loading attendance from DB on focus', error);
+          }
+          
+          // Then sync from server in background (slower)
+          try {
+            const currentMonth = moment.utc();
+            const previousMonth = currentMonth.clone().subtract(1, 'month');
+            
+            // Sync current month
+            await getDaysAttendance(userData.email, currentMonth);
+            // Sync previous month
+            await getDaysAttendance(userData.email, previousMonth);
+            
+            // Refresh data from DB after sync
+            await getAttendanceData(userData.email);
+          } catch (error) {
+            logger.error('[AttendanceLogs] Error syncing from server on focus', error);
+          }
+        }
+      };
+      loadData();
     }, [userData?.email])
   );
 
@@ -113,8 +171,8 @@ export default function AttendanceLogsScreen(): React.JSX.Element {
     return userAttendanceHistory.every(record => record.IsSynced === 'Y');
   }, [userAttendanceHistory]);
 
-  /** Group attendance logs by date — memoized for performance */
-  const groupedData = useMemo<AttendanceRecord[][]>(() => {
+  /** Group attendance logs by date using the same logic as My Days — memoized for performance */
+  const groupedData = useMemo<AttendanceDay[]>(() => {
     if (!userAttendanceHistory?.length) return [];
     
     // Filter by date range if specified
@@ -132,26 +190,18 @@ export default function AttendanceLogsScreen(): React.JSX.Element {
       });
     }
     
-    const grouped: { [key: string]: AttendanceRecord[] } = filteredHistory.reduce(
-      (group: { [key: string]: AttendanceRecord[] }, attendance: AttendanceRecord) => {
-        // Group by UTC date for consistency, but will display in local time later
-        const date = attendance.DateOfPunch || 
-          (attendance.Timestamp 
-            ? moment.utc(attendance.Timestamp).format('YYYY-MM-DD')
-            : moment.utc().format('YYYY-MM-DD'));
-        if (!group[date]) group[date] = [];
-        group[date].push(attendance);
-        return group;
-      },
-      {},
+    // Use the same grouping logic as My Days screen
+    const grouped = groupAttendanceByDate(filteredHistory);
+    
+    // Sort by date (most recent first)
+    return grouped.sort((a, b) => 
+      moment.utc(b.dateOfPunch).diff(moment.utc(a.dateOfPunch))
     );
-    // Reverse order (most recent first)
-    return Object.values(grouped);
   }, [userAttendanceHistory, startDate, endDate]);
 
   /** Stable renderItem reference */
   const renderHistoryItem = useCallback(
-    ({ item }: { item: AttendanceRecord[] }) => <AttendanceLogItem item={item} />,
+    ({ item }: { item: AttendanceDay }) => <AttendanceLogItem item={item} />,
     [],
   );
 

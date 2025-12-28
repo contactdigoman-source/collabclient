@@ -62,14 +62,19 @@ export interface AttendanceDayRecord {
   LatLon?: string;
   Address?: string;
   DateOfPunch?: string;
+  IsSynced?: string; // 'Y' or 'N' - for sync status display
+  CreatedOn?: number; // For animation key
 }
 
 export interface AttendanceDay {
   dateOfPunch: string;
-  attendanceStatus: 'PRESENT' | 'ABSENT' | 'PARTIAL';
+  attendanceStatus: 'PRESENT' | 'ABSENT' | 'PARTIAL' | 'HOURS_DEFICIT';
   totalDuration: string; // Format: "HH:mm"
   breakDuration: string; // Format: "HH:mm"
   records: AttendanceDayRecord[];
+  // Fields for status tracking
+  workedHours?: number; // Decimal hours (e.g., 8.5)
+  requiresApproval?: boolean;
 }
 
 export interface GetDaysAttendanceResponse {
@@ -85,22 +90,33 @@ import { logger } from '../logger';
 import { attendanceSyncService } from '../sync/attendance-sync-service';
 
 /**
- * Get attendance data from server and sync with local database
+ * Get attendance data from database first, then sync with server in background
  * 
  * This is the MAIN function UI components should use to fetch attendance data.
  * 
- * FLOW:
- * 1. ✅ Pulls data from server (with optional month filter)
- * 2. ✅ Compares server records with local DB (by timestamp)
- * 3. ✅ Updates database:
- *    - Marks local records as synced if they match server (preserves local data)
- *    - Inserts server records that don't exist locally
- *    - Preserves local records that don't exist on server (never overwritten)
- * 4. ✅ Refreshes Redux state from database (UI updates automatically)
+ * FLOW (OFFLINE-FIRST):
+ * 1. ✅ Load from DB first (FAST - shows data immediately)
+ *    - Calls getAttendanceData() which updates Redux state
+ *    - UI updates immediately with DB data
+ * 2. ✅ Sync from server in background (SLOWER - network)
+ *    - Pulls data from server (with optional month filter)
+ *    - Compares server records with local DB (by timestamp)
+ *    - Updates database:
+ *      • Marks local records as synced if they match server (preserves local data)
+ *      • Inserts server records that don't exist locally
+ *      • Preserves local records that don't exist on server (never overwritten)
+ *    - Calls getAttendanceData() again to refresh Redux state
+ * 3. ✅ If server sync fails, DB data is still shown (offline-first)
+ * 
+ * KEY PRINCIPLES:
+ * - DB is the source of truth
+ * - Always load from DB first (fast, reliable)
+ * - Server sync updates DB, then UI updates from DB
+ * - Server failures don't affect UI (DB data is always available)
  * 
  * @param userID - User ID (email) to sync data for
  * @param month - Optional month parameter to fetch specific month data
- * @returns Promise that resolves when sync is complete
+ * @returns Promise that resolves immediately after DB load (server sync happens in background)
  * 
  * @example
  * // Fetch current month data (HomeScreen, DaysBottomTabScreen)
@@ -112,9 +128,29 @@ import { attendanceSyncService } from '../sync/attendance-sync-service';
  */
 export const getDaysAttendance = async (userID: string, month?: moment.Moment): Promise<void> => {
   try {
-    // Delegate to sync service - it handles all the complexity (API calls, network, merge, DB update)
-    await attendanceSyncService.syncAttendanceFromServer(userID, month);
-    // After this completes, Redux state is updated and UI will re-render automatically
+    // STEP 1: Load from DB first (FAST - shows data immediately)
+    // This ensures UI shows data right away, even if server sync is slow or fails
+    const { getAttendanceData } = await import('../attendance/attendance-db-service');
+    await getAttendanceData(userID);
+    
+    logger.debug('[AttendanceService] Loaded attendance from DB', {
+      userID,
+      month: month?.format('YYYY-MM'),
+    });
+    
+    // STEP 2: Sync from server in background (SLOWER - network)
+    // This updates DB with server data, then refreshes Redux state
+    // If this fails, DB data is still shown (offline-first)
+    attendanceSyncService.syncAttendanceFromServer(userID, month).catch((error: any) => {
+      logger.error('[AttendanceService] Server sync failed, using DB data', error, undefined, {
+        userID,
+        month: month?.format('YYYY-MM'),
+      });
+      // Error is logged but not thrown - DB data is still available
+    });
+    
+    // Return immediately - don't wait for server sync
+    // UI already has DB data, server sync will update it in background
   } catch (error: any) {
     logger.error('[AttendanceService] getDaysAttendance error', error, undefined, {
       userID,

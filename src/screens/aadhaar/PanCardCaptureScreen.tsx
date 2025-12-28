@@ -56,8 +56,8 @@ export default function PanCardCaptureScreen(): React.JSX.Element {
     (side: PanCardSide): void => {
       if (!ImagePicker) {
         Alert.alert(
-          'Error',
-          'Image picker is not available. Please install react-native-image-crop-picker',
+          t('common.error'),
+          t('auth.profilePhoto.libraryNotInstalled'),
         );
         return;
       }
@@ -82,19 +82,19 @@ export default function PanCardCaptureScreen(): React.JSX.Element {
           logger.debug('Image picker error:', error);
           setLoading(false);
           if (error.code !== 'E_PICKER_CANCELLED') {
-            Alert.alert('Error', 'Failed to capture image');
+            Alert.alert(t('common.error'), t('aadhaar.failedToCaptureImage'));
           }
         });
     },
-    [],
+    [t],
   );
 
   const handleSelectFromGallery = useCallback(
     (side: PanCardSide): void => {
       if (!ImagePicker) {
         Alert.alert(
-          'Error',
-          'Image picker is not available. Please install react-native-image-crop-picker',
+          t('common.error'),
+          t('auth.profilePhoto.libraryNotInstalled'),
         );
         return;
       }
@@ -119,7 +119,7 @@ export default function PanCardCaptureScreen(): React.JSX.Element {
           logger.debug('Image picker error:', error);
           setLoading(false);
           if (error.code !== 'E_PICKER_CANCELLED') {
-            Alert.alert('Error', 'Failed to select image');
+            Alert.alert(t('common.error'), t('aadhaar.failedToSelectImage'));
           }
         });
     },
@@ -128,7 +128,7 @@ export default function PanCardCaptureScreen(): React.JSX.Element {
 
   const handleContinue = useCallback(async (): Promise<void> => {
     if (!panCardFront || !panCardBack) {
-      Alert.alert('Error', 'Please capture both sides of PAN card');
+      Alert.alert(t('common.error'), t('aadhaar.captureBothSides'));
       return;
     }
 
@@ -177,9 +177,9 @@ export default function PanCardCaptureScreen(): React.JSX.Element {
         }
       } else {
         Alert.alert(
-          'Verification Failed',
-          uploadResponse.message || 'PAN card verification failed. Please try again.',
-          [{ text: 'OK' }]
+          t('common.error'),
+          uploadResponse.message || t('aadhaar.verificationFailed'),
+          [{ text: t('common.okay') }]
         );
       }
     } catch (error: any) {
@@ -227,20 +227,20 @@ export default function PanCardCaptureScreen(): React.JSX.Element {
       }
       
       Alert.alert(
-        'Upload Failed',
+        t('common.error'),
         errorMessage,
-        [{ text: 'OK' }]
+        [{ text: t('common.okay') }]
       );
     } finally {
       setUploading(false);
     }
-  }, [panCardFront, panCardBack, dispatch, navigation]);
+  }, [panCardFront, panCardBack, dispatch, navigation, t]);
 
   const isContinueDisabled = !panCardFront || !panCardBack || loading || uploading;
 
   return (
     <AppContainer>
-      <BackHeader title="PAN Card Verification" isBottomBorder />
+      <BackHeader title={t('aadhaar.panCardVerification')} isBottomBorder />
 
       <ScrollView
         contentContainerStyle={[

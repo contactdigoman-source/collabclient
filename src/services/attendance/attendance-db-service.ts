@@ -45,6 +45,19 @@ export const ATTENDANCE_COLUMNS = {
   IsCheckoutQrScan: 'INTEGER',
   TravelerName: 'TEXT',
   PhoneNumber: 'TEXT',
+  // New columns for approval workflow
+  ApprovalRequired: 'TEXT',
+  Reason: 'TEXT',
+  OriginalCheckoutTime: 'BIGINT',
+  CorrectedCheckoutTime: 'BIGINT',
+  WorkedHours: 'REAL',
+  MinimumHoursRequired: 'REAL',
+  // New columns for overnight shifts and corrections
+  LinkedEntryDate: 'TEXT',
+  CorrectionType: 'TEXT',
+  ManualCheckoutTime: 'BIGINT',
+  ShiftStartTime: 'TEXT',
+  ShiftEndTime: 'TEXT',
 } as const;
 
 interface AttendanceRecord {
@@ -69,6 +82,19 @@ interface AttendanceRecord {
   lastUpdatedAt?: number; // When record was created/updated locally
   lastSyncedAt?: number | null; // When record was synced to server
   server_Timestamp?: number | null; // Server's timestamp for this record
+  // New fields for approval workflow
+  ApprovalRequired?: 'Y' | 'N';
+  Reason?: 'FORGOT_TO_CHECKOUT' | 'MANUAL_CORRECTION' | null;
+  OriginalCheckoutTime?: number;
+  CorrectedCheckoutTime?: number;
+  WorkedHours?: number;
+  MinimumHoursRequired?: number;
+  // New fields for overnight shifts and corrections
+  LinkedEntryDate?: string;
+  CorrectionType?: 'FORGOT_CHECKOUT' | 'MANUAL_TIME' | null;
+  ManualCheckoutTime?: number;
+  ShiftStartTime?: string;
+  ShiftEndTime?: string;
 }
 
 interface AttendanceHistoryItem {
@@ -93,6 +119,18 @@ interface AttendanceHistoryItem {
   lastUpdatedAt?: number | null; // When record was created/updated locally
   lastSyncedAt?: number | null; // When record was synced to server
   server_Timestamp?: number | null; // Server's timestamp for this record
+  // New fields for approval workflow and overnight shifts
+  ApprovalRequired?: string;
+  Reason?: string;
+  OriginalCheckoutTime?: number;
+  CorrectedCheckoutTime?: number;
+  WorkedHours?: number;
+  MinimumHoursRequired?: number;
+  LinkedEntryDate?: string;
+  CorrectionType?: string;
+  ManualCheckoutTime?: number;
+  ShiftStartTime?: string;
+  ShiftEndTime?: string;
 }
 
 // 🔹 Safe JSON Parse
@@ -303,8 +341,8 @@ function insertNewRecord(
   // Backend DB uses UTC, we store what's needed locally
   tx.executeSql(
     `INSERT INTO attendance 
-      (Timestamp, OrgID, UserID, PunchType, PunchDirection, LatLon, Address, CreatedOn, IsSynced, DateOfPunch, AttendanceStatus, ModuleID, TripType, PassengerID, AllowanceData, IsCheckoutQrScan, TravelerName, PhoneNumber) 
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      (Timestamp, OrgID, UserID, PunchType, PunchDirection, LatLon, Address, CreatedOn, IsSynced, DateOfPunch, AttendanceStatus, ModuleID, TripType, PassengerID, AllowanceData, IsCheckoutQrScan, TravelerName, PhoneNumber, ApprovalRequired, Reason, OriginalCheckoutTime, CorrectedCheckoutTime, WorkedHours, MinimumHoursRequired, LinkedEntryDate, CorrectionType, ManualCheckoutTime, ShiftStartTime, ShiftEndTime) 
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     [
       timestamp,
       record.orgID || '',
@@ -324,6 +362,17 @@ function insertNewRecord(
       record.isCheckoutQrScan || 0,
       record.travelerName || '',
       record.phoneNumber || '',
+      record.ApprovalRequired || 'N',
+      record.Reason || null,
+      record.OriginalCheckoutTime || null,
+      record.CorrectedCheckoutTime || null,
+      record.WorkedHours || null,
+      record.MinimumHoursRequired || null,
+      record.LinkedEntryDate || null,
+      record.CorrectionType || null,
+      record.ManualCheckoutTime || null,
+      record.ShiftStartTime || null,
+      record.ShiftEndTime || null,
     ],
     (_tx: SQLite.Transaction, res: SQLite.ResultSet) => {
       logger.debug('Insert attendance record success', undefined, {
@@ -578,6 +627,57 @@ export const markAttendanceRecordAsSynced = (
       logger.error('Mark as synced transaction error', error, undefined, {
         timestamp,
         operation: 'mark_synced_transaction',
+      });
+      reject(error);
+    });
+  });
+};
+
+// 🔹 Delete Attendance Record
+export const deleteAttendanceRecord = (
+  timestamp: string | number,
+  userID: string,
+): Promise<void> => {
+  const db = getDB();
+  return new Promise((resolve, reject) => {
+    db.transaction((tx: SQLite.Transaction) => {
+      const ts = typeof timestamp === 'string' ? parseInt(timestamp, 10) : timestamp;
+      
+      tx.executeSql(
+        'DELETE FROM attendance WHERE Timestamp=? AND UserID=?',
+        [ts, userID],
+        (_tx: SQLite.Transaction, result: SQLite.ResultSet) => {
+          logger.debug('Deleted attendance record', undefined, {
+            timestamp: ts,
+            userID,
+            rowsAffected: result.rowsAffected,
+            operation: 'delete_record',
+          });
+          
+          // Refresh Redux state after successful deletion
+          getAttendanceData(userID)
+            .then(() => {
+              resolve();
+            })
+            .catch((error) => {
+              logger.error('Error refreshing attendance data after delete', error);
+              resolve(); // Still resolve even if refresh fails
+            });
+        },
+        (_tx: SQLite.Transaction, error: SQLite.SQLError) => {
+          logger.error('Error deleting attendance record', error, undefined, {
+            timestamp: ts,
+            userID,
+            operation: 'delete_record',
+          });
+          reject(error);
+        },
+      );
+    }, (error: SQLite.SQLError) => {
+      logger.error('Delete attendance record transaction error', error, undefined, {
+        timestamp,
+        userID,
+        operation: 'delete_record_transaction',
       });
       reject(error);
     });

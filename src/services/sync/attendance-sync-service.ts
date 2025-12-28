@@ -212,7 +212,9 @@ class AttendanceSyncService {
     try {
       const isOnline = await networkService.isConnected();
       if (!isOnline) {
-        logger.debug('[AttendanceSync] Offline - cannot pull attendance');
+        logger.debug('[AttendanceSync] Offline - cannot pull attendance, using DB data');
+        // Still load from DB even if offline (offline-first)
+        await getAttendanceData(userID);
         return;
       }
 
@@ -251,7 +253,15 @@ class AttendanceSyncService {
       // Never overwrite local records that don't exist on server
       await this.mergeAttendanceData(userID, serverData);
     } catch (error: any) {
-      logger.error('syncAttendanceFromServer error', error);
+      logger.error('syncAttendanceFromServer error - using DB data', error);
+      // CRITICAL: Even if server sync fails, load from DB (offline-first)
+      // This ensures UI always has data, even when server is unavailable
+      try {
+        await getAttendanceData(userID);
+        logger.debug('[AttendanceSync] Loaded attendance from DB after server sync failure');
+      } catch (dbError: any) {
+        logger.error('[AttendanceSync] Error loading from DB after server sync failure', dbError);
+      }
     }
   }
 
@@ -335,12 +345,18 @@ class AttendanceSyncService {
               // This adds server records to local DB without affecting existing local records
               try {
                 logger.debug(`[AttendanceSync] Attempting to insert server record: ${serverTimestamp}, direction: ${serverRecord.PunchDirection || serverRecord.punchDirection}`);
+                
+                // Extract shift times from day-level object (shiftStart, shiftEnd, minimumHours)
+                // Only store shift times for IN records (same as CheckInScreen logic)
+                const punchDirection = serverRecord.PunchDirection || serverRecord.punchDirection || 'IN';
+                const isInRecord = punchDirection === 'IN';
+                
                 await insertAttendancePunchRecord({
                   timestamp: serverTimestamp,
                   orgID: serverRecord.OrgID || serverRecord.orgID || '',
                   userID: userID,
                   punchType: serverRecord.PunchType || serverRecord.punchType || '',
-                  punchDirection: serverRecord.PunchDirection || serverRecord.punchDirection || 'IN',
+                  punchDirection: punchDirection,
                   latLon: serverRecord.LatLon || serverRecord.latLon || '',
                   address: serverRecord.Address || serverRecord.address || '',
                   createdOn: createdOnTicks,
@@ -354,6 +370,12 @@ class AttendanceSyncService {
                   isCheckoutQrScan: serverRecord.IsCheckoutQrScan || serverRecord.isCheckoutQrScan || 0,
                   travelerName: serverRecord.TravelerName || serverRecord.travelerName,
                   phoneNumber: serverRecord.PhoneNumber || serverRecord.phoneNumber,
+                  // Extract shift times from day-level object (only for IN records)
+                  shiftStartTime: isInRecord ? (day.shiftStart || day.ShiftStartTime) : undefined,
+                  shiftEndTime: isInRecord ? (day.shiftEnd || day.ShiftEndTime) : undefined,
+                  minimumHoursRequired: isInRecord ? (day.minimumHours || day.MinimumHoursRequired) : undefined,
+                  // Extract LinkedEntryDate from day-level object if present
+                  LinkedEntryDate: day.linkedEntryDate || day.LinkedEntryDate || serverRecord.LinkedEntryDate || serverRecord.linkedEntryDate,
                 });
                 insertedCount++;
                 logger.debug(`[AttendanceSync] Successfully inserted server record: ${serverTimestamp}, direction: ${serverRecord.PunchDirection || serverRecord.punchDirection}, total inserted: ${insertedCount}`);

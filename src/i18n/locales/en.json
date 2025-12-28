@@ -157,7 +157,12 @@
     "continue": "Continue",
     "aadhaarNotAvailable": "Aadhaar not available",
     "next": "Next",
-    "continueWithPanCard": "Continue with PAN Card"
+    "continueWithPanCard": "Continue with PAN Card",
+    "panCardVerification": "PAN Card Verification",
+    "captureBothSides": "Please capture both sides of PAN card",
+    "failedToCaptureImage": "Failed to capture image",
+    "failedToSelectImage": "Failed to select image",
+    "verificationFailed": "PAN card verification failed. Please try again."
   },
   "faceRD": {
     "verifying": "Authenticating...",
@@ -183,6 +188,10 @@
   "attendance": {
     "confirmCheckIn": "Confirm Check In",
     "confirmCheckOut": "Confirm Check Out",
+    "checkIn": "Check In",
+    "checkOut": "Check Out",
+    "in": "In",
+    "out": "Out",
     "fetchingLocation": "Fetching your location...",
     "locationPermissionDenied": "Location permission denied. Enable it in settings.",
     "locationPermissionRequired": "Location Permission Required",
@@ -199,11 +208,16 @@
       "shortBreak": "Short Break",
       "commuting": "Commuting",
       "personalTimeout": "Personal Timeout",
-      "outForDinner": "Out for Dinner"
+      "outForDinner": "Out for Dinner",
+      "lunch": "Lunch",
+      "break": "Break"
     },
+    "forgotToCheckout": "Forgot to Checkout",
     "confirmLocation": "Confirm Location",
     "metersAccurate": "meters accurate",
-    "waitingForAccuracy": "Waiting for accuracy < {{accuracy}}m"
+    "waitingForAccuracy": "Waiting for accuracy < {{accuracy}}m",
+    "time": "Time",
+    "direction": "Direction"
   },
   "profile": {
     "member": "Member",
@@ -282,7 +296,18 @@
     "none": "None",
     "next": "Next",
     "continue": "Continue",
-    "uploading": "Uploading..."
+    "uploading": "Uploading...",
+    "close": "Close",
+    "confirm": "Confirm",
+    "databaseClearedSuccessfully": "Database cleared successfully",
+    "failedToClearDatabase": "Failed to clear database",
+    "clearDatabase": "Clear Database",
+    "clearDatabaseConfirmation": "Are you sure you want to delete all database data? This action cannot be undone.",
+    "clear": "Clear",
+    "deleteAttendanceConfirmation": "Are you sure you want to delete this attendance record?",
+    "attendanceRecordDeleted": "Attendance record deleted successfully",
+    "failedToDeleteAttendance": "Failed to delete attendance record",
+    "actionCannotBeUndone": "This action cannot be undone."
   }
 }
 

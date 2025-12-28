@@ -1,151 +1,129 @@
 import { useMemo } from 'react';
 import { useAppSelector } from '../redux';
 import { PUNCH_DIRECTIONS } from '../constants/location';
-import { getCurrentUTCDate } from '../utils/time-utils';
-import { getShiftEndTimestamp } from '../utils/shift-utils';
-import moment from 'moment';
-import { logger } from '../services/logger';
+import { 
+  isStaleCheckIn, 
+  isMissedCheckout 
+} from '../services/attendance/attendance-status-service';
+
+export interface CheckInStatusResult {
+  buttonType: 'CHECK_IN' | 'CHECK_OUT';
+  buttonColor: 'GREEN' | 'RED' | 'DEFAULT';
+  isStale: boolean;
+  isMissedCheckout: boolean;
+  showMissedCheckoutModal: boolean;
+  isUserCheckedIn: boolean; // For backward compatibility
+}
 
 /**
- * Custom hook to determine if user is currently checked in
- * This logic handles:
- * - Today's check-in/checkout
- * - Shift spanning two days (e.g., 5pm start, 6am end)
- * - Whether still within shift period for multi-day shifts
+ * Custom hook to determine check-in/out button state and behavior
  * 
- * @returns {boolean} true if user should see checkout button, false for check-in button
+ * Rules:
+ * 1. If stale (> 3 days): Force CHECK_IN only
+ * 2. If last action = IN: Show CHECK_OUT
+ *    - If missed checkout: RED button + modal
+ *    - Otherwise: DEFAULT button
+ * 3. If last action = OUT or none: Show CHECK_IN (GREEN button)
+ * 
+ * @returns CheckInStatusResult with button type, color, and modal flags
  */
-export function useCheckInStatus(): boolean {
-  const userLastAttendance = useAppSelector(
-    state => state.userState.userLastAttendance,
-  );
+export function useCheckInStatus(): CheckInStatusResult {
+  const userLastAttendance = useAppSelector(state => state.userState.userLastAttendance,);
   const userData = useAppSelector(state => state.userState.userData);
 
-  /**
-   * Check if shift spans 2 days (e.g., 5pm start, 6am end)
-   */
-  const doesShiftSpanTwoDays = useMemo(() => {
-    const shiftStartTime = userData?.shiftStartTime || '09:00';
-    const shiftEndTime = userData?.shiftEndTime || '17:00';
-    
-    // Parse times
-    const [startHour, startMin] = shiftStartTime.split(':').map(Number);
-    const [endHour, endMin] = shiftEndTime.split(':').map(Number);
-    
-    const startMinutes = startHour * 60 + startMin;
-    const endMinutes = endHour * 60 + endMin;
-    
-    // If end time is earlier than start time, shift spans 2 days
-    return endMinutes < startMinutes;
-  }, [userData?.shiftStartTime, userData?.shiftEndTime]);
-
-  /**
-   * Check if we're still within the shift period (for 2-day shifts)
-   */
-  const isWithinShiftPeriod = useMemo(() => {
-    if (!userLastAttendance || userLastAttendance.PunchDirection !== PUNCH_DIRECTIONS.in) {
-      return false;
-    }
-
-    if (!doesShiftSpanTwoDays) {
-      return false;
-    }
-
-    try {
-      const checkInTimestamp = typeof userLastAttendance.Timestamp === 'string'
-        ? parseInt(userLastAttendance.Timestamp, 10)
-        : userLastAttendance.Timestamp;
-
-      if (!checkInTimestamp) {
-        return false;
-      }
-
-      // Get current time in UTC
-      const now = moment.utc();
-
-      // Get check-in date in UTC (since shift times are in UTC)
-      const checkInUTC = moment.utc(checkInTimestamp);
-      const checkInDate = userLastAttendance.DateOfPunch || checkInUTC.format('YYYY-MM-DD');
-
-      // Get shift end timestamp for check-in date
-      const shiftEndTime = userData?.shiftEndTime || '17:00';
-      const shiftEndTimestamp = getShiftEndTimestamp(checkInDate, shiftEndTime);
-
-      if (!shiftEndTimestamp) {
-        return false;
-      }
-
-      // Check if current time is before shift end (shift end is next day)
-      const shiftEndUTC = moment.utc(shiftEndTimestamp);
-
-      // Check if current time is before shift end (shift end is next day)
-      return now.isBefore(shiftEndUTC);
-    } catch (error) {
-      logger.error('Error checking if within shift period', error);
-      return false;
-    }
-  }, [userLastAttendance, doesShiftSpanTwoDays, userData?.shiftEndTime]);
-
-  /**
-   * Check if last check-in was today (in UTC)
-   */
-  const isLastCheckInToday = useMemo(() => {
-    if (!userLastAttendance || userLastAttendance.PunchDirection !== PUNCH_DIRECTIONS.in) {
-      return false;
-    }
-
-    try {
-      const checkInTimestamp = typeof userLastAttendance.Timestamp === 'string'
-        ? parseInt(userLastAttendance.Timestamp, 10)
-        : userLastAttendance.Timestamp;
-
-      if (!checkInTimestamp) {
-        return false;
-      }
-
-      // Get check-in date in UTC
-      const checkInUTC = moment.utc(checkInTimestamp);
-      const checkInDate = checkInUTC.format('YYYY-MM-DD');
-
-      // Get today's date in UTC
-      const todayUTC = getCurrentUTCDate();
-
-      return checkInDate === todayUTC;
-    } catch (error) {
-      logger.error('Error checking if last check-in is today', error);
-      return false;
-    }
-  }, [userLastAttendance]);
-
-  // Determine if user should see checkout button or check-in button
-  const isUserCheckedIn = useMemo(() => {
-    // If no last attendance, show check-in
+  const result = useMemo<CheckInStatusResult>(() => {
+    // Default state: no attendance, show check-in
     if (!userLastAttendance) {
-      return false;
+      return {
+        buttonType: 'CHECK_IN',
+        buttonColor: 'DEFAULT',
+        isStale: false,
+        isMissedCheckout: false,
+        showMissedCheckoutModal: false,
+        isUserCheckedIn: false,
+      };
     }
 
-    // If last attendance is OUT, show check-in
-    if (userLastAttendance.PunchDirection === PUNCH_DIRECTIONS.out) {
-      return false;
+    const lastTimestamp = typeof userLastAttendance.Timestamp === 'string'
+      ? parseInt(userLastAttendance.Timestamp, 10)
+      : userLastAttendance.Timestamp;
+
+    // Check if last action was CHECK_IN
+    const isCheckedIn = userLastAttendance.PunchDirection === PUNCH_DIRECTIONS.in;
+
+    if (!isCheckedIn) {
+      // Last action was CHECK_OUT, show CHECK_IN
+      return {
+        buttonType: 'CHECK_IN',
+        buttonColor: 'DEFAULT',
+        isStale: false,
+        isMissedCheckout: false,
+        showMissedCheckoutModal: false,
+        isUserCheckedIn: false,
+      };
     }
 
-    // If last attendance is IN:
-    // - If it's today -> show checkout
-    // - If it's not today but shift spans 2 days and we're still within shift period -> show checkout
-    // - Otherwise -> show check-in
-    if (isLastCheckInToday) {
-      return true; // Show checkout
+    // Last action was CHECK_IN - determine if stale or missed checkout
+
+    // Check stale status (> 3 days)
+    const isStale = isStaleCheckIn(lastTimestamp);
+    if (isStale) {
+      // Stale check-in: Force CHECK_IN only
+      return {
+        buttonType: 'CHECK_IN',
+        buttonColor: 'DEFAULT',
+        isStale: true,
+        isMissedCheckout: false,
+        showMissedCheckoutModal: false,
+        isUserCheckedIn: false,
+      };
     }
 
-    // Not today, but check if shift spans 2 days and we're still within shift period
-    if (doesShiftSpanTwoDays && isWithinShiftPeriod) {
-      return true; // Show checkout
+    // Check missed checkout (not stale, but past shift end + buffer)
+    const checkInDate = userLastAttendance.DateOfPunch || 
+    new Date(lastTimestamp).toISOString().split('T')[0];
+    const shiftEndTime = userData?.shiftEndTime || '17:00';
+    const bufferHours = 2; // 2 hours after shift end
+
+    const missedCheckout = isMissedCheckout(
+      lastTimestamp,
+      checkInDate,
+      shiftEndTime,
+      bufferHours
+    );
+
+    if (missedCheckout) {
+      // Missed checkout: Show CHECK_OUT in RED + modal
+      return {
+        buttonType: 'CHECK_OUT',
+        buttonColor: 'RED',
+        isStale: false,
+        isMissedCheckout: true,
+        showMissedCheckoutModal: true,
+        isUserCheckedIn: true,
+      };
     }
 
-    // Not today and not within shift period -> show check-in
-    return false;
-  }, [userLastAttendance, isLastCheckInToday, doesShiftSpanTwoDays, isWithinShiftPeriod]);
+    // Normal CHECK_OUT (not stale, not missed)
+    return {
+      buttonType: 'CHECK_OUT',
+      buttonColor: 'DEFAULT',
+      isStale: false,
+      isMissedCheckout: false,
+      showMissedCheckoutModal: false,
+      isUserCheckedIn: true,
+    };
+  }, [userLastAttendance, userData?.shiftEndTime]);
 
-  return isUserCheckedIn;
+  return result;
+}
+
+/**
+ * Legacy export for backward compatibility
+ * Returns simple boolean: true if checked in, false otherwise
+ */
+export function useCheckInStatusSimple(): boolean {
+  const result = useCheckInStatus();
+  return result.isUserCheckedIn;
 }
 

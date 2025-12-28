@@ -1,5 +1,5 @@
-import React, { useMemo, useCallback, useEffect, useState } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl } from 'react-native';
+import React, { useMemo, useCallback, useState, useEffect } from 'react';
+import { View, StyleSheet, FlatList, TouchableOpacity, Image, RefreshControl } from 'react-native';
 import { useTheme, useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import moment from 'moment';
@@ -10,11 +10,11 @@ import AttendanceDetailModal from '../../components/app-modals/AttendanceDetailM
 import { useAppSelector } from '../../redux';
 import { hp, wp, FontTypes, Icons } from '../../constants';
 import { useTranslation } from '../../hooks/useTranslation';
-import { AttendanceDay } from '../../services';
 import { DarkThemeColors, APP_THEMES } from '../../themes';
-import { groupAttendanceByDate } from '../../services/attendance/attendance-utils';
+import { groupAttendanceByDate } from '../../services/attendance/attendance-grouping-service';
+import { fillMissingDatesInMonth } from '../../services/attendance/attendance-utils';
 import { getAttendanceData } from '../../services/attendance/attendance-db-service';
-import { getDaysAttendance } from '../../services/attendance/attendance-service';
+import { attendanceSyncService } from '../../services/sync/attendance-sync-service';
 import { logger } from '../../services/logger';
 
 interface GroupedAttendance {
@@ -27,9 +27,16 @@ interface GroupedAttendance {
     Address?: string;
     DateOfPunch?: string;
   }>;
-  attendanceStatus?: 'PRESENT' | 'ABSENT' | 'PARTIAL';
+  attendanceStatus?: 'PRESENT' | 'ABSENT' | 'PARTIAL' | 'HOURS_DEFICIT';
   totalDuration?: string;
   breakDuration?: string;
+  workedHours?: number;
+  requiresApproval?: boolean;
+  // Shift data extracted from first check-in record
+  shiftStart?: string;
+  shiftEnd?: string;
+  minimumHours?: number;
+  linkedEntryDate?: string;
 }
 
 export default function DaysBottomTabScreen(): React.JSX.Element {
@@ -39,71 +46,9 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
   const { appTheme } = useAppSelector(state => state.appState);
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const userLastAttendance = useAppSelector(
-    state => state.userState.userLastAttendance,
-  );
   const userData = useAppSelector(state => state.userState.userData);
-  const userAttendanceHistory = useAppSelector(
-    state => state.userState.userAttendanceHistory,
-  );
-
-  // Get today's attendance records (first check-in and last checkout) in UTC date format
-  const todayAttendance = useMemo(() => {
-    if (!userAttendanceHistory || userAttendanceHistory.length === 0) {
-      return { checkIn: null, checkout: null };
-    }
-
-    const today = moment.utc().format('YYYY-MM-DD'); // Get today's date in UTC
-
-    // Find today's check-in and checkout records
-    let checkIn: (typeof userAttendanceHistory)[0] | null = null;
-    let checkout: (typeof userAttendanceHistory)[0] | null = null;
-    let checkoutTimestamp = 0;
-
-    for (const record of userAttendanceHistory) {
-      // Check DateOfPunch field first, then derive from Timestamp (timestamp is UTC)
-      let recordDate: string;
-      if (record.DateOfPunch) {
-        recordDate = record.DateOfPunch;
-      } else if (record.Timestamp) {
-        const timestamp =
-          typeof record.Timestamp === 'string'
-            ? parseInt(record.Timestamp, 10)
-            : record.Timestamp;
-        recordDate = moment.utc(timestamp).format('YYYY-MM-DD');
-      } else {
-        continue;
-      }
-
-      if (recordDate === today) {
-        const timestamp =
-          typeof record.Timestamp === 'string'
-            ? parseInt(record.Timestamp, 10)
-            : record.Timestamp;
-
-        if (record.PunchDirection === 'IN') {
-          // Get first check-in of the day (earliest timestamp)
-          if (
-            !checkIn ||
-            timestamp <
-              (typeof checkIn.Timestamp === 'string'
-                ? parseInt(checkIn.Timestamp, 10)
-                : checkIn.Timestamp)
-          ) {
-            checkIn = record;
-          }
-        } else if (record.PunchDirection === 'OUT') {
-          // Get last checkout of the day (most recent/latest timestamp)
-          if (timestamp > checkoutTimestamp) {
-            checkout = record;
-            checkoutTimestamp = timestamp;
-          }
-        }
-      }
-    }
-
-    return { checkIn, checkout };
-  }, [userAttendanceHistory]);
+  const userAttendanceHistory = useAppSelector(state => state.userState.userAttendanceHistory,);
+  const userLastAttendance = useAppSelector(state => state.userState.userLastAttendance,);
 
   const [selectedDay, setSelectedDay] = useState<GroupedAttendance | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -118,86 +63,82 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
     return safeAreaTop + paddingVertical + contentHeight + hp(1); // Add extra buffer
   }, [insets.top]);
 
-  // Load attendance data from database
-  const loadAttendanceData = useCallback(async (isRefresh = false) => {
+  // Load attendance data with explicit flow:
+  // 1. Load from DB → Update Redux (immediate UI update)
+  // 2. Sync from server → Update DB
+  // 3. Load from DB again → Update Redux (show synced data)
+  const loadAttendanceData = useCallback(async (month?: moment.Moment) => {
     try {
-      if (isRefresh) {
-        setRefreshing(true);
-        // On refresh, sync from server to get latest data
-        if (userData?.email) {
-          await getDaysAttendance(userData.email);
-        }
+      // Get email from userData
+      const email = userData?.email;
+      if (!email) {
+        logger.warn('[DaysTab] No email found in userData');
+        return;
       }
-      
-      // Refresh data from database (this will update Redux store)
-      if (userData?.email) {
-        getAttendanceData(userData.email);
-      }
-      
-      // Note: Actual data update happens via Redux selector (userAttendanceHistory)
-      // which triggers re-render when database is updated
+
+      // STEP 1: Load from DB → Update Redux (FAST - immediate UI update)
+      await getAttendanceData(email);
+      logger.debug('[DaysTab] Loaded from DB and updated Redux');
+
+      // STEP 2: Sync from server → Update DB (SLOWER - network)
+      await attendanceSyncService.syncAttendanceFromServer(email, month);
+      logger.debug('[DaysTab] Synced from server and updated DB');
+
+      // STEP 3: Load from DB again → Update Redux (show synced data)
+      await getAttendanceData(email);
+      logger.debug('[DaysTab] Reloaded from DB and updated Redux with synced data');
     } catch (err: any) {
       logger.error('[DaysTab] Error loading attendance data', err);
-    } finally {
-      if (isRefresh) {
-        setRefreshing(false);
-      }
     }
   }, [userData?.email]);
 
-  const onRefresh = useCallback(() => {
-    loadAttendanceData(true);
+  // Refresh data from server (pull-to-refresh)
+  const onRefresh = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      await loadAttendanceData();
+    } catch (err: any) {
+      logger.error('[DaysTab] Error refreshing attendance data', err);
+    } finally {
+      setRefreshing(false);
+    }
   }, [loadAttendanceData]);
 
-  // Load attendance data from database on mount and sync from server
+  // Load data on mount: Load from DB → Update Redux → Sync from server → Update DB → Reload from DB → Update Redux
   useEffect(() => {
-    const loadData = async () => {
-      if (userData?.email) {
-        // Sync from server to get latest data (this also updates the database)
-        try {
-          await getDaysAttendance(userData.email);
-        } catch (error) {
-          logger.error('[DaysTab] Error syncing from server', error);
-        }
-      }
-    };
-    loadData();
-  }, [userData?.email]);
+    loadAttendanceData();
+  }, [loadAttendanceData]);
 
-  // Reset month to current month when tab is focused and sync from server
+  // Reset month to current month when tab is focused and reload data
   useFocusEffect(
     useCallback(() => {
-      const loadData = async () => {
-        const currentMonth = moment.utc();
-        setSelectedMonth(currentMonth);
-        // Sync from server when tab is focused (this also updates the database)
-        if (userData?.email) {
-          try {
-            await getDaysAttendance(userData.email);
-          } catch (error) {
-            logger.error('[DaysTab] Error syncing from server on focus', error);
-          }
-        }
-      };
-      loadData();
-    }, [userData?.email])
+      const currentMonth = moment.utc();
+      setSelectedMonth(currentMonth);
+      // Reload data: Load from DB → Update Redux → Sync from server → Update DB → Reload from DB → Update Redux
+      loadAttendanceData();
+    }, [loadAttendanceData])
   );
 
-  // Transform database records to grouped format
-  const attendanceData = useMemo<AttendanceDay[]>(() => {
-    if (!userAttendanceHistory || userAttendanceHistory.length === 0) {
-      return [];
-    }
-    
-    // Group and transform records from database
-    return groupAttendanceByDate(userAttendanceHistory);
-  }, [userAttendanceHistory]);
-
   // Group attendance by date and filter by selected month
+  // 🔧 FIX: Combined attendanceData + groupedAttendance into single useMemo
+  // to eliminate intermediate render cycles that cause "0s" flashing
   const groupedAttendance = useMemo<GroupedAttendance[]>(() => {
-    if (!attendanceData?.length) {
-      return [];
+    // Early return if no data - fill with ABSENT entries for selected month
+    if (!userAttendanceHistory || userAttendanceHistory.length === 0) {
+      const filledData = fillMissingDatesInMonth([], selectedMonth);
+      return filledData.map((day) => ({
+        date: day.dateOfPunch,
+        records: [],
+        attendanceStatus: day.attendanceStatus,
+        totalDuration: day.totalDuration,
+        breakDuration: day.breakDuration,
+        workedHours: day.workedHours,
+        requiresApproval: day.requiresApproval,
+      }));
     }
+
+    // Group and transform records from database
+    const attendanceData = groupAttendanceByDate(userAttendanceHistory);
 
     // Use UTC for month comparisons (selectedMonth is already UTC)
     const monthStart = selectedMonth.clone().startOf('month');
@@ -209,9 +150,35 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
       return dayDate.isSameOrAfter(monthStart) && dayDate.isSameOrBefore(monthEnd);
     });
 
-    // Convert to GroupedAttendance format and sort by date (most recent first)
-    return filtered
-      .map((day) => ({
+    // Fill missing dates in the month with ABSENT entries
+    const filledData = fillMissingDatesInMonth(filtered, selectedMonth);
+
+    // Create a map of original records by date for efficient lookup (computed once per useMemo execution)
+    const recordsByDateMap = new Map<string, typeof userAttendanceHistory>();
+    userAttendanceHistory.forEach((record) => {
+      const recordDate = record.DateOfPunch || moment.utc(record.Timestamp).format('YYYY-MM-DD');
+      if (!recordsByDateMap.has(recordDate)) {
+        recordsByDateMap.set(recordDate, []);
+      }
+      recordsByDateMap.get(recordDate)!.push(record);
+    });
+
+    // Convert to GroupedAttendance format (already sorted by fillMissingDatesInMonth)
+    return filledData.map((day) => {
+      // Find first check-in record from original data to extract shift info
+      const dayOriginalRecords = recordsByDateMap.get(day.dateOfPunch) || [];
+      const firstCheckInRecord = dayOriginalRecords.find(r => r.PunchDirection === 'IN');
+      
+      // Extract shift data from first check-in record (stored at check-in time)
+      const shiftStart = (firstCheckInRecord as any)?.ShiftStartTime || undefined;
+      const shiftEnd = (firstCheckInRecord as any)?.ShiftEndTime || undefined;
+      const minimumHours = (firstCheckInRecord as any)?.MinimumHoursRequired || undefined;
+      
+      // Find LinkedEntryDate from any checkout record (for overnight shifts)
+      const checkoutRecord = dayOriginalRecords.find(r => r.PunchDirection === 'OUT');
+      const linkedEntryDate = (checkoutRecord as any)?.LinkedEntryDate || undefined;
+
+      return {
         date: day.dateOfPunch,
         records: day.records.map((record) => ({
           Timestamp: record.Timestamp,
@@ -224,9 +191,16 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
         attendanceStatus: day.attendanceStatus,
         totalDuration: day.totalDuration,
         breakDuration: day.breakDuration,
-      }))
-      .sort((a, b) => moment.utc(b.date).diff(moment.utc(a.date)));
-  }, [attendanceData, selectedMonth]);
+        workedHours: day.workedHours,
+        requiresApproval: day.requiresApproval,
+        // Add shift data extracted from original records
+        shiftStart,
+        shiftEnd,
+        minimumHours,
+        linkedEntryDate,
+      };
+    });
+  }, [userAttendanceHistory, selectedMonth]);
 
   const handleDayItemPress = useCallback((item: GroupedAttendance) => {
     logger.debug('[DaysTab] Opening modal', {
@@ -242,29 +216,17 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
     const newMonth = selectedMonth.clone().subtract(1, 'month');
     setSelectedMonth(newMonth);
     
-    // Sync attendance data for the selected month from server
-    if (userData?.email) {
-      try {
-        await getDaysAttendance(userData.email, newMonth);
-      } catch (error) {
-        logger.error('[DaysTab] Error syncing month data', error);
-      }
-    }
-  }, [selectedMonth, userData?.email]);
+    // Load data for new month: Load from DB → Update Redux → Sync from server → Update DB → Reload from DB → Update Redux
+    await loadAttendanceData(newMonth);
+  }, [selectedMonth, loadAttendanceData]);
 
   const handleNextMonth = useCallback(async () => {
     const newMonth = selectedMonth.clone().add(1, 'month');
     setSelectedMonth(newMonth);
     
-    // Sync attendance data for the selected month from server
-    if (userData?.email) {
-      try {
-        await getDaysAttendance(userData.email, newMonth);
-      } catch (error) {
-        logger.error('[DaysTab] Error syncing month data', error);
-      }
-    }
-  }, [selectedMonth, userData?.email]);
+    // Load data for new month: Load from DB → Update Redux → Sync from server → Update DB → Reload from DB → Update Redux
+    await loadAttendanceData(newMonth);
+  }, [selectedMonth, loadAttendanceData]);
 
   const handleLogsToggle = useCallback(() => {
     navigation.navigate('AttendanceLogsScreen' as never);
@@ -279,6 +241,12 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
         attendanceStatus={item.attendanceStatus}
         totalDuration={item.totalDuration}
         breakDuration={item.breakDuration}
+        workedHours={item.workedHours}
+        requiresApproval={item.requiresApproval}
+        shiftStart={item.shiftStart}
+        shiftEnd={item.shiftEnd}
+        minimumHours={item.minimumHours}
+        linkedEntryDate={item.linkedEntryDate}
       />
     ),
     [handleDayItemPress],
@@ -327,14 +295,15 @@ export default function DaysBottomTabScreen(): React.JSX.Element {
         userName={`${userData?.firstName || ''} ${userData?.lastName || ''}`}
         borderBottomColor={(colors as any).home_header_border || DarkThemeColors.home_header_border}
         punchTimestamp={
-          // Only show today's check-in time (active shift)
-          todayAttendance.checkIn?.Timestamp || undefined
+          // Show last punch timestamp (regardless of date)
+          // This ensures header displays correctly even on weekends/holidays
+          userLastAttendance?.Timestamp || undefined
         }
         checkoutTimestamp={
-          // Only show today's checkout time (active shift)
-          todayAttendance.checkout?.Timestamp || undefined
+          // Show last checkout only if last action was checkout
+          userLastAttendance?.PunchDirection === 'OUT' ? userLastAttendance.Timestamp : undefined
         }
-        punchDirection={todayAttendance.checkIn?.PunchDirection || undefined}
+        punchDirection={userLastAttendance?.PunchDirection || undefined}
       />
       
       {/* Month Switcher Header */}

@@ -201,7 +201,7 @@ export default function GeoLocationsScreen(): React.JSX.Element {
                 {formattedDate}
               </AppText>
               <AppText size={hp(1.8)} style={styles.locationTime}>
-                {formattedTime} - {item.PunchDirection === 'IN' ? 'Check In' : 'Check Out'}
+                {formattedTime} - {item.PunchDirection === 'IN' ? t('attendance.checkIn') : t('attendance.checkOut')}
               </AppText>
             </View>
           </View>

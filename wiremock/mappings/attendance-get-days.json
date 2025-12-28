@@ -10,10 +10,107 @@
     },
     "jsonBody": [
       {
-        "dateOfPunch": "2025-12-17",
+        "dateOfPunch": "2025-12-20",
         "attendanceStatus": "PRESENT",
-        "totalDuration": "9:15",
-        "breakDuration": "01:00",
+        "totalDuration": "9:00",
+        "breakDuration": "00:00",
+        "workedHours": 9,
+        "requiresApproval": false,
+        "shiftStart": "18:00",
+        "shiftEnd": "03:00",
+        "minimumHours": 8,
+        "linkedEntryDate": "2025-12-19",
+        "records": [
+          {
+            "Timestamp": 1734721200000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2025-12-19"
+          },
+          {
+            "Timestamp": 1734753600000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2025-12-20",
+            "LinkedEntryDate": "2025-12-19"
+          }
+        ]
+      },
+      {
+        "dateOfPunch": "2025-12-19",
+        "attendanceStatus": "PENDING_APPROVAL",
+        "totalDuration": "8:30",
+        "breakDuration": "00:00",
+        "workedHours": 8.5,
+        "requiresApproval": true,
+        "shiftStart": "09:30",
+        "shiftEnd": "18:00",
+        "minimumHours": 8,
+        "records": [
+          {
+            "Timestamp": 1734599400000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2025-12-19",
+            "CorrectionType": "MANUAL_TIME",
+            "ManualCheckoutTime": 1734631200000
+          },
+          {
+            "Timestamp": 1734631200000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2025-12-19",
+            "CorrectionType": "MANUAL_TIME"
+          }
+        ]
+      },
+      {
+        "dateOfPunch": "2025-12-18",
+        "attendanceStatus": "HOURS_DEFICIT",
+        "totalDuration": "6:30",
+        "breakDuration": "00:00",
+        "workedHours": 6.5,
+        "requiresApproval": false,
+        "shiftStart": "09:00",
+        "shiftEnd": "18:00",
+        "minimumHours": 8,
+        "records": [
+          {
+            "Timestamp": 1734513000000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2025-12-18"
+          },
+          {
+            "Timestamp": 1734536400000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2025-12-18"
+          }
+        ]
+      },
+      {
+        "dateOfPunch": "2025-12-17",
+        "attendanceStatus": "PARTIAL",
+        "totalDuration": "0:00",
+        "breakDuration": "00:00",
+        "workedHours": 0,
+        "requiresApproval": false,
+        "shiftStart": "09:00",
+        "shiftEnd": "18:00",
+        "minimumHours": 8,
         "records": [
           {
             "Timestamp": 1765962240000,
@@ -30,6 +127,11 @@
         "attendanceStatus": "PRESENT",
         "totalDuration": "8:34",
         "breakDuration": "00:00",
+        "workedHours": 8.57,
+        "requiresApproval": false,
+        "shiftStart": "09:00",
+        "shiftEnd": "18:00",
+        "minimumHours": 8,
         "records": [
           {
             "Timestamp": 1765876020000,
@@ -54,6 +156,11 @@
         "attendanceStatus": "PRESENT",
         "totalDuration": "8:45",
         "breakDuration": "01:00",
+        "workedHours": 8.75,
+        "requiresApproval": false,
+        "shiftStart": "09:00",
+        "shiftEnd": "18:00",
+        "minimumHours": 8,
         "records": [
           {
             "Timestamp": 1765789680000,
@@ -90,10 +197,71 @@
         ]
       },
       {
+        "dateOfPunch": "2025-12-14",
+        "attendanceStatus": "HOURS_DEFICIT",
+        "totalDuration": "6:15",
+        "breakDuration": "00:00",
+        "workedHours": 6.25,
+        "requiresApproval": false,
+        "shiftStart": "09:00",
+        "shiftEnd": "18:00",
+        "minimumHours": 8,
+        "records": [
+          {
+            "Timestamp": 1765703280000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2025-12-14"
+          },
+          {
+            "Timestamp": 1765725780000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2025-12-14"
+          }
+        ]
+      },
+      {
+        "dateOfPunch": "2025-12-13",
+        "attendanceStatus": "PRESENT",
+        "totalDuration": "8:00",
+        "breakDuration": "00:00",
+        "workedHours": 8.0,
+        "requiresApproval": true,
+        "records": [
+          {
+            "Timestamp": 1765616880000,
+            "PunchDirection": "IN",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2025-12-13"
+          },
+          {
+            "Timestamp": 1765645680000,
+            "PunchDirection": "OUT",
+            "AttendanceStatus": null,
+            "LatLon": "22.5726,88.3639",
+            "Address": "Office Building, Sector 5, Kolkata, West Bengal 700091",
+            "DateOfPunch": "2025-12-13",
+            "ApprovalRequired": "Y",
+            "Reason": "FORGOT_TO_CHECKOUT",
+            "OriginalCheckoutTime": 1765658000000,
+            "CorrectedCheckoutTime": 1765645680000
+          }
+        ]
+      },
+      {
         "dateOfPunch": "2025-12-12",
         "attendanceStatus": "PRESENT",
         "totalDuration": "8:34",
         "breakDuration": "01:00",
+        "workedHours": 8.57,
+        "requiresApproval": false,
         "records": [
           {
             "Timestamp": 1765531560000,
@@ -134,6 +302,8 @@
         "attendanceStatus": "PRESENT",
         "totalDuration": "9:06",
         "breakDuration": "01:00",
+        "workedHours": 9.1,
+        "requiresApproval": false,
         "records": [
           {
             "Timestamp": 1765444860000,
@@ -174,6 +344,8 @@
         "attendanceStatus": "PRESENT",
         "totalDuration": "9:09",
         "breakDuration": "00:00",
+        "workedHours": 9.15,
+        "requiresApproval": false,
         "records": [
           {
             "Timestamp": 1765357860000,
@@ -198,6 +370,8 @@
         "attendanceStatus": "PRESENT",
         "totalDuration": "8:31",
         "breakDuration": "01:00",
+        "workedHours": 8.52,
+        "requiresApproval": false,
         "records": [
           {
             "Timestamp": 1765272420000,
@@ -234,10 +408,39 @@
         ]
       },
       {
+        "dateOfPunch": "2025-12-08",
+        "attendanceStatus": "ABSENT",
+        "totalDuration": "0:00",
+        "breakDuration": "00:00",
+        "workedHours": 0,
+        "requiresApproval": false,
+        "records": []
+      },
+      {
+        "dateOfPunch": "2025-12-07",
+        "attendanceStatus": "ABSENT",
+        "totalDuration": "0:00",
+        "breakDuration": "00:00",
+        "workedHours": 0,
+        "requiresApproval": false,
+        "records": []
+      },
+      {
+        "dateOfPunch": "2025-12-06",
+        "attendanceStatus": "ABSENT",
+        "totalDuration": "0:00",
+        "breakDuration": "00:00",
+        "workedHours": 0,
+        "requiresApproval": false,
+        "records": []
+      },
+      {
         "dateOfPunch": "2025-12-05",
         "attendanceStatus": "PRESENT",
         "totalDuration": "8:38",
         "breakDuration": "01:00",
+        "workedHours": 8.63,
+        "requiresApproval": false,
         "records": [
           {
             "Timestamp": 1764926640000,
